@@ -1,1 +1,21 @@
-theme: jekyll-theme-minimal
+title: philprime
+description: >
+  Personal website of Philip "Phil" Niedertscheider, highlighting his current projects and adventures.
+baseurl: ""
+url: "https://philpri.me"
+twitter_username: philprimes
+github_username: philprime
+
+timezone: Europe/Vienna
+
+# Build settings
+theme: minima
+plugins:
+  - jekyll-feed
+
+# Code highlighting
+markdown: kramdown
+highlighter: rouge
+
+kramdown:
+  input: GFM
