@@ -5,13 +5,11 @@ date: 2021-08-02 15:59:40 +0200
 categories: blog
 ---
 
-# Installing Xcode with “not enough disk space available"
-
 Phrases like “Xcode Beta 1X.Y.Z is out now" or “Did you try the new features of the latest Xcode update yet?" fill an iOS/macOS developer with joy. A new IDE update can be something similar to, e.g. a new knife for a chef, or a kid receiving the toy it always wanted.
 
 But then, the devastating moment, destroying all happiness at once:
 
-> # “Xcode.xip can’t be expanded because the current volume doesn’t have enough free space."
+> “Xcode.xip can’t be expanded because the current volume doesn’t have enough free space."
 
 ![Error prompt](/assets/blog/xcode-not-enough-space/xcodes-error-prompt.png)_Error prompt from the **Xcodes App** ([github.com/RobotsAndPencils/XcodesApp](https://github.com/RobotsAndPencils/XcodesApp))_
 
@@ -20,7 +18,7 @@ Then you check your disk usage statistics, and yes, looks like there should be e
 
 So what is the problem and how can we solve it? Let’s narrow it down.
 
-## TL;DR (Too Long; Didn’t Read)
+# TL;DR (Too Long; Didn’t Read)
 
 Here’s the solution to installing Xcode when you get this error:
 
@@ -33,7 +31,7 @@ dd if=/dev/urandom of=temp_20GB_file bs=1024 count=$[1024*1024*20]
 
 Still interested in the full reason why this is working? Keep reading.
 
-## What is the Problem? Is it really the disk size?
+# What is the Problem? Is it really the disk size?
 
 We start wondering: “so how much space would I need now?". If you checkout the Mac App Store entry for Xcode, it states **11.7 GB** size. But, even if we have more available, it fails with the same error.
 
@@ -65,7 +63,7 @@ While inspecting this behavior, I found an interesting side-effect of the xip un
 
 After tinkering with solutions and researching on the internet, I came up with a theory.
 
-## The Real Problem: APFS Containers
+# The Real Problem: APFS Containers
 
 > **_Disclaimer_**: This has not been verified by enough research (as my time is limited and solution-oriented) and I would love to hear your feedback either confirming or denying these assumptions, preferably per [DM on Twitter](https://twitter.com/philprimes).
 
@@ -73,7 +71,7 @@ In 2017 Apple introduced us the successor of the HFS+ file system, the "Apple Fi
 
 Another great feature of APFS are Containers. To give you full context of what containers are, and why they are so awesome, I will give you a short summary on storage technologies (as far as I remember from my university lectures 😄).
 
-### Concepts of File Systems
+## Concepts of File Systems
 
 A storage disk is split into _blocks_, each one consisting of multiple bytes of data. On Unix, each block has [a size of 4KB](https://web.cs.wpi.edu/~rek/DCS/D04/UnixFileSystems.html). As an example: if we have a disk with 128 blocks with 4KB each, that means we have a total disk size of 512 KB.
 
@@ -104,9 +102,9 @@ But it seems as the xip disk-space-check looks at the free space _inside the con
 
 We found the contradiction causing our issue:
 
-> # APFS containers grow while writing data, but the unarchiver won’t start writing data, because the container didn’t grow enough (yet).
+> APFS containers grow while writing data, but the unarchiver won’t start writing data, because the container didn’t grow enough (yet).
 
-## The Solution: Manually Scaling the Container
+# The Solution: Manually Scaling the Container
 
 To solve the contradiction, we have to force the container to grow. The only viable solution to do so, is writing a huge amount of data.
 
@@ -127,7 +125,7 @@ It will read the random data and write it to a file temp_10GB_file, which will i
 
 Now you should have enough disk space to finish installing Xcode 🥳
 
-## Conclusion:
+# Conclusion:
 
 This is an interesting behavior of macOS and the Apple File System, which might not be intended by their developers. I will go ahead and create a bug report to let them know about these findings. Maybe they can create a sustainable solution for us all.
 
