@@ -204,4 +204,4 @@ Even tough the package is still under active development, we are going to use it
 Follow the [repository](https://github.com/kula-app/Postie/) and submit your feature requests. It started as an Open Source project and should remain one, so we all can profit from each other. Found a bug? [Let us know!](https://github.com/kula-app/Postie/issues/new)
 
 I also would love to hear what you think about this project. Follow me on [Twitter](https://twitter.com/philprimes) and feel free to drop a DM with your thoughts.
-Also checkout [my other articles](philpri.me/blog). You have a specific topic you want me to cover? Let me know! 😃
+Also checkout [my other articles](philprime.dev/blog). You have a specific topic you want me to cover? Let me know! 😃

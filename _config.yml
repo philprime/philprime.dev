@@ -1,8 +1,14 @@
-title: philpri.me
+title: philprime.dev
+author:
+  name: Philip "Phil" Niedertscheider
+  email: hello@philprime.dev
 description: >
   Personal website of Philip "Phil" Niedertscheider, highlighting his current projects and adventures.
+
+show_excerpts: true
+
 baseurl: ""
-url: "https://philpri.me"
+url: "https://philprime.dev"
 twitter_username: philprimes
 github_username: philprime
 
@@ -11,7 +17,13 @@ timezone: Europe/Vienna
 # Build settings
 theme: minima
 minima:
+  date_format: "%b %-d, %Y"
   skin: dark
+
+  social_links:
+    twitter: philprimes
+    github: philprime
+    linkedin: philipniedertscheider
 
 plugins:
   - jekyll-feed
