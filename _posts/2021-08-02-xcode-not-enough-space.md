@@ -55,7 +55,7 @@ Clicking on the Apple Symbol in the top-left corner and further clicking the “
 
 Well, look at it: **39.54 GB** of space is available.
 
-![Multiple volumes allow me to easily reinstall macOS without loosing much data.](https://cdn-images-1.medium.com/max/2792/1*akjiCM0Zt08pA2AfwgOpZQ.png)_Multiple volumes allow me to easily reinstall macOS without loosing much data._
+![Multiple volumes allow me to easily reinstall macOS without loosing much data.](/assets/blog/xcode-not-enough-space/1_akjiCM0Zt08pA2AfwgOpZQ.png)
 
 Wait… so what is going on? Why is the install process dying with a “not enough space available"-warning even tough there should be at least `39.5 GB — 29,5 GB =` **10 GB** **more available than necessary**?
 

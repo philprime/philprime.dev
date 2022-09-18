@@ -31,3 +31,6 @@ gem "webrick"
 # Code Highlighting
 gem "kramdown"
 gem "rouge"
+
+# GitHub Gist Embedding
+gem "jekyll-gist"

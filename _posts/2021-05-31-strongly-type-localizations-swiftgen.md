@@ -13,83 +13,206 @@ To start off this story, you will see a very basic code example which includes a
 
 Take a look at the following example of a view showing a call-to-action message and the action button:
 
-<iframe src="https://medium.com/media/a27dda1c5db46cd20152eff44ad424e0" frameborder=0></iframe>
+```swift
+struct MyView: View {
+
+    var body: some View {
+        VStack {
+            Text("Tap on the button \"Tap me!\"")
+            Button("Tap me!", action: { /* do something */ })
+        }
+    }
+}
+```
 
 If you use this code snippet in a SwiftUI app it will work fine and the call-to-action fulfills its purpose: it tells the user to tap on the button.
 
 Some developers would stop thinking further about this code and keep going with the project, but you might have already noticed a potential issue: Changing the button text will lead to inconsistency!
 
-<iframe src="https://medium.com/media/c8c6b5519008ab62e4ae6cbafb0272a4" frameborder=0></iframe>
+```swift
+struct MyView: View {
+
+    var body: some View {
+        VStack {
+            Text("Click on the button \"Tap me!\"")
+            Button("I'm a button", action: {})
+        }
+    }
+}
+```
 
 The first main issue is code duplication, or specifically duplicated strings. When we change the label of the button, we also have to change the words in the message.
 
 As an initial solution we decide to create a small static constant, which can be used in both cases.
 
-<iframe src="https://medium.com/media/de126bd752881d4f140a2f91d6b2714b" frameborder=0></iframe>
+```swift
+struct MyView: View {
+
+    var body: some View {
+        VStack {
+            Text("Click on the button \"\(Strings.tapMe)\"")
+            Button(Strings.tapMe, action: {})
+        }
+    }
+}
+
+enum Strings {
+
+    static let tapMe = "Tap me!"
+
+}
+```
 
 This easy change already improved our code on two ways:
 
 1. no more duplicate strings in our code base, and
-
-1. both the Text and the Button are now guaranteed showing the same value.
+2. both the `Text` and the `Button` are now guaranteed showing the same value.
 
 ## The Story Continues…
 
 Your project grows and you keep adding more views, and eventually get to a finished version. The one you are proud to share with the world.
 Soon later you realize: “I have to translate the app, so more humans can use it” and you start looking into iOS/macOS localization techniques.
 
-Fortunately this is quite easy to implement using the NSLocalizedString macro/function, and so we can change our constant to apply localization.
+Fortunately this is quite easy to implement using the `NSLocalizedString` macro/function, and so we can change our constant to apply localization.
 
-<iframe src="https://medium.com/media/86c5d95906d5d3c34f945a196e24b221" frameborder=0></iframe>
+```swift
+enum Strings {
 
-What NSLocalizedString does under the hood is straight forward: we pass it a string which is used a lookup key in the localized strings file. If a translation is found, it gets returned, otherwise the lookup key acts as a default value.
+    static let clickMe = NSLocalizedString(
+        "Tap me!",  // <-- lookup key and default value
+        comment: "Label of button which calls for action")
+}
+```
+
+What `NSLocalizedString` does under the hood is straight forward: we pass it a string which is used a lookup key in the localized `.strings` file. If a translation is found, it gets returned, otherwise the lookup key acts as a default value.
 
 Additionally you create the relevant Localizable.strings file with the localized strings for the newly added language.
 
 > As I am from Austria, I’ll go with German as the second language for this story.
 
-<iframe src="https://medium.com/media/062e266ccf64ce638f9a97124322ede0" frameborder=0></iframe>
+```swift
+// Localizable.strings (German)
 
-Perfect. Once again you run your application with a different application language, and NSLocalizedString uses the Tap me! as a key to lookup the translation Tipp mich!.
+/* Label of button which calls for action */
+"Tap me!" = "Tipp mich!"
+```
 
-![Quick Tip: You can change the current runtime language in the schema seetings](https://cdn-images-1.medium.com/max/4576/1*q2wNM8qkiLUEEffoGNSzQw.png)_Quick Tip: You can change the current runtime language in the schema seetings_
+Perfect. Once again you run your application with a different application language, and `NSLocalizedString` uses the Tap me! as a key to lookup the translation Tipp mich!.
+
+![Quick Tip: You can change the current runtime language in the schema seetings](/assets/blog/strongly-type-localizations-swiftgen/1_q2wNM8qkiLUEEffoGNSzQw.png)
+_Quick Tip: You can change the current runtime language in the schema seetings_
 
 Unfortunately this introduced the same issue we defeated earlier: even tough the link between UI and the String constant is secured by compile-time safety, the link between our constant and the localization resource is not guaranteed!
 
-This means, if we change the lookup key name in the NSLocalizedString call (e.g. to Please tap me!), it won’t find the mapped translated string anymore. Even worse, we won’t notice it, as the build process does not fail (due to the default behavior of not translating, if not found).
+This means, if we change the lookup key name in the `NSLocalizedString` call (e.g. to Please tap me!), it won’t find the mapped translated string anymore. Even worse, we won’t notice it, as the build process does not fail (due to the default behavior of not translating, if not found).
 
 The easiest solution is introducing static keys, but we do not want to show a static identifier to the user in our UI. Therefore we need to add a value parameter, which now provides the original string as the default value.
 
-<iframe src="https://medium.com/media/3e5134861f8fd834157e28fa12375bab" frameborder=0></iframe>
+```swift
+enum Strings {
 
-To reflect our new changes to the localization file, you also change the localized .strings file to match the key:
+    static let clickMe = NSLocalizedString(
+      "call-to-action.button.text", // <-- only key
+      value: "Tap me!",
+      comment: "Label of button which calls for action")
 
-<iframe src="https://medium.com/media/8bd9f4b2f8b36079e1b71275af82e409" frameborder=0></iframe>
+}
+```
+
+To reflect our new changes to the localization file, you also change the localized `.strings` file to match the key:
+
+```swift
+// Localizable.strings (German)
+
+/* Label of button which calls for action */
+"call-to-action.button.text" = "Tipp mich!"
+```
 
 These few changes already fixed the issue. But we are still not quite there yet. The linking between the constants and the translation files are still loose and far from being guaranteed.
 
 Before going further down the improvement road, we need to add our message to the constants too. As it inserts the button text using String interpolation, but our translation files are only static strings, we need to adapt the code:
 
-<iframe src="https://medium.com/media/a9dfeda311135ccf20a154b699512f3d" frameborder=0></iframe>
+```swift
+Text(String(format: "Click on the button \"%@\"", Strings.clickMe))
+```
 
-We use String(format:) which takes a format/template string as the first parameter, and replaces all format specifiers (e.g. %@) with the variadic parameters.
+We use `String(format:)` which takes a format/template string as the first parameter, and replaces all format specifiers (e.g. `%@`) with the variadic parameters.
 
-> **Quick Tip: **
+> **Quick Tip:**
 > Format specifiers are standardized for most programming languages. You can find a full list in the [Apple Documentation](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html).
 
 Add another static key with the translated value to the Localizable.strings file and declare it as a constant in our enum:
 
-<iframe src="https://medium.com/media/27513d79b8218e421bde5d56356b593c" frameborder=0></iframe>
+```swift
+// Localizable.strings (German)
 
-<iframe src="https://medium.com/media/edc7cd015b569ab158cde63ba29f0e58" frameborder=0></iframe>
+/* Label of button which calls for action */
+"call-to-action.button.text" = "Tipp mich!";
+
+/* Format string for the call to action message */
+"call-to-action.message.text" = "Tipp auf \"%@\"";
+```
+
+```swift
+struct MyView: View {
+
+    var body: some View {
+        VStack {
+            Text(String(format: Strings.message, Strings.clickMe))
+            Button(Strings.clickMe, action: {})
+        }
+    }
+}
+
+enum Strings {
+
+    static let message = NSLocalizedString(
+        "call-to-action.message.text",
+        value: "Click on the button \"%@\"",
+        comment: "Format string for the call to action message")
+    static let clickMe = NSLocalizedString(
+        "call-to-action.button.text",
+        value: "Tap me!",
+        comment: "Label of button which calls for action")
+
+}
+```
 
 Swift is a language with strong typing and the compiler does great work helping us finding common issues. It also helps us to think less about the preconditions of certain code, such as the required parameters for a function call.
 
-As NSLocalizedString and String(format:) use string-based APIs, this type safety does not apply to them. Even worse it can lead to crashes when used incorrectly (by personal experience with os_log, which also uses format strings).
+As `NSLocalizedString` and `String(format:)` use string-based APIs, this type safety does not apply to them. Even worse it can lead to crashes when used incorrectly (by personal experience with os_log, which also uses format strings).
 
-Luckily, we are skilled programmers, and can wrap the usage of String(format:) in a function with a single parameter, to reduce the looseness of the link:
+Luckily, we are skilled programmers, and can wrap the usage of `String(format:)` in a function with a single parameter, to reduce the looseness of the link:
 
-<iframe src="https://medium.com/media/9380301a2c65b8bbc79ac440851071a0" frameborder=0></iframe>
+```swift
+struct MyView: View {
+
+    var body: some View {
+        VStack {
+            Text(Strings.message(Strings.clickMe))
+            Button(Strings.clickMe, action: {})
+        }
+    }
+}
+
+enum Strings {
+
+    static let messageFormat = NSLocalizedString(
+        "call-to-action.message.text",
+        value: "Click on the button \"%@\"",
+        comment: "Format string for the call to action message")
+
+    static func message(_ p1: String) -> String {
+        String(format: messageFormat, p1)
+    }
+
+    static let clickMe = NSLocalizedString(
+        "call-to-action.button.text",
+        value: "Tap me!",
+        comment: "Label of button which calls for action")
+
+}
+```
 
 What a clean solution 🤩 The constants include all necessary information, which most likely will not need to be edited soon, and the usage inside the view is quite elegant.
 
@@ -114,30 +237,101 @@ Their documentation is comprehensive and the getting started guides easy to unde
 
 After [installation](https://github.com/SwiftGen/SwiftGen#installation) we first need to create a configuration file swiftgen.yml with the following content:
 
-<iframe src="https://medium.com/media/337d4001d3d3ce05e35f5777b608116d" frameborder=0></iframe>
+```yaml
+strings:
+  inputs: en.lproj
+  outputs:
+    - templateName: structured-swift5
+      output: Generated/Strings.swift
+```
 
 As we do not want to define localization by hand in our code, create a Localizable.strings for the default language (in this case it is English), and write down the values previously defined in our constants:
 
-<iframe src="https://medium.com/media/bde9ba8db91fb51300c73c9d329c7c99" frameborder=0></iframe>
+```swift
+// Localizable.strings (English)
+
+/* Label of button which calls for action */
+"call-to-action.button.text" = "Tap me!";
+
+/* Format string for the call to action message */
+"call-to-action.message.text" = "Click on the button \"%@\"";
+```
 
 Afterwards run the command swiftgen in the same folder as the configuration file (make sure your path to the localization folder is correct).
-It will read our .strings file, and create a strongly typed localization enum in the Generated/Strings.swift file:
+It will read our `.strings` file, and create a strongly typed localization enum in the `Generated/Strings.swift` file:
 
-<iframe src="https://medium.com/media/4f2701ed509362c69f360d704bfba64e" frameborder=0></iframe>
+```swift
+// swiftlint:disable all
+// Generated using SwiftGen — https://github.com/SwiftGen/SwiftGen
+import Foundation
+
+// swiftlint:disable superfluous_disable_command file_length implicit_return
+// MARK: - Strings
+// swiftlint:disable explicit_type_interface function_parameter_count identifier_name line_length
+// swiftlint:disable nesting type_body_length type_name vertical_whitespace_opening_braces
+internal enum L10n {
+
+  internal enum CallToAction {
+    internal enum Button {
+      /// Tap me!
+      internal static let text = L10n.tr("Localizable", "call-to-action.button.text")
+    }
+    internal enum Message {
+      /// Click on the button "%@"
+      internal static func text(_ p1: Any) -> String {
+        return L10n.tr("Localizable", "call-to-action.message.text", String(describing: p1))
+      }
+    }
+  }
+}
+// swiftlint:enable explicit_type_interface function_parameter_count identifier_name line_length
+// swiftlint:enable nesting type_body_length type_name vertical_whitespace_opening_braces
+// MARK: - Implementation Details
+extension L10n {
+  private static func tr(_ table: String, _ key: String, _ args: CVarArg...) -> String {
+    let format = BundleToken.bundle.localizedString(forKey: key, value: nil, table: table)
+    return String(format: format, locale: Locale.current, arguments: args)
+  }
+}
+
+// swiftlint:disable convenience_type
+private final class BundleToken {
+  static let bundle: Bundle = {
+    #if SWIFT_PACKAGE
+    return Bundle.module
+    #else
+    return Bundle(for: BundleToken.self)
+    #endif
+  }()
+}
+// swiftlint:enable convenience_type
+```
 
 If you take a close look at the L10n enum, you might realize: “this looks similar to the constants enum we created earlier!” and you are correct.
 
-After adding this file to our project, we can now delete the enum Strings {...} introduced earlier, and use the generated L10n instead:
+After adding this file to our project, we can now delete the` enum Strings {...}` introduced earlier, and use the generated `L10n` instead:
 
-<iframe src="https://medium.com/media/b4df51c2db2ebe6ba657825f8a08de53" frameborder=0></iframe>
+```swift
+struct MyView: View {
+
+    var body: some View {
+        VStack {
+            Text(L10n.CallToAction.Message.text(L10n.CallToAction.Button.text))
+            Button(L10n.CallToAction.Button.text, action: {})
+        }
+    }
+}
+```
 
 Additionally we can add a build script phase which re-generates the Swift code during build-time, therefore making sure we only access actually given ones.
 
-![Quick Tip: the generation script must be run before the “Compile Sources” phase](https://cdn-images-1.medium.com/max/5608/1*9dC6cMwNsnqgPhqyyIX0tg.png)_Quick Tip: the generation script must be run before the “Compile Sources” phase_
+![Quick Tip: the generation script must be run before the “Compile Sources” phase](/assets/blog/strongly-type-localizations-swiftgen/1_9dC6cMwNsnqgPhqyyIX0tg.png)
 
-Awesome! Without further manual work we are able to access our localizations without worrying about keys or parameters… especially when adding new ones 💪🏼
+> **Quick Tip:** the generation script must be run before the “Compile Sources” phase
 
-![](https://cdn-images-1.medium.com/max/6000/1*4qiZt-Nh4L_m2XvoHwUFtQ.png)
+Awesome! Without further manual work we are able to access our localizations without worrying about keys or parameters... especially when adding new ones 💪🏼
+
+![](/assets/blog/strongly-type-localizations-swiftgen/1_4qiZt-Nh4L_m2XvoHwUFtQ.png)
 
 ## Conclusion
 
@@ -147,7 +341,7 @@ In this story we only explored a small subset of the capabilities of this code g
 Make sure to follow me on [Twitter](https://twitter.com/philprimes) & [Medium](https://medium.com/@philprime) so you don’t miss it!
 
 As mentioned before we would love to have a guarantee that a specific localization key is actually present in the default language localization file.
-On the one hand, this is still not fulfilled, especially if the generated code is outdated and therefore defining different values than given in the .strings files.
+On the one hand, this is still not fulfilled, especially if the generated code is outdated and therefore defining different values than given in the `.strings` files.
 
 On the other hand, in combination with the build script, this is fairly close to how a built-in compiler/code-completion support would work, and therefore if we trust our automation tools… we can trust the mapping.
 
