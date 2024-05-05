@@ -3,9 +3,10 @@ author:
   name: Philip "Phil" Niedertscheider
   email: hello@philprime.dev
 description: >
-  Personal website of Philip "Phil" Niedertscheider, highlighting his current projects and adventures.
+  Personal website of Philip "Phil" Niedertscheider, highlighting his current projects and endeavors.
 
 show_excerpts: true
+future: true
 
 baseurl: ""
 url: "https://philprime.dev"
