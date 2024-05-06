@@ -9,6 +9,8 @@ tags: iOS Open Source
 Free Open Source Software (FOSS) enables us to grow together, and you can also
 help - so allow me to tell you how!
 
+![Header Image](/assets/blog/2024-05-06-three-ways-to-support-open-source/header.jpg)
+
 # My history with FOSS
 
 Back around 2016 my Mom asked me to add an _"Export to PDF"_ functionality to
