@@ -36,3 +36,6 @@ gem "rouge"
 
 # GitHub Gist Embedding
 gem "jekyll-gist"
+
+# Analytics
+gem 'jekyll-analytics'
