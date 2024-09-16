@@ -75,232 +75,232 @@ This series is divided into multiple sections, each focusing on a specific area
 of the build process and setup. Here’s an overview of what you can expect in
 each section, with links to individual lessons:
 
-- [S1: Introduction to the Course and Project](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-s1)
+- [Section 1: Introduction to the Course and Project](/building-a-production-ready-kubernetes-cluster-from-scratch/section-1)
 
   > Understand the course objectives, the hardware and software requirements,
   > and the fundamentals of Kubernetes and high availability.
 
-  - [L1: Welcome and Course Overview](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l1)
+  - [Lesson 1: Welcome and Course Overview](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-1)
 
     > Get an introduction to the course structure, objectives, and the skills
     > you will acquire by the end. Understand how this course will help you
     > build a high-availability Kubernetes cluster with Raspberry Pi devices.
 
-  - [L2: Tools and Equipment Needed](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l2)
+  - [Lesson 2: Tools and Equipment Needed](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-2)
 
     > Discover the hardware and software requirements for building your
     > Kubernetes cluster. Learn about the specific tools and equipment you’ll
     > need to follow along with the course.
 
-  - [L3: Understanding High Availability and Kubernetes Basics](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l3)
+  - [Lesson 3: Understanding High Availability and Kubernetes Basics](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-3)
 
     > Learn the basics of Kubernetes, its core components, and the principles of
     > high availability. Understand how these concepts apply to the cluster
     > you’ll build in this course.
 
-- [S2: Building the Physical Setup](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-s2)
+- [Section 2: Building the Physical Setup](/building-a-production-ready-kubernetes-cluster-from-scratch/section-2)
 
   > Assemble the Raspberry Pi hardware, set up and configure the operating
   > system, and establish a reliable network connection for the cluster.
 
-  - [L4: Unboxing and Preparing the Raspberry Pi Devices](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l4)
+  - [Lesson 4: Unboxing and Preparing the Raspberry Pi Devices](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-4)
 
     > Unbox your Raspberry Pi devices and prepare them for the cluster setup.
     > Learn about the hardware components and their roles in the Kubernetes
     > cluster.
 
-  - [L5: Flashing Raspberry Pi OS and Initial Configuration](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l5)
+  - [Lesson 5: Flashing Raspberry Pi OS and Initial Configuration](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-5)
 
     > Follow a step-by-step guide to install Raspberry Pi OS on your devices,
     > configure essential settings, and prepare them for networking.
 
-  - [L6: Setting Up NVMe SSDs for Persistent Storage](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l6)
+  - [Lesson 6: Setting Up NVMe SSDs for Persistent Storage](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-6)
 
     > Learn how to install NVMe HATs and configure 512GB SSDs for use with
     > Longhorn and local container image storage.
 
-  - [L7: Networking Setup and Configuration](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l7)
+  - [Lesson 7: Networking Setup and Configuration](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-7)
     > Set up the network for your Raspberry Pi cluster, including configuring
     > static IPs, ensuring connectivity, and verifying network settings.
 
-- [S3: Preparing the Environment for Kubernetes](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-s3)
+- [Section 3: Preparing the Environment for Kubernetes](/building-a-production-ready-kubernetes-cluster-from-scratch/section-3)
 
   > Install essential Kubernetes tools, configure a container runtime, and
   > prepare all Raspberry Pi nodes for cluster initialization.
 
-  - [L8: Installing Kubernetes Tools (kubectl, kubeadm, kubelet)](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l8)
+  - [Lesson 8: Installing Kubernetes Tools (kubectl, kubeadm, kubelet)](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-8)
 
     > Install and configure essential Kubernetes tools on your Raspberry Pi
     > devices to prepare them for cluster initialization.
 
-  - [L9: Setting Up Docker or Container Runtime](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l9)
+  - [Lesson 9: Setting Up Docker or Container Runtime](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-9)
 
     > Set up Docker or another container runtime to run containers on your
     > Raspberry Pi devices as part of the Kubernetes cluster.
 
-  - [L10: Preparing Nodes for Kubernetes Initialization](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l10)
+  - [Lesson 10: Preparing Nodes for Kubernetes Initialization](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-10)
 
     > Configure each Raspberry Pi node to ensure it’s ready for Kubernetes
     > cluster initialization, including system requirements and configurations.
 
-- [S4: Configuring the Kubernetes Cluster](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-s4)
+- [Section 4: Configuring the Kubernetes Cluster](/building-a-production-ready-kubernetes-cluster-from-scratch/section-4)
 
   > Initialize the Kubernetes control plane, join additional nodes to the
   > cluster, and install a pod network to enable communication between nodes.
 
-  - [L11: Initializing the First Control Plane Node](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l11)
+  - [Lesson 11: Initializing the First Control Plane Node](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-11)
 
     > Step-by-step guide to initializing the first control plane node in your
     > Kubernetes cluster, including running kubeadm init and configuring the
     > control plane.
 
-  - [L12: Joining Additional Control Plane Nodes](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l12)
+  - [Lesson 12: Joining Additional Control Plane Nodes](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-12)
 
     > Learn how to join additional Raspberry Pi devices to the cluster to create
     > a high-availability control plane.
 
-  - [L13: Installing a Pod Network (CNI Plugin)](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l13)
+  - [Lesson 13: Installing a Pod Network (CNI Plugin)](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-13)
 
     > Install and configure a CNI plugin (e.g., Calico or Flannel) to enable pod
     > communication across nodes in the Kubernetes cluster.
 
-- [S5: Setting Up High Availability for the Control Plane](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-s5)
+- [Section 5: Setting Up High Availability for the Control Plane](/building-a-production-ready-kubernetes-cluster-from-scratch/section-5)
 
   > Implement load balancing for the control plane API, set up redundancy using
   > tools like Keepalived or HAProxy, and verify high availability.
 
-  - [L14: Configuring Load Balancing for the Control Plane](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l14)
+  - [Lesson 14: Configuring Load Balancing for the Control Plane](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-14)
 
     > Learn how to set up load balancing for the Kubernetes API server to
     > distribute traffic evenly and ensure high availability.
 
-  - [L15: Implementing Redundancy with Keepalived or HAProxy](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l15)
+  - [Lesson 15: Implementing Redundancy with Keepalived or HAProxy](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-15)
 
     > Implement redundancy using tools like Keepalived or HAProxy to ensure
     > continuous access to the control plane in case of failures.
 
-  - [L16: Testing Control Plane High Availability](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l16)
+  - [Lesson 16: Testing Control Plane High Availability](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-16)
 
     > Test and verify the high-availability configuration of your control plane
     > to ensure it remains functional during node failures.
 
-- [S6: Deploying Persistent Storage with Longhorn](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-s6)
+- [Section 6: Deploying Persistent Storage with Longhorn](/building-a-production-ready-kubernetes-cluster-from-scratch/section-6)
 
   > Install and configure Longhorn for distributed block storage, create storage
   > classes, and manage persistent volumes across the cluster.
 
-  - [L17: Installing Longhorn for Distributed Block Storage](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l17)
+  - [Lesson 17: Installing Longhorn for Distributed Block Storage](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-17)
 
     > Install Longhorn, a lightweight and reliable distributed block storage
     > solution, to manage persistent volumes across your Kubernetes cluster.
 
-  - [L18: Configuring Longhorn Storage Classes](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l18)
+  - [Lesson 18: Configuring Longhorn Storage Classes](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-18)
 
     > Learn how to create and configure storage classes in Longhorn to manage
     > your storage resources efficiently.
 
-  - [L19: Testing and Optimizing Longhorn Performance](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l19)
+  - [Lesson 19: Testing and Optimizing Longhorn Performance](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-19)
 
     > Test the performance of your Longhorn storage setup and learn optimization
     > techniques for better performance and reliability.
 
-- [S7: Securing the Cluster](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-s7)
+- [Section 7: Securing the Cluster](/building-a-production-ready-kubernetes-cluster-from-scratch/section-7)
 
   > Apply role-based access control (RBAC), enable mutual TLS authentication,
   > and implement network policies to secure the Kubernetes cluster.
 
-  - [L20: Implementing Role-Based Access Control (RBAC)](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l20)
+  - [Lesson 20: Implementing Role-Based Access Control (RBAC)](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-20)
 
     > Configure RBAC in Kubernetes to manage access and permissions for users
     > and applications securely.
 
-  - [L21: Enabling Mutual TLS Authentication](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l21)
+  - [Lesson 21: Enabling Mutual TLS Authentication](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-21)
 
     > Set up mutual TLS authentication to secure communication between
     > Kubernetes components and protect your cluster.
 
-  - [L22: Applying Network Policies](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l22)
+  - [Lesson 22: Applying Network Policies](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-22)
 
     > Learn how to create and apply network policies to control traffic between
     > pods and enhance the security of your cluster.
 
-- [S8: Monitoring and Logging](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-s8)
+- [Section 8: Monitoring and Logging](/building-a-production-ready-kubernetes-cluster-from-scratch/section-8)
 
   > Deploy and configure monitoring tools like Prometheus and Grafana, set up
   > the EFK stack (ElasticSearch, Fluentd, Kibana) for logging, and create
   > alerts and dashboards.
 
-  - [L23: Installing Prometheus and Grafana](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l23)
+  - [Lesson 23: Installing Prometheus and Grafana](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-23)
 
     > Deploy Prometheus and Grafana for real-time monitoring and visualization
     > of your Kubernetes cluster’s performance and health.
 
-  - [L24: Setting Up the EFK Stack (Elasticsearch, Fluentd, Kibana)](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l24)
+  - [Lesson 24: Setting Up the EFK Stack (Elasticsearch, Fluentd, Kibana)](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-24)
 
     > Install and configure the EFK stack for centralized logging and log
     > analysis within your Kubernetes cluster.
 
-  - [L25: Creating Alerts and Dashboards](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l25)
+  - [Lesson 25: Creating Alerts and Dashboards](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-25)
 
     > Set up alerts and create custom dashboards in Grafana to monitor critical
     > metrics and receive notifications of potential issues.
 
-- [S9: Testing and Validating Cluster Resilience](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-s9)
+- [Section 9: Testing and Validating Cluster Resilience](/building-a-production-ready-kubernetes-cluster-from-scratch/section-9)
 
   > Deploy applications, simulate failures, test cluster resilience, and verify
   > that security and monitoring configurations are working correctly.
 
-  - [L26: Deploying Sample Applications](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l26)
+  - [Lesson 26: Deploying Sample Applications](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-26)
 
     > Deploy example applications to test your Kubernetes cluster’s
     > functionality and ensure that it’s correctly configured.
 
-  - [L27: Simulating Node Failures and Recovery](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l27)
+  - [Lesson 27: Simulating Node Failures and Recovery](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-27)
 
     > Simulate node failures and practice recovery procedures to validate the
     > resilience of your Kubernetes cluster.
 
-  - [L28: Verifying Security and Monitoring Configurations](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l28)
+  - [Lesson 28: Verifying Security and Monitoring Configurations](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-28)
 
     > Verify that your security measures, monitoring tools, and configurations
     > are working correctly to protect and maintain your cluster.
 
-- [S10: Regular Maintenance and Updates](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-s10)
+- [Section 10: Regular Maintenance and Updates](/building-a-production-ready-kubernetes-cluster-from-scratch/section-10)
 
   > Perform backups and disaster recovery for etcd, update Kubernetes
   > components, and conduct routine security audits and vulnerability scans.
 
-  - [L29: Backup and Disaster Recovery for etcd](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l29)
+  - [Lesson 29: Backup and Disaster Recovery for etcd](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-29)
 
     > Learn how to back up and restore the etcd data store to protect your
     > cluster’s critical data and configurations.
 
-  - [L30: Updating Kubernetes Components and Nodes](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l30)
+  - [Lesson 30: Updating Kubernetes Components and Nodes](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-30)
 
     > Safely update Kubernetes components and manage node updates to keep your
     > cluster secure and up to date.
 
-  - [L31: Performing Routine Security Audits](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l31)
+  - [Lesson 31: Performing Routine Security Audits](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-31)
 
     > Conduct regular security audits and vulnerability scans to identify and
     > mitigate potential risks in your cluster.
 
-- [S11: Conclusion and Next Steps](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-s11)
+- [Section 11: Conclusion and Next Steps](/building-a-production-ready-kubernetes-cluster-from-scratch/section-11)
 
   > Review key concepts learned, access additional resources for further study,
   > and provide feedback for course improvements.
 
-  - [L32: Review and Final Thoughts](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l32)
+  - [Lesson 32: Review and Final Thoughts](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-32)
 
     > Recap key concepts covered throughout the course and reflect on what you
     > have learned.
 
-  - [L33: Additional Resources and Further Learning](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l33)
+  - [Lesson 33: Additional Resources and Further Learning](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-33)
 
     > Access additional resources, tools, and materials for further learning and
     > exploring Kubernetes in more depth.
 
-  - [L34: Course Feedback and Future Updates](/2024/XX/XX/building-a-production-ready-kubernetes-cluster-from-scratch-l34)
+  - [Lesson 34: Course Feedback and Future Updates](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-34)
 
     > Provide feedback on the course and learn about potential updates and
     > future enhancements.
