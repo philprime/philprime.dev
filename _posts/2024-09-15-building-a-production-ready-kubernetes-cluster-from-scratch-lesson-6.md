@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Setting Up NVMe SSDs for Persistent Storage] (L6)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-6

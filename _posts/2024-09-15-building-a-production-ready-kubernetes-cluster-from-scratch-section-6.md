@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-section
 title: Deploying Persistent Storage with Longhorn (S6)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/section-6

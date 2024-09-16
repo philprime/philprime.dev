@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Course Feedback and Future Updates (L34)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-34

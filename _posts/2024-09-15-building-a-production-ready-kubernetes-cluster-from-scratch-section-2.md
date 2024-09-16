@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-section
 title: Building the Physical Setup (S2)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/section-2

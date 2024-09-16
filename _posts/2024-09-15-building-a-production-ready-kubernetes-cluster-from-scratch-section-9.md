@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-section
 title: Testing and Validating Cluster Resilience (S9)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/section-9

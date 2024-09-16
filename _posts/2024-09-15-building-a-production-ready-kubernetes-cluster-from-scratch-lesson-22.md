@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Applying Network Policies (L22)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-22

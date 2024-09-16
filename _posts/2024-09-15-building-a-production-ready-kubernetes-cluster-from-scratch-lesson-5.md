@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Flashing Raspberry Pi OS and Initial Configuration (L5)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-5

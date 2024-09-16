@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-section
 title: Conclusion and Next Steps (S11)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/section-11

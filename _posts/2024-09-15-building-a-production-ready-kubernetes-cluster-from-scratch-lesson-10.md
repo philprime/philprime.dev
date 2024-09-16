@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Preparing Nodes for Kubernetes Initialization (L10)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-10

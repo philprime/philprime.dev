@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-section
 title: Setting Up High Availability for the Control Plane (S5)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/section-5

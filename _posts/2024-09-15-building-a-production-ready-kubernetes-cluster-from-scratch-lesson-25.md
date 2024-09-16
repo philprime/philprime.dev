@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Creating Alerts and Dashboards (L25)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-25

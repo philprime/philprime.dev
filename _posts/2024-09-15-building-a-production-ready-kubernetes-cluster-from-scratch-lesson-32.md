@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Review and Final Thoughts (L32)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-32

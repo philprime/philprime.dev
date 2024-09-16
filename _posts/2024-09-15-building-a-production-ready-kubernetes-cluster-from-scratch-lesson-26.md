@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Deploying Sample Applications (L26)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-26

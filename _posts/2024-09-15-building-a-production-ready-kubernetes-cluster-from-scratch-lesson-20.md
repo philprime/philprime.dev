@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Implementing Role-Based Access Control (RBAC) (L20)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-20

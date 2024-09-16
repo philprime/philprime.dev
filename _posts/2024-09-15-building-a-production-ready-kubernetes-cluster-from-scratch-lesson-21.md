@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Enabling Mutual TLS Authentication (L21)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-21

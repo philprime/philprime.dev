@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Backup and Disaster Recovery for etcd (L29)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-29

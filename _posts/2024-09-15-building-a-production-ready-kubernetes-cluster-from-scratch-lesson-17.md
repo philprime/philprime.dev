@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Installing Longhorn for Distributed Block Storage (L17)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-17

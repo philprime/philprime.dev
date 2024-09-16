@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Setting Up Docker or Container Runtime (L9)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-9

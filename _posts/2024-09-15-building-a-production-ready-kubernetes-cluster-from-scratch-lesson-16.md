@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Testing Control Plane High Availability (L16)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-16

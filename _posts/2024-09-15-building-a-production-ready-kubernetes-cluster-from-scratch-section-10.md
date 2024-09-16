@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-section
 title: Regular Maintenance and Updates (S10)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/section-10

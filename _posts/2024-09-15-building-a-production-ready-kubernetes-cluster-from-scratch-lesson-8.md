@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Installing Kubernetes Tools (kubectl, kubeadm, kubelet) (L8)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-8

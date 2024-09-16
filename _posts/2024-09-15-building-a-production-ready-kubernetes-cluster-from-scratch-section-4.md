@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-section
 title: Configuring the Kubernetes Cluster (S4)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/section-4

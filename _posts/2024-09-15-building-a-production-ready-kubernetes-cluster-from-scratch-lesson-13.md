@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Installing a Pod Network (CNI Plugin) (L13)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-13

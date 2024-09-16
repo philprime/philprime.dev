@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Simulating Node Failures and Recovery (L27)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-27

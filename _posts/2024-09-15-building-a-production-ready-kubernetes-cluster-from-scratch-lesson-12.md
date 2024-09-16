@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Joining Additional Control Plane Nodes (L12)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-12

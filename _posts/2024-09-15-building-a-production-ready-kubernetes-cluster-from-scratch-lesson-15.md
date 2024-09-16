@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Implementing Redundancy with Keepalived or HAProxy (L15)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-15

@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Building a production-ready Kubernetes cluster from scratch
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch
@@ -22,15 +22,12 @@ In particular, this series will cover the following topics:
 - Implement security best practices, monitoring, and logging to maintain a
   resilient and secure Kubernetes cluster.
 
-> [!IMPORTANT] As a strong believer in free open source resources, I made this
-> written series available for free.
->
-> **Please, if you can support my work, this series can also be purchased as a
-> course on [Udemy](https://TODO), you can become a
-> [GitHub Sponsor](https://github.com/sponsors/philprime) and you can share it
-> in your network.**
->
-> Thank you! ❤️
+<div class="alert alert-important">
+  <strong>Important:</strong>
+  <p>As a strong believer in free open source resources, I made this written series available for free.</p>
+  <p>Please, if you can support my work, this series can also be purchased as acourse on <a href="https://replace-me">Udemy</a>, you can become a <a href="https://github.com/sponsors/philprime">GitHub Sponsor</a> and you can share it in your network.</p>
+  <p>Thank you! ❤️</p>
+</div>
 
 This series is perfect for you, if you are any one of the following:
 

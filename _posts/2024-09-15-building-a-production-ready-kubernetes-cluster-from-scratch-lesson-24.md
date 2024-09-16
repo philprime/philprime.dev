@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Setting Up the EFK Stack (Elasticsearch, Fluentd, Kibana) (L24)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-24

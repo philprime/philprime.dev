@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-section
 title: Preparing the Environment for Kubernetes (S3)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/section-3

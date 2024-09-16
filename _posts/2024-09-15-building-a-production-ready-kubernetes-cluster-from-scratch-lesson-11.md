@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Initializing the First Control Plane Node (L11)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-11

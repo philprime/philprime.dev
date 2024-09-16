@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-section
 title: Introduction to the Course and Project (S1)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/section-1

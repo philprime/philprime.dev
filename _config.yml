@@ -16,7 +16,6 @@ github_username: philprime
 timezone: Europe/Vienna
 
 # Build settings
-theme: minima
 minima:
   date_format: '%b %-d, %Y'
   skin: dark

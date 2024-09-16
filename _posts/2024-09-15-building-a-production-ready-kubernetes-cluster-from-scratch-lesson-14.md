@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Configuring Load Balancing for the Control Plane (L14)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-14

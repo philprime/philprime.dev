@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Tools and Equipment Needed (L2)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-2

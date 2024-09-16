@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: course-lesson
 title: Configuring Longhorn Storage Classes (L18)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-18
