@@ -1,9 +1,9 @@
 GIT
   remote: https://github.com/jekyll/minima.git
-  revision: 38a84a949f9753c4542e25f422935f59b4913053
-  ref: v2.5.1
+  revision: 6b9b78dad3e5c9f733c901e10287465735b36169
+  ref: 6b9b78dad3e5c9f733c901e10287465735b36169
   specs:
-    minima (2.5.1)
+    minima (3.0.0.dev)
       jekyll (>= 3.5, < 5.0)
       jekyll-feed (~> 0.9)
       jekyll-seo-tag (~> 2.1)
@@ -32,7 +32,7 @@ GEM
     http_parser.rb (0.8.0)
     i18n (1.14.5)
       concurrent-ruby (~> 1.0)
-    jekyll (4.3.3)
+    jekyll (4.3.4)
       addressable (~> 2.4)
       colorator (~> 1.0)
       em-websocket (~> 0.5)
