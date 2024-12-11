@@ -2,7 +2,7 @@ source "https://rubygems.org"
 
 gem "jekyll"
 
-gem "minima", github: "jekyll/minima", ref: "v2.5.1"
+gem "minima", github: "jekyll/minima", ref: "6b9b78dad3e5c9f733c901e10287465735b36169"
 
 # If you want to use GitHub Pages, remove the "gem "jekyll"" above and
 # uncomment the line below. To upgrade, run `bundle update github-pages`.
