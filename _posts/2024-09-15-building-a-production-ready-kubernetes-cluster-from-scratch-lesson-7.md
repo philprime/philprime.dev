@@ -25,82 +25,30 @@ To ensure your Raspberry Pi devices are properly connected, follow these steps:
   to your router to provide internet access to each Raspberry Pi.
 
 - Double-check that each Raspberry Pi device has a unique static IP address
-  within your local network range (e.g., `192.168.1.10`, `192.168.1.11`, etc.),
-  as configured in Lesson 5. Ensure these IP addresses are also reserved in your
+  within your local network range (e.g., `10.1.1.1`, `10.1.2.1`, etc.), as
+  configured in Lesson 5. Ensure these IP addresses are also reserved in your
   router's DHCP settings to prevent IP conflicts.
 
 - SSH into each Raspberry Pi and use the `ping` command to test communication
   with the other Raspberry Pi devices. For example:
   ```bash
-  ping 192.168.1.11
-  ping 192.168.1.12
+  $ ping 10.1.1.1
+  $ ssh pi@10.1.1.1
   ```
 
-Make sure each device can successfully ping the others. If any device fails to
-ping, check the Ethernet connections and network settings.
+## Configuring Additional Network Security
 
-- Edit the `/etc/hosts` file on each Raspberry Pi to set up hostname resolution,
-  which simplifies communication between devices. Open the file with:
-
-  ```bash
-  sudo nano /etc/hosts
-  ```
-
-  Add the IP addresses and hostnames of all Raspberry Pi devices in your
-  cluster:
-
-  ```plaintext
-  192.168.1.10  kubernetes-node-1
-  192.168.1.11  kubernetes-node-2
-  192.168.1.12  kubernetes-node-3
-  ```
-
-  Save and close the file. This allows you to reference the nodes by hostname
-  instead of IP address.
-
-- Set up SSH key-based authentication to allow passwordless access between
-  Raspberry Pi devices. Generate an SSH key pair on your main computer if you
-  haven’t already:
-  ```bash
-  ssh-keygen -t rsa
-  ```
-  Copy the public key to each Raspberry Pi:
-  ```bash
-  ssh-copy-id pi@192.168.1.10
-  ssh-copy-id pi@192.168.1.11
-  ssh-copy-id pi@192.168.1.12
-  ```
-  This enables you to SSH into each device without needing to enter a password.
-
-## Verifying the Network Configuration
-
-To ensure your network setup is complete and functional, test SSH access to each
-Raspberry Pi using its hostname:
+Install and enable `ufw` (Uncomplicated Firewall) to control incoming and
+outgoing traffic on each Raspberry Pi:
 
 ```bash
-ssh pi@kubernetes-node-1
-ssh pi@kubernetes-node-2
-ssh pi@kubernetes-node-3
+$ sudo apt install ufw
+$ sudo ufw allow ssh
+$ sudo ufw enable
 ```
 
-Make sure you can log in without entering a password, and check that each device
-can communicate with the others using both IP addresses and hostnames.
-
-## Configuring Additional Network Security (Optional)
-
-Consider configuring additional network settings to enhance security:
-
-- Install and enable `ufw` (Uncomplicated Firewall) to control incoming and
-  outgoing traffic on each Raspberry Pi:
-
-  ```bash
-  sudo apt install ufw
-  sudo ufw allow ssh
-  sudo ufw enable
-  ```
-
-- Ensure that only necessary services are running on each Raspberry Pi and
-  disable any unused services to reduce potential attack surfaces.
+When enabling `ufw`, you may be prompted to allow or deny certain services.
+Ensure that you allow SSH access to prevent being locked out of your devices.
 
 ## Lesson Conclusion
 

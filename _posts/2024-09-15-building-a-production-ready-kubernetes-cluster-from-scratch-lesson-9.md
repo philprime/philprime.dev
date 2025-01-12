@@ -16,83 +16,98 @@ cluster from scratch. Make sure you have completed the
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
-**Installing containerd on Each Raspberry Pi**
+## Installing containerd on Each Raspberry Pi
 
 To begin, make sure you are connected to each Raspberry Pi via SSH. Perform the
 following steps on each device:
 
-- Update the package list and install required dependencies:
+1. Update the package list and install required dependencies:
 
-  ```bash
-  sudo apt update
-  sudo apt install -y apt-transport-https curl gnupg2 software-properties-common
-  ```
+   ```bash
+   $ sudo apt update
+   $ sudo apt install -y apt-transport-https curl gnupg2 software-properties-common
+   ```
 
-- Install containerd:
-  ```bash
-  sudo apt install -y containerd
-  ```
+2. Install containerd:
 
-**Configuring containerd for Kubernetes**
+   ```bash
+   $ sudo apt install -y containerd
+   ```
+
+## Configuring containerd for Kubernetes
 
 Once containerd is installed, it needs to be configured properly to work with
 Kubernetes:
 
-- Create a default configuration file for containerd:
+1. Create a default configuration file for containerd:
 
-  ```bash
-  sudo mkdir -p /etc/containerd
-  sudo containerd config default | sudo tee /etc/containerd/config.toml
-  ```
+   ```bash
+   $ sudo mkdir -p /etc/containerd
+   $ sudo containerd config default | sudo tee /etc/containerd/config.toml
+   ```
 
-- Open the configuration file with a text editor like `nano` to modify the
-  cgroup driver:
+2. Open the configuration file with a text editor like `vi` or `nano` to modify
+   the cgroup driver:
 
-  ```bash
-  sudo nano /etc/containerd/config.toml
-  ```
+   ```bash
+   $ sudo vi /etc/containerd/config.toml
+   ```
 
-  Find the line that specifies the `SystemdCgroup` setting (typically under the
-  `[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]`
-  section) and set it to `true`:
+   Find the line that specifies the `SystemdCgroup` setting (typically under the
+   `[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]`
+   section) and set it to `true`. When using `vi`, you can search for the line
+   using `/SystemdCgroup`:
 
-  ```toml
-  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-    SystemdCgroup = true
-  ```
+   ```toml
+   [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+     SystemdCgroup = true
+   ```
 
-- Save the changes and exit the editor.
+3. Save the changes and exit the editor (in `vi`, press `Esc` followed by `:wq`
+   and `Enter`).
+4. Restart containerd to apply the configuration:
 
-- Restart containerd to apply the configuration:
+   ```bash
+   $ sudo systemctl restart containerd
+   ```
 
-  ```bash
-  sudo systemctl restart containerd
-  ```
+5. Enable containerd to start on boot:
 
-- Enable containerd to start on boot:
-  ```bash
-  sudo systemctl enable containerd
-  ```
+   ```bash
+   $ sudo systemctl enable containerd
+   ```
 
-**Verifying containerd Installation**
+## Verifying containerd Installation
 
-To confirm that containerd is correctly installed and configured:
+To confirm that containerd is installed and configured correctly, checkout the
+status of the containerd service:
 
-- Check the status of containerd to ensure it is running:
+```bash
+$ sudo systemctl status containerd
+● containerd.service - containerd container runtime
+     Loaded: loaded (/lib/systemd/system/containerd.service; enabled; preset: enabled)
+     Active: active (running) since Sun 2025-01-12 20:16:00 CET; 21s ago
+       Docs: https://containerd.io
+   Main PID: 4629 (containerd)
+      Tasks: 10
+        CPU: 86ms
+     CGroup: /system.slice/containerd.service
+             └─4629 /usr/bin/containerd
 
-  ```bash
-  sudo systemctl status containerd
-  ```
+Jan 12 20:16:00 kubernetes-node-1 containerd[4629]: time="2025-01-12T20:16:00.483721289+01:00" level=info msg="Start subscribing containerd event"
+Jan 12 20:16:00 kubernetes-node-1 containerd[4629]: time="2025-01-12T20:16:00.483770622+01:00" level=info msg="Start recovering state"
+Jan 12 20:16:00 kubernetes-node-1 containerd[4629]: time="2025-01-12T20:16:00.483840678+01:00" level=info msg="Start event monitor"
+Jan 12 20:16:00 kubernetes-node-1 containerd[4629]: time="2025-01-12T20:16:00.483866549+01:00" level=info msg="Start snapshots syncer"
+Jan 12 20:16:00 kubernetes-node-1 containerd[4629]: time="2025-01-12T20:16:00.483879086+01:00" level=info msg="Start cni network conf syncer for default"
+Jan 12 20:16:00 kubernetes-node-1 containerd[4629]: time="2025-01-12T20:16:00.483890030+01:00" level=info msg="Start streaming server"
+Jan 12 20:16:00 kubernetes-node-1 containerd[4629]: time="2025-01-12T20:16:00.484237568+01:00" level=info msg=serving... address=/run/containerd/containerd.sock.ttrpc
+Jan 12 20:16:00 kubernetes-node-1 containerd[4629]: time="2025-01-12T20:16:00.484282883+01:00" level=info msg=serving... address=/run/containerd/containerd.sock
+Jan 12 20:16:00 kubernetes-node-1 systemd[1]: Started containerd.service - containerd container runtime.
+Jan 12 20:16:00 kubernetes-node-1 containerd[4629]: time="2025-01-12T20:16:00.485584240+01:00" level=info msg="containerd successfully booted in 0.038755s"
+```
 
-  The output should show that containerd is active and running.
-
-- Verify the cgroup driver configuration:
-  ```bash
-  crictl info | grep "cgroupDriver"
-  ```
-  Ensure that the output shows `"cgroupDriver": "systemd"`.
-
-**Next Step: Moving Forward**
+As you can see, the output shows that the containerd service is active and
+running.
 
 ## Lesson Conclusion
 

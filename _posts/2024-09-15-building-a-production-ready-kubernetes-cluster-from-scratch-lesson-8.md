@@ -14,81 +14,93 @@ Kubernetes cluster from scratch. Make sure you have completed the
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
----
-
-we are not using the latest version, because in lesson 30 we will upgrade it.
-
-Here is the content for Lesson 8: Installing Kubernetes Tools (kubectl, kubeadm,
-kubelet) formatted as requested:
-
----
-
-### Section 3, Lesson 8: Installing Kubernetes Tools (kubectl, kubeadm, kubelet)
-
 In this lesson, we will install the essential Kubernetes tools required to set
 up and manage your cluster: `kubectl`, `kubeadm`, and `kubelet`. These tools
 will allow you to initialize the control plane, manage nodes, and control your
 cluster.
 
-**Installing Kubernetes Tools on Each Raspberry Pi**
+> [!WARNING] We are not using the latest version of Kubernetes tools in this
+> lesson, so we will be able to upgrade them in lesson 30.
 
-First, ensure that each Raspberry Pi is connected to the network and accessible
-via SSH. You will need to perform the following steps on each device:
+## Installing Kubernetes Tools on Each Raspberry Pi
 
-- Update the package list and install dependencies needed for Kubernetes tools:
+The Kubernetes tools are essential for managing your cluster and interacting
+with the Kubernetes API. To install these tools on your Raspberry Pi devices,
+follow these steps (or follow the
+[documentation](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)):
 
-  ```bash
-  sudo apt update
-  sudo apt install -y apt-transport-https curl
-  ```
+1.  Update the apt package index and install packages needed to use the
+    Kubernetes apt repository:
 
-- Add the Kubernetes APT repository to your Raspberry Pi devices:
+    ```bash
+    $ sudo apt update
+    $ sudo apt-get install -y apt-transport-https ca-certificates curl gnupg
+    ```
 
-  ```bash
-  curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-  echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-  ```
+2.  Download the public signing key for the Kubernetes package repositories. The
+    same signing key is used for all repositories so you can disregard the
+    version in the URL:
 
-- Install `kubeadm`, `kubectl`, and `kubelet`:
-  ```bash
-  sudo apt update
-  sudo apt install -y kubelet kubeadm kubectl
-  sudo apt-mark hold kubelet kubeadm kubectl
-  ```
-  Holding these packages ensures they will not be automatically updated, which
-  helps maintain cluster stability.
+    ```bash
+    $ sudo mkdir -p -m 755 /etc/apt/keyrings
+    $ curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
-**Verifying the Installation**
+    # allow unprivileged APT programs to read this keyring
+    $ sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    ```
+
+3.  Add the appropriate Kubernetes apt repository. We will install version 1.31,
+    which is not the latest version at the time of this writing, allow us to
+    upgrade it later on:
+
+    ```bash
+    $ echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    # helps tools such as command-not-found to work correctly
+    $ sudo chmod 644 /etc/apt/sources.list.d/kubernetes.list
+    ```
+
+4.  Update apt package index, then install `kubeadm`, `kubectl`, and `kubelet`:
+
+    ```bash
+    $ sudo apt update
+    $ sudo apt install -y kubelet kubeadm kubectl
+    ```
+
+5.  Holding these packages ensures they will not be automatically updated, which
+    helps maintain cluster stability.
+
+    ```bash
+    $ sudo apt-mark hold kubelet kubeadm kubectl
+    ```
+
+## Verifying the Installation
 
 To confirm that the Kubernetes tools have been successfully installed:
 
 - Check the versions of the installed tools by running:
   ```bash
-  kubectl version --client && kubeadm version && kubelet --version
+  $ kubectl version --client
+  $ kubeadm version
+  $ kubelet --version
   ```
   Ensure that each command returns a version number, indicating the tools are
   correctly installed.
 
-**Configuring Kubernetes Tools**
+## Configuring Kubernetes Tools
 
 - Ensure that `kubelet` is enabled to start on boot and is running:
 
   ```bash
-  sudo systemctl enable kubelet
-  sudo systemctl start kubelet
+  $ sudo systemctl enable kubelet
+  $ sudo systemctl start kubelet
   ```
-
-- Repeat these steps on all Raspberry Pi devices to ensure all nodes are
-  prepared for the Kubernetes cluster setup.
-
-**Next Step: Moving Forward**
 
 ## Lesson Conclusion
 
 Congratulations! With the Kubernetes tools installed and configured, your
 Raspberry Pi devices are now ready to initialize the cluster. In the next
-lesson, we will set up a container runtime like Docker, which is necessary to
-run containers on your cluster.
+lesson, we will set up a container runtime like container.d or Docker, which is
+necessary to run containers on your cluster.
 
 You have completed this lesson and you can now continue with
 [the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-9).

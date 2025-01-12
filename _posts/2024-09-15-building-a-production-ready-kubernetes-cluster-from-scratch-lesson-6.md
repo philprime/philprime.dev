@@ -16,85 +16,132 @@ cluster from scratch. Make sure you have completed the
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
-## Preparing the NVMe SSDs and HATs
-
-To begin, make sure you have the following:
-
-- 512GB NVMe SSDs, one for each Raspberry Pi device.
-- Compatible NVMe HATs for each Raspberry Pi to connect the SSDs.
-
-### Installing the NVMe SSDs
-
-1. **Insert the NVMe SSDs into the HATs**: Carefully insert each NVMe SSD into
-   the corresponding HAT (Hardware Attached on Top) for your Raspberry Pi.
-   Ensure that the SSD is securely connected and correctly oriented according to
-   the HAT’s instructions.
-
-2. **Attach the HATs to the Raspberry Pi Devices**: Mount the NVMe HAT with the
-   attached SSD onto the Raspberry Pi, making sure all connectors align
-   properly. Secure the HAT in place using any screws or clips provided.
-
-3. **Connect Power and Network**: Ensure that each Raspberry Pi device is
-   connected to a power source and the network switch via Ethernet. This will
-   allow us to access the devices remotely for the next steps.
-
 ## Configuring the NVMe SSDs for Use
 
 Once the SSDs are physically installed, the next step is to configure them for
-use with the Raspberry Pi:
+use with the Raspberry Pi after connecting to them via SSH:
 
-1. **SSH into Each Raspberry Pi**: Open an SSH connection to each Raspberry Pi
-   device using the assigned static IP addresses.
+1.  **Connect to the Raspberry Pi**: Use SSH to connect to the Raspberry Pi
+    device with the NVMe SSD installed. Replace `10.1.X.1` with the IP address
+    of the Raspberry Pi device:
 
-2. **Verify SSD Recognition**: Use the `lsblk` or `fdisk -l` command to check if
-   the NVMe SSD is recognized by the system:
-   ```bash
-   lsblk
-   ```
+    ```bash
+    ssh -i ~/.ssh/k8s_cluster_id_ed25519 pi@10.1.X.1
+    ```
 
-You should see the NVMe SSD listed as `/dev/nvme0n1` or similar. If not,
-double-check the physical connections and reboot the device.
+2.  **Verify SSD Recognition**: Use the `lsblk` or `fdisk -l` command to check
+    if the NVMe SSD is recognized by the system:
 
-3. **Partition the SSD**: If the SSD is recognized, use `fdisk` to create a new
-   partition on it:
+    ```bash
+    $ lsblk
+    NAME        MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
+    mmcblk0     179:0    0  58.2G  0 disk
+    ├─mmcblk0p1 179:1    0   512M  0 part /boot/firmware
+    └─mmcblk0p2 179:2    0  57.7G  0 part /
+    nvme0n1     259:0    0 465.8G  0 disk
 
-   ```bash
-   sudo fdisk /dev/nvme0n1
-   ```
+    $ fdisk -l
+    Disk /dev/nvme0n1: 465.76 GiB, 500107862016 bytes, 976773168 sectors
+    Disk model: KINGSTON SNV3S500G
+    Units: sectors of 1 * 512 = 512 bytes
+    Sector size (logical/physical): 512 bytes / 512 bytes
+    I/O size (minimum/optimal): 512 bytes / 512 bytes
+    ```
 
-   Follow the interactive prompts to create a new primary partition. When
-   prompted, use the default settings to utilize the entire disk.
+    You should see the NVMe SSD listed as `/dev/nvme0n1` or similar. If not,
+    double-check the physical connections and reboot the device.
 
-4. **Format the SSD**: Format the new partition with the `ext4` file system:
+3.  **Partition the SSD**: If the SSD is recognized, use `fdisk` to create a new
+    partition on it:
 
-   ```bash
-   sudo mkfs.ext4 /dev/nvme0n1p1
-   ```
+    ```bash
+    $ sudo fdisk /dev/nvme0n1
+    ```
 
-   This process may take a few moments depending on the size of the SSD.
+    Follow these steps in the interactive `fdisk` prompt:
 
-5. **Create a Mount Point and Mount the SSD**: Create a directory to mount the
-   SSD:
+    - Type `n` to create a new partition.
+    - Select `p` for a primary partition.
+    - Press `Enter` to accept the default partition number.
+    - Press `Enter` to accept the default first sector.
+    - Press `Enter` again to accept the default last sector, which will use the
+      entire disk.
+    - Type `w` to write the changes and exit `fdisk`.
 
-   ```bash
-   sudo mkdir -p /mnt/nvme
-   ```
+    The output should look similar to this:
 
-   Mount the SSD to the new directory:
+    ```bash
+    $ sudo fdisk /dev/nvme0n1
 
-   ```bash
-   sudo mount /dev/nvme0n1p1 /mnt/nvme
-   ```
+    Welcome to fdisk (util-linux 2.38.1).
+    Changes will remain in memory only, until you decide to write them.
+    Be careful before using the write command.
 
-6. **Configure Automatic Mounting on Boot**: To ensure the SSD mounts
-   automatically after a reboot, add an entry to the `/etc/fstab` file:
-   ```bash
-   echo '/dev/nvme0n1p1 /mnt/nvme ext4 defaults 0 0' | sudo tee -a /etc/fstab
-   ```
-   Verify the entry by running:
-   ```bash
-   sudo mount -a
-   ```
+    Device does not contain a recognized partition table.
+    Created a new DOS (MBR) disklabel with disk identifier 0x681ca427.
+
+    Command (m for help): n
+    Partition type
+      p   primary (0 primary, 0 extended, 4 free)
+      e   extended (container for logical partitions)
+    Select (default p): p
+    Partition number (1-4, default 1):
+    First sector (2048-976773167, default 2048):
+    Last sector, +/-sectors or +/-size{K,M,G,T,P} (2048-976773167, default 976773167):
+
+    Created a new partition 1 of type 'Linux' and of size 465.8 GiB.
+
+    Command (m for help): w
+    The partition table has been altered.
+    Calling ioctl() to re-read partition table.
+    Syncing disks.
+    ```
+
+    After completing these steps, the new partition will be created and ready
+    for formatting. You can verify the partition by running `lsblk` or
+    `fdisk -l` again:
+
+    ```bash
+    $ lsblk
+    NAME        MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
+    mmcblk0     179:0    0  58.2G  0 disk
+    ├─mmcblk0p1 179:1    0   512M  0 part /boot/firmware
+    └─mmcblk0p2 179:2    0  57.7G  0 part /
+    nvme0n1     259:0    0 465.8G  0 disk
+    └─nvme0n1p1 259:1    0 465.8G  0 part
+    ```
+
+    The new partition should be listed as `/dev/nvme0n1p1` or similar.
+
+4.  Next step is to **format the partition** with the `ext4` filesystem. There
+    are other filesystems you can use, but `ext4` is a common choice for Linux
+    systems:
+
+    ```bash
+    $ sudo mkfs.ext4 /dev/nvme0n1p1
+    ```
+
+    This process may take a few moments depending on the size of the SSD.
+
+5.  To **mount the SSD** to a directory, create a new directory as the mount
+    location, then mount the SSD to that directory:
+
+    ```bash
+    $ sudo mkdir -p /mnt/nvme
+    ```
+
+6.  We want the SSD to be mounted automatically on boot of the system. We can
+    achieve this by adding an entry to the `/etc/fstab` file:
+
+    ```bash
+    $ echo '/dev/nvme0n1p1 /mnt/nvme ext4 defaults 0 0' | sudo tee -a /etc/fstab
+    ```
+
+    Verify the entry by running:
+
+    ```bash
+    $ sudo mount -a
+    ```
 
 ## Verifying the SSD Setup
 
@@ -117,7 +164,3 @@ and can communicate within the cluster.
 
 You have completed this lesson and you can now continue with
 [the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-7).
-
-```
-
-```

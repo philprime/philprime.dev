@@ -15,12 +15,18 @@ cluster from scratch. Make sure you have completed the
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
+Before we dive into building our Kubernetes cluster, it’s essential to
+understand the key concepts that underpin Kubernetes and high availability, to
+establish a solid foundation and knowledge on terminology for the rest of the
+course.
+
 ## What is Kubernetes?
 
 Kubernetes is an open-source platform for automating the deployment, scaling,
 and management of containerized applications. Originally developed by Google,
-Kubernetes has become the standard for container orchestration, allowing you to
-run and manage your applications across a cluster of servers efficiently.
+Kubernetes has become the de-facto standard for large-scale container
+orchestration, allowing you to run and manage your applications across a cluster
+of servers efficiently.
 
 At its core, Kubernetes groups containers that make up an application into
 logical units for easy management and discovery. It automates the deployment and
@@ -45,6 +51,17 @@ Kubernetes consists of several key components:
   from network sessions inside or outside of your cluster.
 - The **etcd** component is a consistent and highly available key-value store
   used as Kubernetes' backing store for all cluster data.
+- **Kubernetes API Server** is the front end for the Kubernetes control plane.
+  It exposes the Kubernetes API, which lets you interact with your cluster.
+- **Kubernetes Scheduler** watches for newly created pods with no assigned node
+  and selects a node for them to run on.
+- **Container Runtime** is the software that is responsible for running
+  containers. Kubernetes supports several container runtimes, including Docker,
+  containerd, and CRI-O.
+- **Storage Provisioner** automates the creation and management of storage
+  resources for your cluster. It dynamically provisions storage volumes when
+  requested by users, ensuring that applications have the necessary storage
+  available without manual intervention.
 
 ## What is High Availability (HA)?
 
@@ -86,4 +103,4 @@ challenges.
 ## Lesson Conclusion
 
 Congratulations! You have completed this lesson and you can now continue with
-[the next section](/building-a-production-ready-kubernetes-cluster-from-scratch/section-2).
+[the next section](/building-a-production-ready-kubernetes-cluster-from-scratch/section-4).

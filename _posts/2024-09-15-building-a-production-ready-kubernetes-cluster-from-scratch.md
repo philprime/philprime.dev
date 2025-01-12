@@ -29,7 +29,7 @@ In particular, this series will cover the following topics:
   <p>Thank you! ❤️</p>
 </div>
 
-This series is perfect for you, if you are any one of the following:
+This series is perfect for you, if you are any of the following:
 
 - Tech enthusiasts, developers, and IT professionals who want to prototype
   cluster using Raspberry Pi devices.
@@ -47,26 +47,28 @@ To follow along you will need to meet these requirements:
 
 - Basic understanding of Linux command line and shell scripting (e.g.,
   navigating directories, editing files, running commands).
-- Basic understanding of Kubernetes concepts (pods, services, deployments) is
-  helpful but not required.
+- Basic understanding of containerization and Docker concepts (e.g., containers,
+  images, volumes).
+- Know-how on Kubernetes concepts (pods, services, deployments) is helpful but
+  not required.
 - Familiarity with networking concepts, including IP addresses, subnets, DNS,
   and SSH.
 - A computer running a unix-like system, such as Linux/macOS or Windows
-  Subsystem with Linux (WSL), with an ethernet port for connecting to network.
+  Subsystem with Linux (WSL), with access to a network connection.
 - SSH client (e.g., OpenSSH, PuTTY) for remote access to Raspberry Pi devices.
-- At least 3 Raspberry Pi devices (e.g. Raspberry Pi 4 with 4GB RAM) with
+- At least 3 Raspberry Pi devices (e.g. Raspberry Pi 5 with 4GB RAM) with
   MicroSD card (32GB or higher, high endurance recommended), USB-C power
   supplies for each
-- A gigabit Ethernet router and switch (e.g., ER605) and Ethernet cables (CAT5e
-  or higher).
 - NVMe HATs for each Raspberry Pi with an SSD (512GB or higher)
+- A gigabit Ethernet router and switch (e.g., TP-Linkn ER605) and Ethernet
+  cables (CAT5e or higher).
 
 ## Series Overview
 
 > [!NOTE] As this series was written for a Udemy course, the series is
 > structured as a curriculum with sections and lessons. Each lesson is a
-> separate post in this series, and the names lesson, article, posts are used
-> interchangeably.
+> separate post in this series, and the names `lesson`, `article` and `posts`
+> are used interchangeably.
 
 This series is divided into multiple sections, each focusing on a specific area
 of the build process and setup. Here’s an overview of what you can expect in
@@ -113,7 +115,7 @@ each section, with links to individual lessons:
 
   - [Lesson 6: Setting Up NVMe SSDs for Persistent Storage](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-6)
 
-    > Learn how to install NVMe HATs and configure 512GB SSDs for use with
+    > Learn how to install NVMe HATs and configure SSD storage for use with
     > Longhorn and local container image storage.
 
   - [Lesson 7: Networking Setup and Configuration](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-7)

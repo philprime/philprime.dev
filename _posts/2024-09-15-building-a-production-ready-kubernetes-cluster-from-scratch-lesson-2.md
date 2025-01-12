@@ -24,35 +24,90 @@ software tools.
 
 To set up your Kubernetes cluster, you will need several hardware components:
 
-- You will need at least three Raspberry Pi 4 devices, ideally with 4GB or 8GB
-  of RAM for better performance.
-- Each Raspberry Pi requires a 32GB (or higher) microSD card, with
+- You will need at least three Raspberry Pi 5 devices, ideally with 8GB of RAM
+  for better performance.
+- Each Raspberry Pi requires a 64GB (or higher) microSD card, with
   high-endurance cards recommended for reliability.
-- For persistent storage, you will need 512GB NVMe SSDs along with compatible
-  NVMe HATs for each Raspberry Pi.
-- Each device also requires a 5V/3A USB-C power supply to ensure stable
+- For persistent storage, you will need 500GB NVMe SSDs along with compatible
+  NVMe HATs for each Raspberry Pi. Make sure the lengths of the SSDs are
+  supported by the HATs.
+- Each device also requires a 5V/5A USB-C power supply to ensure stable
   operation.
-- To connect all Raspberry Pi devices, you will need a gigabit Ethernet switch,
-  such as the TL-SG108, and a wired router like the ER605 to link the cluster to
-  your home network.
+- To connect all Raspberry Pi devices, you will need a gigabit wired router like
+  the TP-LINK ER605 (or any other networking router) to create a local network
+  for your cluster.
 - You should have CAT5e or higher Ethernet cables available to connect the
-  Raspberry Pi devices to the switch.
-- It is recommended to use heatsinks or cooling fans for each Raspberry Pi to
-  prevent overheating during continuous operation.
+  Raspberry Pi devices to the router.
+
+![Hardware Overview](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/hardware-overview.jpg)
+
+### Exact Hardware List
+
+// TODO: add more details on the hardware components
+
+The following is the exact list of hardware components used in this course:
+
+**Raspberry Pi 5:**
+
+- Raspberry Pi 5 (8GB RAM)
+- 64-bit quad-core Cortex-A76 processor
+- 8GB LPDDR4X SDRAM
+- Gigiabit Ethernet port
+- 5V/5A USB-C power supply recommended, 5V/3A minimum requirement
+
+![Raspberry Pi 5](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi.jpg)
+
+**Power Supply:**
+
+- Official Raspberry Pi USB-C Power Supply 27W
+- Provides 5.1V, 5.0A DC output
+
+![Power Supply](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/power-supply.jpg)
+
+**MicroSD Card:**
+
+- 64GB High-Speed MicroSD Card
+- Model: HSTF
+- Manufacturer: Shenzhen Haishitongda Technology Co., Ltd.
+
+![MicroSD Card](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/microsd-card.jpg)
+
+**Raspberry PI NVMe HAT:**
+
+- Pimoroni - PIM699
+- Supports M.2 NVMe SSDs
+- Supports 2280, 2260, 2242, and 2230 form factors
+
+![NVMe HAT](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/nvme-hat.jpg)
+
+**NVMe SSD:**
+
+- Kingston SNV3S/500G
+- 500GB PCIe 4.0 NVMe M.2
+
+![NVMe SSD](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/nvme-ssd.jpg)
+
+**Router:**
+
+- TP-LINK ER605
+- Gigabit Wired Router
+- 4x Gigabit LAN Ports / 1x Gigabit WAN Port
+
+![Router](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/router.jpg)
+
+**Ethernet Cable:**
+
+- CAT6 Ethernet Cable
+- Length: 0.15m
+
+![Ethernet Cable](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/ethernet-cables.jpg)
 
 ## Software Requirements
 
 You will also need several software tools to complete this course:
 
-- Raspberry Pi OS Lite (without a desktop environment) should be installed on
-  all Raspberry Pi devices.
 - An SSH client, such as OpenSSH (pre-installed on most Unix-like systems) or
   PuTTY (for Windows), is required to remotely access the Raspberry Pi devices.
-- The Kubernetes tools `kubectl`, `kubeadm`, and `kubelet` need to be installed
-  on your Raspberry Pi devices to manage the cluster.
-- A container runtime like Docker is necessary to run containers on the devices.
-- A text editor like `nano` or `vim` is useful for editing configuration files
-  directly on the Raspberry Pi devices.
 
 ## Additional Requirements
 

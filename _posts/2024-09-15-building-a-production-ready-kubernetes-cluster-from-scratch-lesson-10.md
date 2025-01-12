@@ -17,7 +17,7 @@ cluster from scratch. Make sure you have completed the
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
-**Updating System Settings for Kubernetes**
+## Updating System Settings for Kubernetes
 
 Before initializing the Kubernetes cluster, we need to adjust some system
 settings to optimize the nodes for Kubernetes:
@@ -26,30 +26,49 @@ settings to optimize the nodes for Kubernetes:
   function correctly:
 
   ```bash
-  sudo swapoff -a
+  $ sudo swapoff -a
   ```
 
-  To make this change permanent, open the `/etc/fstab` file and comment out any
-  line that includes the word `swap`:
+  To make this change permanent, edit the `/etc/fstab` file and remove the swap
+  entry. If your system uses `dphys-swapfile`, you will see the following line
+  in the file:
 
   ```bash
-  sudo nano /etc/fstab
+  $ sudo vi /etc/fstab
+  # a swapfile is not a swap partition, no line here
+  #   use  dphys-swapfile swap[on|off]  for that
   ```
 
-  Add a `#` at the beginning of the swap line, save the file, and exit.
+  To disable the `dphys-swapfile` service, remove the system service by running:
+
+  ```bash
+  $ sudo dphys-swapfile swapoff
+  $ sudo systemctl stop dphys-swapfile
+  $ sudo systemctl disable dphys-swapfile
+  ```
+
+  To verify that swap is disabled, reboot the system, and run the following
+  command:
+
+  ```bash
+  $ free -h
+  ```
+
+  It should show 0 bytes of free swap.
 
 - Ensure that all necessary kernel modules are loaded. Run the following
   commands to load the required modules:
 
   ```bash
-  sudo modprobe overlay
-  sudo modprobe br_netfilter
+  $ sudo modprobe overlay
+  $ sudo modprobe br_netfilter
   ```
 
   To make these changes persistent, create a configuration file:
 
   ```bash
-  sudo tee /etc/modules-load.d/k8s.conf <<EOF
+  $ touch /etc/modules-load.d/k8s.conf
+  $ sudo tee /etc/modules-load.d/k8s.conf <<EOF
   overlay
   br_netfilter
   EOF
@@ -57,53 +76,140 @@ settings to optimize the nodes for Kubernetes:
 
 - Adjust the sysctl settings for Kubernetes networking. Configure the necessary
   settings using:
+
   ```bash
-  sudo tee /etc/sysctl.d/k8s.conf <<EOF
+  $ sudo tee /etc/sysctl.d/k8s.conf <<EOF
   net.bridge.bridge-nf-call-iptables  = 1
   net.ipv4.ip_forward                 = 1
   net.bridge.bridge-nf-call-ip6tables = 1
   EOF
   ```
+
   Apply the changes:
+
   ```bash
-  sudo sysctl --system
+  $ sudo sysctl --system
   ```
 
-**Synchronizing System Clocks**
+## Enable CGroup Memory
+
+Kubernetes requires the memory cgroup memory controller to be enabled on the
+Raspberry Pi nodes.
+
+```bash
+$ cat /proc/cgroups
+#subsys_name  hierarchy  num_cgroups  enabled
+cpuset        0          55           1
+cpu           0          55           1
+cpuacct       0          55           1
+blkio         0          55           1
+memory        0          55           0
+devices       0          55           1
+freezer       0          55           1
+net_cls       0          55           1
+perf_event    0          55           1
+net_prio      0          55           1
+pids          0          55           1
+```
+
+If the `memory` cgroup is not enabled, you will need to enable it by appending
+`cgroup_memory=1 cgroup_enable=memory` to the boot command line in the
+`/boot/cmdline.txt` file using `nano` or `vi`:
+
+```bash
+$ sudo vi /boot/cmdline.txt
+```
+
+> [!WARNING] If the file contains a warning with "The file you are looking for
+> has moved to /boot/firmware/cmdline.txt", you should edit the file at
+> `/boot/firmware/cmdline.txt` instead.
+
+The full line should look like this:
+
+```
+console=serial0,115200 console=tty1 root=PARTUUID=ef0feb6e-02 rootfstype=ext4 fsck.repair=yes rootwait cfg80211.ieee80211_regdom=AT cgroup_memory=1 cgroup_enable=memory
+```
+
+Save the file and reboot the Raspberry Pi:
+
+```bash
+$ sudo reboot
+```
+
+After the reboot, run the `kubeadm init` command again to initialize the control
+plane. This time, the pre-flight checks should pass without any errors.
+
+## Synchronizing System Clocks
 
 - Install and configure `ntp` or `chrony` to ensure the system clocks are
   synchronized across all Raspberry Pi devices. Time synchronization is critical
   for Kubernetes operations:
+
   ```bash
-  sudo apt install -y chrony
-  sudo systemctl enable chrony
-  sudo systemctl start chrony
+  $ sudo apt install -y chrony
+  $ sudo systemctl enable chrony
+  $ sudo systemctl start chrony
   ```
 
-**Configuring Firewall Rules**
+## Configuring Firewall Rules
 
 If you are using `ufw` or another firewall, ensure that the necessary ports are
 open for Kubernetes:
 
 - Run the following commands to allow traffic on required ports:
+
   ```bash
-  sudo ufw allow 6443/tcp
-  sudo ufw allow 2379:2380/tcp
-  sudo ufw allow 10250:10252/tcp
-  sudo ufw allow 10255/tcp
+  # Allow traffic to the Kubernetes API server
+  $ sudo ufw allow 6443/tcp
+
+  # Allow traffic on the following ports for the control plane
+  $ sudo ufw allow 2379:2380/tcp
+
+  # Allow traffic on the following ports for the worker nodes
+  $ sudo ufw allow 10250:10252/tcp
+
+  # Allow traffic on the following ports for the kubelet API
+  $ sudo ufw allow 10255/tcp
   ```
 
-**Verifying Node Preparation**
+- Apply the changes:
+
+  ```bash
+  $ sudo ufw enable
+  ```
+
+## Verifying Node Preparation
 
 To ensure your nodes are ready for Kubernetes initialization:
 
-- Verify that swap is disabled, the necessary kernel modules are loaded, sysctl
-  settings are correctly applied, and system clocks are synchronized. Run the
-  following command to check the system configuration:
+- Verify that swap is disabled:
+
   ```bash
-  kubectl get nodes
+  $ free -h
   ```
-  All nodes should be listed as "Ready."
+
+  The output should show 0 bytes of free swap.
+
+- Check that the necessary kernel modules are loaded:
+
+  ```bash
+  $ lsmod | grep -e overlay -e br_netfilter
+  ```
+
+  The output should show the `overlay` and `br_netfilter` modules.
+
+- Verify that the sysctl settings are applied:
+
+  ```bash
+  $ sysctl net.bridge.bridge-nf-call-iptables
+  net.bridge.bridge-nf-call-iptables = 1
+
+  $ sysctl net.ipv4.ip_forward
+  net.ipv4.ip_forward = 1
+
+  $ sysctl net.bridge.bridge-nf-call-ip6tables
+  net.bridge.bridge-nf-call-ip6tables = 1
+  ```
 
 ## Lesson Conclusion
 

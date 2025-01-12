@@ -16,57 +16,100 @@ Kubernetes cluster from scratch. Make sure you have completed the
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
-**Step 1: Initialize the Control Plane**
+## Initializing the First Control Plane Node
 
-- SSH into the Raspberry Pi that you want to designate as the first control
-  plane node.
-- Run the following `kubeadm` command to initialize the control plane. This
-  command sets up the Kubernetes control plane components, such as the API
-  server, controller manager, and scheduler:
+1.  SSH into the Raspberry Pi that you want to designate as the first control
+    plane node.
 
-  ```bash
-  sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-  ```
+2.  Run the following `kubeadm` command to initialize the control plane. This
+    command sets up the Kubernetes control plane components, such as the API
+    server, controller manager, and scheduler. To support a virtual network, we
+    specify the `--pod-network-cidr` flag with a compatible CIDR range, in this
+    case `10.244.0.0/16` for compatibility with the Flannel CNI plugin (which we
+    will install later):
 
-  The `--pod-network-cidr` flag specifies the CIDR for the pod network. In this
-  example, we use `10.244.0.0/16` for compatibility with the Flannel CNI plugin,
-  which we will install later.
+    ```bash
+    $ sudo kubeadm init \
+      --pod-network-cidr=10.244.0.0/16 \
+      --control-plane-endpoint=10.1.1.1 \
+      --upload-certs
+    ```
 
-- Once the initialization is complete, you will see a message displaying a
-  `kubeadm join` command. This command is crucial for joining additional nodes
-  to the cluster. Copy and save it somewhere safe, as you will need it in the
-  next lesson.
+    The flags `--control-plane-endpoint` is used to define the IP address of the
+    control plane node. The `--upload-certs` flag uploads the certificates to
+    the Kubernetes cluster for secure communication.
 
-**Step 2: Set Up kubectl for the Local User**
+    At the beginning of the output, you might see a warning about the remote
+    version being newer than the local version. This is because we are using an
+    older version of `kubeadm` to update it later, but it could also show up in
+    the future if newer versions are released:
 
-- To manage the cluster from your control plane node, you need to set up
-  `kubectl` for the local user:
-  ```bash
-  mkdir -p $HOME/.kube
-  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-  sudo chown $(id -u):$(id -g) $HOME/.kube/config
-  ```
-  This command copies the Kubernetes configuration file to the local user's home
-  directory, allowing you to use `kubectl` commands to interact with the
-  cluster.
+    ```
+    [..] remote version is much newer: v1.32.0; falling back to: stable-1.31
+    ```
 
-**Step 3: Verify the Control Plane Setup**
+3.  Once the initialization is complete, you will see a message displaying a
+    `kubeadm join` command. This command is crucial for joining additional nodes
+    to the cluster. Copy and save it somewhere safe, as you will need it in the
+    next lesson.
 
-- Run the following command to check the status of the nodes:
-  ```bash
-  kubectl get nodes
-  ```
-  The output should show the control plane node with a status of "Ready." This
-  indicates that the control plane is initialized correctly.
+    **Example:**
 
-**Step 4: Allow Scheduling on the Control Plane Node (Optional)**
+    ```bash
+    $ kubeadm join 10.1.1.1:6443 \
+      --token wjuudc.jqqqqrfx6vau3vyw \
+      --discovery-token-ca-cert-hash sha256:ba65057d5290647aa8fcceb33a9624d3e9eb3640d13d11265fe48a611c5b8f3f \
+      --control-plane \
+      --certificate-key a1a135bf8be403583d2b1e6f7de7b14357e5e96c23deb8718bf2d1a807b08612
+    ```
 
-- By default, the control plane node is tainted to prevent workloads from being
-  scheduled on it. If you want to allow scheduling on the control plane node
-  (not recommended for production environments), you can remove the taint with:
-  ```bash
-  kubectl taint nodes --all node-role.kubernetes.io/control-plane-
-  ```
+## Set Up kubectl for the Local User
+
+To manage the cluster from your control plane node, you need to set up `kubectl`
+for the local user:
+
+```bash
+$ mkdir -p $HOME/.kube
+$ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+$ sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
+
+This command copies the Kubernetes configuration file to the local user's home
+directory, allowing you to use `kubectl` commands to interact with the cluster.
+
+## Verify the Control Plane Setup
+
+Run the following command to check the status of the nodes:
+
+```bash
+$ kubectl get nodes
+```
+
+The output should show the control plane node with a status of "Ready." This
+indicates that the control plane is initialized correctly.
+
+## Allow Scheduling on the Control Plane Node (Optional)
+
+By default, the control plane node is tainted to prevent workloads from being
+scheduled on it.
+
+```bash
+$ kubectl describe nodes kubernetes-node-1
+Name:               kubernetes-node-1
+Roles:              control-plane
+[...]
+Taints:             node-role.kubernetes.io/control-plane:NoSchedule
+                    node.kubernetes.io/not-ready:NoSchedule
+[...]
+```
+
+As our cluster is quite small, we want to allow scheduling on the control plane
+node (but not recommended for production environments), you can remove the taint
+with:
+
+```bash
+$ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+```
 
 ## Lesson Conclusion
 

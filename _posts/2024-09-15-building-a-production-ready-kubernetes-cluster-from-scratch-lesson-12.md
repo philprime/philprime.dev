@@ -18,59 +18,105 @@ before continuing here. The full list of lessons in the series can be found
 
 ## Joining Additional Control Plane Nodes
 
-**Step 1: SSH into the Additional Control Plane Nodes**
+On each additional control plane node, use the `kubeadm join` command that you
+saved from the initialization of the first control plane node. The command
+should look similar to this:
 
-- SSH into each Raspberry Pi device that you want to join as an additional
-  control plane node. Ensure these nodes have been prepared as outlined in the
-  previous lessons and have `kubeadm`, `kubectl`, `kubelet`, and `containerd`
-  installed and configured.
+```bash
+$ kubeadm join 10.1.1.1:6443 \
+  --token <your token> \
+  --discovery-token-ca-cert-hash <your hash> \
+  --certificate-key <your certificate key> \
+  --control-plane
+```
 
-**Step 2: Use the kubeadm Join Command**
+Replace `<your-token>`, `<your certificate key>` and `<your hash>` with the
+actual values from the output of the `kubeadm init` command. The
+`--control-plane` flag indicates that this node will be part of the control
+plane.
 
-- On each additional control plane node, use the `kubeadm join` command that you
-  saved from the initialization of the first control plane node. The command
-  should look similar to this:
+**Example:**
 
-  ```bash
-  sudo kubeadm join <your-control-plane-ip>:6443 --token <your-token> --discovery-token-ca-cert-hash sha256:<your-hash> --control-plane --certificate-key <your-certificate-key>
-  ```
+```bash
+$ sudo kubeadm join 10.1.1.1:6443 \
+  --token wjuudc.jqqqqrfx6vau3vyw \
+  --discovery-token-ca-cert-hash sha256:ba65057d5290647aa8fcceb33a9624d3e9eb3640d13d11265fe48a611c5b8f3f \
+  --certificate-key a1a135bf8be403583d2b1e6f7de7b14357e5e96c23deb8718bf2d1a807b08612 \
+  --control-plane
+```
 
-  Replace `<your-control-plane-ip>`, `<your-token>`, `<your-hash>`, and
-  `<your-certificate-key>` with the actual values from the output of the
-  `kubeadm init` command.
+This command will connect the additional control plane nodes to the existing
+cluster and synchronize the necessary control plane components.
 
-- This command will connect the additional control plane nodes to the existing
-  cluster and synchronize the necessary control plane components.
+## Verify the Nodes Have Joined the Cluster
 
-**Step 3: Verify the Nodes Have Joined the Cluster**
+To start administering your cluster from this node, you need to run the
+following as a regular user:
 
-- After executing the join command on each additional control plane node, return
-  to your first control plane node and run:
-  ```bash
-  kubectl get nodes
-  ```
-  You should see all the nodes listed with a status of "Ready," indicating that
-  the additional control plane nodes have successfully joined the cluster.
+```bash
+$ mkdir -p $HOME/.kube
+$ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+$ sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
 
-**Step 4: Verify Control Plane High Availability**
+Run 'kubectl get nodes' to see this node join the cluster:
 
-- To ensure high availability, check that all control plane components are
-  running correctly on each node:
-  ```bash
-  kubectl get pods -n kube-system -o wide
-  ```
-  You should see the control plane components (like `kube-apiserver`,
-  `kube-scheduler`, and `kube-controller-manager`) distributed across all
-  control plane nodes.
+```bash
+$ kubectl get nodes
+NAME                STATUS     ROLES           AGE     VERSION
+kubernetes-node-1   NotReady   control-plane   3m58s   v1.31.4
+kubernetes-node-2   NotReady   control-plane   87s     v1.31.4
+kubernetes-node-3   NotReady   control-plane   84s     v1.31.4
+```
 
-**Step 5: Distribute the etcd Cluster**
+You should see all control plane nodes in the list, but they will be `NotReady`
+due to the pod network not being installed yet.
 
-- Verify that the `etcd` cluster is also running across all control plane nodes:
-  ```bash
-  kubectl get pods -n kube-system -l component=etcd -o wide
-  ```
-  You should see one `etcd` pod per control plane node, confirming that the
-  `etcd` cluster is distributed and redundant.
+## Verify Control Plane High Availability
+
+To ensure high availability, check that all control plane components are running
+correctly on each node:
+
+```bash
+$ kubectl get pods -n kube-system -o wide
+NAME                                        READY   STATUS    RESTARTS   AGE     IP         NODE                NOMINATED NODE   READINESS GATES
+coredns-7c65d6cfc9-27l85                    0/1     Pending   0          4m46s   <none>     <none>              <none>           <none>
+coredns-7c65d6cfc9-86wqw                    0/1     Pending   0          4m46s   <none>     <none>              <none>           <none>
+etcd-kubernetes-node-1                      1/1     Running   11         4m51s   10.1.1.1   kubernetes-node-1   <none>           <none>
+etcd-kubernetes-node-2                      1/1     Running   0          2m21s   10.1.2.1   kubernetes-node-2   <none>           <none>
+etcd-kubernetes-node-3                      1/1     Running   0          2m16s   10.1.3.1   kubernetes-node-3   <none>           <none>
+kube-apiserver-kubernetes-node-1            1/1     Running   11         4m51s   10.1.1.1   kubernetes-node-1   <none>           <none>
+kube-apiserver-kubernetes-node-2            1/1     Running   1          2m21s   10.1.2.1   kubernetes-node-2   <none>           <none>
+kube-apiserver-kubernetes-node-3            1/1     Running   1          2m19s   10.1.3.1   kubernetes-node-3   <none>           <none>
+kube-controller-manager-kubernetes-node-1   1/1     Running   11         4m51s   10.1.1.1   kubernetes-node-1   <none>           <none>
+kube-controller-manager-kubernetes-node-2   1/1     Running   1          2m21s   10.1.2.1   kubernetes-node-2   <none>           <none>
+kube-controller-manager-kubernetes-node-3   1/1     Running   1          2m12s   10.1.3.1   kubernetes-node-3   <none>           <none>
+kube-proxy-8gqg2                            1/1     Running   0          2m21s   10.1.3.1   kubernetes-node-3   <none>           <none>
+kube-proxy-f5s75                            1/1     Running   0          4m47s   10.1.1.1   kubernetes-node-1   <none>           <none>
+kube-proxy-grk5t                            1/1     Running   0          2m24s   10.1.2.1   kubernetes-node-2   <none>           <none>
+kube-scheduler-kubernetes-node-1            1/1     Running   11         4m51s   10.1.1.1   kubernetes-node-1   <none>           <none>
+kube-scheduler-kubernetes-node-2            1/1     Running   1          2m21s   10.1.2.1   kubernetes-node-2   <none>           <none>
+kube-scheduler-kubernetes-node-3            1/1     Running   1          2m18s   10.1.3.1   kubernetes-node-3   <none>           <none>
+```
+
+You should see the control plane components (like `kube-apiserver`,
+`kube-scheduler`, and `kube-controller-manager`) distributed across all control
+plane nodes.
+
+## Distribute the etcd Cluster
+
+Verify that the `etcd` cluster is also running across all control plane nodes:
+
+```bash
+$ kubectl get pods -n kube-system -l component=etcd -o wide
+NAME                     READY   STATUS    RESTARTS   AGE     IP         NODE                NOMINATED NODE   READINESS GATES
+etcd-kubernetes-node-1   1/1     Running   11         5m28s   10.1.1.1   kubernetes-node-1   <none>           <none>
+etcd-kubernetes-node-2   1/1     Running   0          2m58s   10.1.2.1   kubernetes-node-2   <none>           <none>
+etcd-kubernetes-node-3   1/1     Running   0          2m53s   10.1.3.1   kubernetes-node-3   <none>           <none>
+```
+
+You should see one `etcd` pod per control plane node, confirming that the `etcd`
+cluster is distributed and redundant.
 
 ## Lesson Conclusion
 
