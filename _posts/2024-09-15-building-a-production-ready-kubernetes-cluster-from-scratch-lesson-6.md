@@ -22,11 +22,11 @@ Once the SSDs are physically installed, the next step is to configure them for
 use with the Raspberry Pi after connecting to them via SSH:
 
 1.  **Connect to the Raspberry Pi**: Use SSH to connect to the Raspberry Pi
-    device with the NVMe SSD installed. Replace `10.1.X.1` with the IP address
+    device with the NVMe SSD installed. Replace `10.1.1.X` with the IP address
     of the Raspberry Pi device:
 
     ```bash
-    ssh -i ~/.ssh/k8s_cluster_id_ed25519 pi@10.1.X.1
+    ssh -i ~/.ssh/k8s_cluster_id_ed25519 pi@10.1.1.X
     ```
 
 2.  **Verify SSD Recognition**: Use the `lsblk` or `fdisk -l` command to check

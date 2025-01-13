@@ -136,9 +136,6 @@ Save the file and reboot the Raspberry Pi:
 $ sudo reboot
 ```
 
-After the reboot, run the `kubeadm init` command again to initialize the control
-plane. This time, the pre-flight checks should pass without any errors.
-
 ## Synchronizing System Clocks
 
 - Install and configure `ntp` or `chrony` to ensure the system clocks are
@@ -154,28 +151,52 @@ plane. This time, the pre-flight checks should pass without any errors.
 ## Configuring Firewall Rules
 
 If you are using `ufw` or another firewall, ensure that the necessary ports are
-open for Kubernetes:
+open for Kubernetes. As we have denied all incoming and outgoing traffic by
+default, we need to allow specific ports for Kubernetes to function correctly
+both ways.
 
-- Run the following commands to allow traffic on required ports:
+- To allow incoming and outgoing traffic to the Kubernetes API server from the
+  nodes, run the following commands:
 
   ```bash
-  # Allow traffic to the Kubernetes API server
-  $ sudo ufw allow 6443/tcp
+  # Allow incoming and outgoing intra-node traffic to the Kubernetes API server
+  $ sudo ufw allow from 10.1.1.0/24 to any port 6443 proto tcp
+  $ sudo ufw allow out to 10.1.1.0/24 port 6443 proto tcp
+  ```
 
-  # Allow traffic on the following ports for the control plane
-  $ sudo ufw allow 2379:2380/tcp
+- Next we want to allow our etcd replicas to communicate with each other:
 
-  # Allow traffic on the following ports for the worker nodes
-  $ sudo ufw allow 10250:10252/tcp
+  ```bash
+  # Allow incoming and outgoing intra-node traffic to the etcd server
+  $ sudo ufw allow from 10.1.1.0/24 to any port 2379:2380 proto tcp
+  $ sudo ufw allow out to 10.1.1.0/24 port 2379:2380 proto tcp
+  ```
 
-  # Allow traffic on the following ports for the kubelet API
-  $ sudo ufw allow 10255/tcp
+- Next we want to allow the Kubelet API Server (port 10250), the Scheduler (port
+  10251), and the Controller Manager (port 10252) to communicate with each
+  other. The Kubelet API Server is used for intra-node communication, while the
+  Scheduler and Controller Manager are used for local communication, therefore
+  we need to the Kubelet API Server ports open for intra-node communication and
+  the Scheduler and Controller Manager ports open only for local communication:
+
+  ```bash
+  # Allow Kubelet (10250) for Intra-Node Communication:
+  $ sudo ufw allow from 10.1.1.0/24 to any port 10250 proto tcp
+  $ sudo ufw allow out to 10.1.1.0/24 port 10250 proto tcp
+
+  # Restrict Scheduler (10251) to local communication:
+  $ sudo ufw allow from 127.0.0.1 to any port 10251 proto tcp
+  $ sudo ufw allow out to 127.0.0.1 port 10251 proto tcp
+
+  # Restrict Controller Manager (10252) to local communication:
+  $ sudo ufw allow from 127.0.0.1 to any port 10252 proto tcp
+  $ sudo ufw allow out to 127.0.0.1 port 10252 proto tcp
   ```
 
 - Apply the changes:
 
   ```bash
-  $ sudo ufw enable
+  $ sudo ufw reload
   ```
 
 ## Verifying Node Preparation

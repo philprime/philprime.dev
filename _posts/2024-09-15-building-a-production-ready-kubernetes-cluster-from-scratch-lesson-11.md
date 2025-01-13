@@ -63,6 +63,9 @@ before continuing here. The full list of lessons in the series can be found
       --certificate-key a1a135bf8be403583d2b1e6f7de7b14357e5e96c23deb8718bf2d1a807b08612
     ```
 
+> [!TIP] If anything goes wrong, you can always reset your Kubernetes server
+> using `kubeadm reset`
+
 ## Set Up kubectl for the Local User
 
 To manage the cluster from your control plane node, you need to set up `kubectl`

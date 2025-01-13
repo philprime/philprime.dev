@@ -95,6 +95,51 @@ To confirm that the Kubernetes tools have been successfully installed:
   $ sudo systemctl start kubelet
   ```
 
+## Installing k9s (Optional)
+
+k9s offers a terminal-based UI for interacting with your Kubernetes clusters and
+is available for free on [GitHub](https://github.com/derailed/k9s). This tool
+simplifies the navigation, observation, and management of your applications in
+the terminal. It continuously monitors Kubernetes for changes and provides
+commands to interact with the observed resources.
+
+To install k9s on your Raspberry Pi devices, follow these steps:
+
+1. Add the k9s Debian repository to your system:
+
+   ```bash
+   $ wget https://github.com/derailed/k9s/releases/download/v<version>/k9s_linux_arm64.deb -O /tmp/k9s_linux_arm64.deb
+   ```
+
+   Replace `<version>` with the latest version available on the
+   [k9s GitHub releases page](https://github.com/derailed/k9s/releases)
+
+   **Example:**
+
+   ```bash
+   $ wget https://github.com/derailed/k9s/releases/download/v0.32.7/k9s_linux_arm64.deb -O /tmp/k9s_linux_arm64.deb
+   ```
+
+2. Install the k9s package:
+
+   ```bash
+   $ sudo dpkg -i /tmp/k9s_linux_arm64.deb
+   ```
+
+3. Run k9s to verify the installation:
+
+   ```bash
+   $ k9s version
+   ```
+
+> [!NOTE] We are downloading the ARM64 version of k9s because we are using
+> Raspberry Pi devices. If you are using a different architecture, download the
+> appropriate version.
+
+> [!NOTE] We are downloading the debian package to the `/tmp` directory, so it
+> gets removed automatically by the system after a reboot. We do not need to
+> keep the package after installation.
+
 ## Lesson Conclusion
 
 Congratulations! With the Kubernetes tools installed and configured, your

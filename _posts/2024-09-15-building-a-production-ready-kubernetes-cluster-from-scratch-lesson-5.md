@@ -125,14 +125,14 @@ To verify that each Raspberry Pi is correctly configured and accessible:
 - Ping each Raspberry Pi from your main computer or from one Raspberry Pi to
   another to ensure network connectivity:
   ```bash
-  ping 10.1.X.1
+  ping 10.1.1.X
   ```
   Replace `X` with the corresponding number for each Raspberry Pi device.
 - Connect to the Raspberry Pi devices using SSH to confirm that you can access
   them remotely:
 
   ```bash
-  ssh -i ~/.ssh/k8s_cluster_id_ed25519 pi@10.1.X.1
+  ssh -i ~/.ssh/k8s_cluster_id_ed25519 pi@10.1.1.X
   ```
 
   Replace `X` with the corresponding number for each Raspberry Pi device.
@@ -147,7 +147,7 @@ your Raspberry Pi devices are ready for the next steps.
 > ```bash
 > Debian GNU/Linux 11 kubernetes-node-X tty1
 >
-> My IP address is 10.1.X.1
+> My IP address is 10.1.1.X
 >
 > kubernetes-node-X login:
 > ```
