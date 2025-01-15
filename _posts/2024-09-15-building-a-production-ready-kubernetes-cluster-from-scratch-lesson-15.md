@@ -1,143 +1,231 @@
 ---
 layout: course-lesson
-title: Implementing Redundancy with Keepalived or HAProxy (L15)
+title: Testing Control Plane High Availability (L15)
 tags: cloud kubernetes devops
-permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-15
+permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-16
 ---
 
-In this lesson, we will implement redundancy in the control plane of your
-Kubernetes cluster using tools like Keepalived or HAProxy. Redundancy is crucial
-to ensure that your control plane remains accessible even if one or more nodes
-fail, providing a high-availability setup for critical Kubernetes components.
+In this lesson, we will test and verify the high-availability configuration of
+your Kubernetes control plane. Ensuring that your control plane is resilient to
+node failures is critical for maintaining cluster stability and continuous
+operation. We will simulate node failures and observe the behavior of the
+control plane to confirm that the redundancy and load balancing setup is
+functioning correctly.
 
-This is the fifteenth lesson in the series on building a production-ready
+This is the sixteenth lesson in the series on building a production-ready
 Kubernetes cluster from scratch. Make sure you have completed the
 [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-14)
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
-## Understanding Redundancy for the Control Plane
+## Verify the Initial High Availability Setup
 
-Redundancy involves creating multiple instances of critical components, such as
-the Kubernetes API server, across different control plane nodes. This prevents a
-single point of failure and allows the cluster to remain operational even if one
-node goes offline. We will use Keepalived to provide a floating virtual IP (VIP)
-that can switch between nodes, and HAProxy to distribute traffic evenly across
-the control plane nodes.
+Before testing any failures, check the current state of the control plane to
+ensure that everything is operating as expected:
 
-## Configuring Keepalived for Redundancy
+Run the following command to list all nodes in your cluster:
 
-1. **Install Keepalived on Each Control Plane Node:**
+```bash
+$ kubectl get nodes
+NAME                STATUS     ROLES           AGE    VERSION
+kubernetes-node-1   Ready      control-plane   2d2h   v1.31.4
+kubernetes-node-2   Ready      control-plane   2d2h   v1.31.4
+kubernetes-node-3   Ready      control-plane   2d2h   v1.31.4
+```
 
-   Run the following command on each control plane node:
+All control plane nodes should be listed with a status of "Ready," indicating
+they are healthy and participating in the cluster.
 
-   ```bash
-   sudo apt update
-   sudo apt install -y keepalived
-   ```
+Check the status of the `etcd` pods and other control plane components to ensure
+they are distributed across all control plane nodes:
 
-2. **Configure Keepalived for Virtual IP Failover:**
+```bash
+$ kubectl get pods -n kube-system -o wide
+```
 
-   Edit the Keepalived configuration file on each control plane node:
+Verify that each control plane node is running its respective components (such
+as `etcd`, `kube-apiserver`, `kube-scheduler`, and `kube-controller-manager`).
 
-   ```bash
-   sudo nano /etc/keepalived/keepalived.conf
-   ```
+## Deploy a replicated sample application
 
-   Use the following configuration as a template, modifying it for each node:
+To test the high-availability setup, we will deploy a replicated sample
+application that runs on multiple nodes. This will help us observe how the
+control plane handles failures and maintains the application's availability.
 
-   ```conf
-   vrrp_instance VI_1 {
-       state MASTER  # Change this to BACKUP on the secondary nodes
-       interface eth0  # Network interface connected to your cluster
-       virtual_router_id 51
-       priority 100  # Set this higher on the primary node and lower on backups
-       advert_int 1
-       authentication {
-           auth_type PASS
-           auth_pass yourpassword
-       }
-       virtual_ipaddress {
-           192.168.1.100  # Replace with your desired virtual IP
-       }
-   }
-   ```
+Create a sample deployment with multiple replicas using the following YAML
+manifest:
 
-   Save and close the file, then restart Keepalived:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-app
+spec:
+  # Define the same amount of replicas as nodes
+  replicas: 3
+  # The selector is used to match the pods to the deployment
+  selector:
+    matchLabels:
+      app: sample-app
+  template:
+    # Define the labels used by the selector
+    metadata:
+      labels:
+        app: sample-app
+    spec:
+      containers:
+        - name: sample-app
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+      # Define pod anti-affinity to spread the pods across nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - sample-app
+                topologyKey: 'kubernetes.io/hostname'
+      # Add tolerations with a short duration to allow rescheduling
+      tolerations:
+        - key: 'node.kubernetes.io/unreachable'
+          operator: 'Exists'
+          effect: 'NoExecute'
+          tolerationSeconds: 30
+        - key: 'node.kubernetes.io/not-ready'
+          operator: 'Exists'
+          effect: 'NoExecute'
+          tolerationSeconds: 30
+```
 
-   ```bash
-   sudo systemctl restart keepalived
-   sudo systemctl enable keepalived
-   ```
+Save this manifest to a file, such as `sample-app.yaml`, and apply it to your
+cluster:
 
-3. **Verify Keepalived Setup:**
+```bash
+$ kubectl apply -f sample-app.yaml
+```
 
-   Ensure that the virtual IP (VIP) is active on the primary control plane node
-   by running:
+This deployment will create three replicas of an Nginx web server and will try
+to schedule them on different nodes using pod anti-affinity.
 
-   ```bash
-   ip addr show
-   ```
+To confirm that the application is running and the pods are distributed across
+the nodes, run:
 
-   Check that the VIP moves to another node if the primary node goes offline.
+```bash
+$ kubectl get pods -o wide
+NAME                          READY   STATUS    RESTARTS   AGE   IP            NODE
+sample-app-6bcd6fdf5b-ks72p   1/1     Running   0          69s   10.244.0.18   kubernetes-node-1
+sample-app-6bcd6fdf5b-nnbvq   1/1     Running   0          16s   10.244.1.12   kubernetes-node-2
+sample-app-6bcd6fdf5b-tltkt   1/1     Running   0          66s   10.244.2.21   kubernetes-node-3
+```
 
-## Configuring HAProxy for Traffic Distribution
+As you can see the three pods are scheduled on different nodes.
 
-1. **Install HAProxy on Each Control Plane Node:**
+## Simulate a Control Plane Node Failure
 
-   Run the following command on each control plane node:
+To test the high-availability configuration, we will simulate a failure by
+shutting down or disconnecting one of the control plane nodes:
 
-   ```bash
-   sudo apt update
-   sudo apt install -y haproxy
-   ```
+SSH into one of the control plane nodes and simulate a failure by stopping the
+`kubelet` service:
 
-2. **Configure HAProxy to Load Balance Kubernetes API Traffic:**
+```bash
+$ sudo systemctl stop kubelet
+```
 
-   Edit the HAProxy configuration file on each control plane node:
+Alternatively, you can simulate a network failure by disconnecting the network
+cable or using a firewall rule to block traffic.
 
-   ```bash
-   sudo nano /etc/haproxy/haproxy.cfg
-   ```
+After simulating the failure, check the status of the nodes. The failed node
+should eventually be marked as "NotReady", but the cluster should continue to
+operate normally with the remaining control plane nodes:
 
-   Add the following configuration to set up HAProxy for load balancing:
+```bash
+$ kubectl get nodes
+NAME                STATUS     ROLES           AGE    VERSION
+kubernetes-node-1   Ready      control-plane   2d2h   v1.31.4
+kubernetes-node-2   NotReady   control-plane   2d2h   v1.31.4
+kubernetes-node-3   Ready      control-plane   2d2h   v1.31.4
+```
 
-   ```conf
-   frontend kubernetes-api
-       bind 192.168.1.100:6443  # Replace with your virtual IP and port
-       default_backend kube-apiservers
+The failed node is now tainted with `node.kubernetes.io/unreachable:NoSchedule`
+and `node.kubernetes.io/not-ready:NoExecute` taints, preventing new pods from
+being scheduled on it. Due to the toleration timeouts in the sample application
+deployment, the pods will be rescheduled on the remaining nodes after the 30
+seconds have passed.
 
-   backend kube-apiservers
-       balance roundrobin
-       server control-plane-1 192.168.1.10:6443 check
-       server control-plane-2 192.168.1.11:6443 check
-       server control-plane-3 192.168.1.12:6443 check
-   ```
+```bash
+$ kubectl get pods -o wide
+NAME                          READY   STATUS        RESTARTS   AGE     IP            NODE                NOMINATED
+sample-app-789ff789c4-7x9f5   1/1     Running       0          3m41s   10.244.0.20   kubernetes-node-1
+sample-app-789ff789c4-f7n7m   1/1     Running       0          2m11s   10.244.0.21   kubernetes-node-1
+sample-app-789ff789c4-qjkkp   1/1     Running       0          3m43s   10.244.2.22   kubernetes-node-3
+```
 
-   Save and close the file, then restart HAProxy:
+As you can see now, multiple nodes have been scheduled on the remaining nodes,
+to match the desired number of replicas.
 
-   ```bash
-   sudo systemctl restart haproxy
-   sudo systemctl enable haproxy
-   ```
+## Restore the Failed Control Plane Node
 
-3. **Test the Load Balancer Configuration:**
+Restart the stopped control plane node by starting the `kubelet` service:
 
-   Verify that HAProxy is distributing traffic correctly by running:
+```bash
+$ sudo systemctl start kubelet
+```
 
-   ```bash
-   curl -k https://192.168.1.100:6443/version
-   ```
+Alternatively, if you disconnected the network cable or blocked traffic,
+reconnect or unblock the node.
 
-   This should return the Kubernetes API server version, confirming that traffic
-   is being properly routed through HAProxy.
+Check the status of the nodes again to ensure that the restored node rejoins the
+cluster and becomes "Ready":
+
+```bash
+$ kubectl get nodes
+NAME                STATUS   ROLES           AGE    VERSION
+kubernetes-node-1   Ready    control-plane   2d2h   v1.31.4
+kubernetes-node-2   Ready    control-plane   2d2h   v1.31.4
+kubernetes-node-3   Ready    control-plane   2d2h   v1.31.4
+```
+
+Looking at the pods, you might notice that the pods are not rescheduled back to
+the restored node. This is because the tolerations have expired, and the pods
+will not be rescheduled unless they are deleted and recreated.
+
+```bash
+$ kubectl get pods -o wide
+NAME                          READY   STATUS    RESTARTS   AGE     IP            NODE                NOMINATED NODE
+sample-app-789ff789c4-7x9f5   1/1     Running   0          8m5s    10.244.0.20   kubernetes-node-1
+sample-app-789ff789c4-f7n7m   1/1     Running   0          6m35s   10.244.0.21   kubernetes-node-1
+sample-app-789ff789c4-qjkkp   1/1     Running   0          8m7s    10.244.2.22   kubernetes-node-3
+```
+
+To reschedule the pods on the restored node, you can delete one of the pods
+running on a node with multiple pods:
+
+```bash
+$ kubectl delete pod sample-app-789ff789c4-7x9f5
+```
+
+Wait a couple of seconds and the pod is rescheduled on the restored node:
+
+```bash
+ $ kubectl get pods -o wide
+NAME                          READY   STATUS    RESTARTS   AGE     IP            NODE                NOMINATED NODE   READINESS GATES
+sample-app-789ff789c4-f7n7m   1/1     Running   0          7m36s   10.244.0.21   kubernetes-node-1
+sample-app-789ff789c4-qjkkp   1/1     Running   0          9m8s    10.244.2.22   kubernetes-node-3
+sample-app-789ff789c4-rh7nk   1/1     Running   0          5s      10.244.1.14   kubernetes-node-2
+```
 
 ## Lesson Conclusion
 
-Congratulations! With Keepalived and HAProxy configured, your Kubernetes control
-plane is now set up for redundancy and high availability. In the next lesson, we
-will test the control plane's high-availability configuration to ensure it
-remains functional during node failures.
+Congratulations! After successfully testing and verifying the high-availability
+setup of your control plane, your cluster is now resilient and capable of
+maintaining operation even during node failures.
 
 You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-16).
+[the next section](/building-a-production-ready-kubernetes-cluster-from-scratch/section-7).
