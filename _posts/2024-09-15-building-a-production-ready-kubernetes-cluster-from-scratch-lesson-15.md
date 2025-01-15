@@ -221,6 +221,15 @@ sample-app-789ff789c4-qjkkp   1/1     Running   0          9m8s    10.244.2.22  
 sample-app-789ff789c4-rh7nk   1/1     Running   0          5s      10.244.1.14   kubernetes-node-2
 ```
 
+## Cleaning up
+
+After testing the high-availability setup, you can clean up the sample
+application deployment by deleting it:
+
+```bash
+$ kubectl delete deployment sample-app
+```
+
 ## Lesson Conclusion
 
 Congratulations! After successfully testing and verifying the high-availability
