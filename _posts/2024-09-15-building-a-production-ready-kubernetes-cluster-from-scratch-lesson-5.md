@@ -26,9 +26,9 @@ OS using the [Raspberry Pi Imager](https://www.raspberrypi.com/software/). In
 addition to the OS we will also set up the SSH access for headless setup and a
 hostname for each Raspberry Pi.
 
-> [!TIP] You will need to repeat the following steps for each microSD card,
-> replacing `X` with the corresponding number for each Raspberry Pi device
-> (e.g., `1`, `2`, `3`, etc.).
+<div class="alert alert-tip">
+  <strong>TIP:</strong>You will need to repeat the following steps for each microSD card, replacing <code>X</code> with the corresponding number for each Raspberry Pi device (e.g., <code>1</code>, <code>2</code>, <code>3</code>, etc.).
+</div>
 
 - Insert each microSD card into your computer using a card reader.
 - Download and install the
@@ -70,11 +70,10 @@ hostname for each Raspberry Pi.
   automatically. Remove the card from your computer and insert it again to edit
   the boot configuration for additional settings.
 
-> [!TIP] Useful information that users should know, even when skimming content.
-> Add a label to your Raspberry Pi to identify the device by its hostname. This
-> will help you distinguish between the devices when connecting to them
-> remotely.
-> ![Raspberry Pi with labels](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-with-labels.jpg)
+<div class="alert alert-tip">
+  <strong>TIP:</strong> Useful information that users should know, even when skimming content. Add a label to your Raspberry Pi to identify the device by its hostname. This will help you distinguish between the devices when connecting to them remotely.
+  <img src="/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-with-labels.jpg" alt="Raspberry Pi with labels">
+</div>
 
 ## Pre-configure Static IP Addresses
 
@@ -92,50 +91,52 @@ as `bootfs`. The Raspberry Pi Imager should have created a file `firstrun.sh`,
 which is used to configure the Raspberry Pi on first boot. You can edit this
 file to configure the static IP address for each device:
 
-- Open `firstrun.sh` in your text editor of choice:
-- Right before the deletion of the script `rm -f /boot/firstrun.sh`, add the
-  following lines to configure a static IP address:
+Open `firstrun.sh` in your text editor of choice. Then right before the deletion
+of the script `rm -f /boot/firstrun.sh`, add the following lines to configure a
+static IP address. Make sure to replace `X` with the corresponding number for
+each Raspberry Pi device:
 
-  ```bash
-  # Configure a static IP address for eth0
-  echo "Enabling and starting NetworkManager..."
-  systemctl enable NetworkManager
-  systemctl start NetworkManager
+```bash
+# START - Configure a static IP address for eth0
+echo "Enabling and starting NetworkManager..."
+systemctl enable NetworkManager
+systemctl start NetworkManager
 
-  echo "Configuring static IP for eth0..."
-  /usr/bin/nmcli connection modify "Wired connection 1" ipv4.method manual ipv4.addresses "10.1.1.1/16" ipv4.gateway "10.1.0.1" ipv4.dns "10.1.0.1" autoconnect yes
+# IMPORTANT: Replace `X` with the number of the node
+NODE_IP_ADDRESS="10.1.1.X/16"
+echo "Configuring static IP $NODE_IP_ADDRESS for eth0..."
+/usr/bin/nmcli connection modify "Wired connection 1" ipv4.method manual ipv4.addresses $NODE_IP_ADDRESS ipv4.gateway "10.1.0.1" ipv4.dns "10.1.0.1" autoconnect yes
 
-  echo "Bringing up the connection..."
-  nmcli connection up "Wired connection 1"
+echo "Bringing up the connection..."
+nmcli connection up "Wired connection 1"
 
-  echo "Static IP configuration applied."
-  ```
+echo "Static IP configuration applied."
+# END - Configure a static IP address for eth0
+```
 
-  Replace `X` with the corresponding number for each Raspberry Pi device, and
-  adjust the gateway and DNS server as needed.
-
-- Save the changes and safely eject the microSD card from your computer.
+Save the changes and safely eject the microSD card from your computer.
 
 ## Verifying Connectivity
 
 To verify that each Raspberry Pi is correctly configured and accessible:
 
-- Insert the microSD card into the corresponding Raspberry Pi device.
-- Power on the Raspberry Pi device by connecting the USB-C power supply.
-- Ping each Raspberry Pi from your main computer or from one Raspberry Pi to
-  another to ensure network connectivity:
-  ```bash
-  ping 10.1.1.X
-  ```
-  Replace `X` with the corresponding number for each Raspberry Pi device.
-- Connect to the Raspberry Pi devices using SSH to confirm that you can access
-  them remotely:
+Ping each Raspberry Pi from your main computer or from one Raspberry Pi to
+another to ensure network connectivity:
 
-  ```bash
-  ssh -i ~/.ssh/k8s_cluster_id_ed25519 pi@10.1.1.X
-  ```
+```bash
+$ ping 10.1.1.X
+```
 
-  Replace `X` with the corresponding number for each Raspberry Pi device.
+Replace `X` with the corresponding number for each Raspberry Pi device.
+
+Connect to the Raspberry Pi devices using SSH to confirm that you can access
+them remotely:
+
+```bash
+$ ssh -i ~/.ssh/k8s_cluster_id_ed25519 pi@10.1.1.X
+```
+
+Replace `X` with the corresponding number for each Raspberry Pi device.
 
 If all devices respond successfully, your network configuration is correct, and
 your Raspberry Pi devices are ready for the next steps.

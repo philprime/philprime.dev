@@ -1,240 +1,538 @@
 ---
 layout: course-lesson
-title: Testing Control Plane High Availability (L15)
+title: Configuring Load Balancing for the Control Plane (L14)
 tags: cloud kubernetes devops
-permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-16
+permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-14
 ---
 
-In this lesson, we will test and verify the high-availability configuration of
-your Kubernetes control plane. Ensuring that your control plane is resilient to
-node failures is critical for maintaining cluster stability and continuous
-operation. We will simulate node failures and observe the behavior of the
-control plane to confirm that the redundancy and load balancing setup is
-functioning correctly.
+In this lesson, we will discuss the importance of load balancing for the control
+plane in a Kubernetes cluster and guide you through choosing and configuring a
+suitable load balancer. Load balancing is essential to ensure that your control
+plane remains accessible, reliable, and highly available even in the face of
+node failures or increased traffic.
 
-This is the sixteenth lesson in the series on building a production-ready
+This is the second lesson in the series on building a production-ready
 Kubernetes cluster from scratch. Make sure you have completed the
-[previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-14)
+[previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-13)
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
-## Verify the Initial High Availability Setup
+## What is a Load Balancer?
 
-Before testing any failures, check the current state of the control plane to
-ensure that everything is operating as expected:
+A **Load Balancer** is a device or software application that distributes
+incoming network traffic across multiple servers or nodes. In the context of a
+Kubernetes cluster, a load balancer ensures that client requests, such as API
+calls, are evenly distributed among the control plane nodes. This helps to
+prevent any single node from being overwhelmed with too many requests, reducing
+the risk of failure and improving overall cluster reliability and performance.
+Load balancers also provide failover capabilities, automatically redirecting
+traffic to healthy nodes if one or more nodes become unavailable.
 
-Run the following command to list all nodes in your cluster:
+## Why is Load Balancing Important for the Control Plane?
+
+The control plane of a Kubernetes cluster consists of multiple components, such
+as the API server, controller manager, and scheduler, running on separate nodes.
+To ensure high availability and fault tolerance, it is essential to distribute
+incoming requests across all control plane nodes. Load balancing helps to
+achieve this by evenly spreading the load and providing redundancy in case of
+node failures. By implementing a load balancer for the control plane, you can
+ensure that the Kubernetes API server remains accessible and responsive at all
+times, even if individual nodes go down or experience issues.
+
+If you decide to not use a load balancer for the control plane, your control
+plane nodes will try to access your Kubernetes API server via a master node's IP
+address. If that master node goes down, the control plane will be unable to
+access the API server, resulting in a loss of control over the cluster.
+
+## What kind of Load Balancer do you need?
+
+For a Kubernetes control plane, you need a load balancer that can handle traffic
+across multiple control plane nodes to ensure high availability. The load
+balancer should support **Layer 4 (Transport Layer)** for TCP/UDP traffic to
+handle incoming API server requests efficiently. It should also be capable of
+**health checking** the control plane nodes to detect any failures and
+automatically reroute traffic to healthy nodes. In addition, it should support
+**sticky sessions** or **session persistence** to ensure that requests from the
+same client are routed to the same control plane node, which can be important
+for specific workloads or applications.
+
+## Which Load Balancer to choose?
+
+For a small-scale, self-hosted Kubernetes cluster using Raspberry Pi devices,
+there are a few options to consider:
+
+- **Keepalived with HAProxy**: This combination is popular for high availability
+  in Kubernetes clusters. **Keepalived** provides a virtual IP address (VIP)
+  that floats between control plane nodes, while **HAProxy** acts as a Layer 4
+  load balancer to distribute traffic among them. This setup is lightweight,
+  easy to configure, and works well in resource-constrained environments like a
+  Raspberry Pi cluster.
+
+- **Nginx**: Although primarily known as a web server, **Nginx** can also
+  function as a reverse proxy and load balancer. It supports Layer 4 and Layer 7
+  load balancing and can be used to handle traffic for the Kubernetes API
+  server. Nginx is highly configurable, but it may require more complex setup
+  compared to HAProxy.
+
+- **MetalLB**: If you want to implement load balancing entirely within your
+  Kubernetes cluster, **MetalLB** is a good choice. It is a load balancer for
+  bare-metal Kubernetes clusters that provides a way to expose services
+  externally. MetalLB can run in either Layer 2 or BGP mode, but it requires
+  careful network configuration and is more suitable if you plan to scale your
+  cluster or if you want a native Kubernetes solution.
+
+For this course, we will use **Keepalived with HAProxy** due to its simplicity,
+reliability, and low resource requirements, making it ideal for a Raspberry Pi
+environment.
+
+## Preparing the Kubernetes API Server
+
+By default the Kubernetes API server binds to all network interfaces on the
+control plane nodes on the port `6443`. You can verify this by checking the
+`netstat` output for `:::6443`, which indicates that the API server is listening
+on all interfaces:
 
 ```bash
-$ kubectl get nodes
-NAME                STATUS     ROLES           AGE    VERSION
-kubernetes-node-1   Ready      control-plane   2d2h   v1.31.4
-kubernetes-node-2   Ready      control-plane   2d2h   v1.31.4
-kubernetes-node-3   Ready      control-plane   2d2h   v1.31.4
+$ sudo netstat -tuln | grep 6443
+tcp6       0      0 :::6443                 :::*                    LISTEN
 ```
 
-All control plane nodes should be listed with a status of "Ready," indicating
-they are healthy and participating in the cluster.
-
-Check the status of the `etcd` pods and other control plane components to ensure
-they are distributed across all control plane nodes:
+Before configuring the load balancer, we need to ensure that the Kubernetes API
+server is binding only to the local IP address of each control plane node. This
+is necessary to avoid conflicts when the virtual IP address is assigned by the
+load balancer. Edit the Kubernetes API server configuration file:
 
 ```bash
-$ kubectl get pods -n kube-system -o wide
+$ sudo nano /etc/kubernetes/manifests/kube-apiserver.yaml
 ```
 
-Verify that each control plane node is running its respective components (such
-as `etcd`, `kube-apiserver`, `kube-scheduler`, and `kube-controller-manager`).
-
-## Deploy a replicated sample application
-
-To test the high-availability setup, we will deploy a replicated sample
-application that runs on multiple nodes. This will help us observe how the
-control plane handles failures and maintains the application's availability.
-
-Create a sample deployment with multiple replicas using the following YAML
-manifest:
+Locate the `--advertise-address` and `--bind-address` to set both to the local
+nodes IP address. If the flags do not exist, add them to the list. For example,
+if the local IP address of the node is `10.1.1.1`, the flag should look like
+this:
 
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: sample-app
 spec:
-  # Define the same amount of replicas as nodes
-  replicas: 3
-  # The selector is used to match the pods to the deployment
-  selector:
-    matchLabels:
-      app: sample-app
-  template:
-    # Define the labels used by the selector
-    metadata:
-      labels:
-        app: sample-app
-    spec:
-      containers:
-        - name: sample-app
-          image: nginx:latest
-          ports:
-            - containerPort: 80
-      # Define pod anti-affinity to spread the pods across nodes
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchExpressions:
-                    - key: app
-                      operator: In
-                      values:
-                        - sample-app
-                topologyKey: 'kubernetes.io/hostname'
-      # Add tolerations with a short duration to allow rescheduling
-      tolerations:
-        - key: 'node.kubernetes.io/unreachable'
-          operator: 'Exists'
-          effect: 'NoExecute'
-          tolerationSeconds: 30
-        - key: 'node.kubernetes.io/not-ready'
-          operator: 'Exists'
-          effect: 'NoExecute'
-          tolerationSeconds: 30
+  containers:
+    - command:
+        - kube-apiserver
+        - --advertise-address=10.1.1.1
+        - --bind-address=10.1.1.1
 ```
 
-Save this manifest to a file, such as `sample-app.yaml`, and apply it to your
-cluster:
+Restart the API server to apply the changes:
 
 ```bash
-$ kubectl apply -f sample-app.yaml
+$ sudo systemctl restart kubelet
 ```
 
-This deployment will create three replicas of an Nginx web server and will try
-to schedule them on different nodes using pod anti-affinity.
-
-To confirm that the application is running and the pods are distributed across
-the nodes, run:
+Afterwards, check the `netstat` output again to verify that the API server is
+now bound to the local IP address:
 
 ```bash
-$ kubectl get pods -o wide
-NAME                          READY   STATUS    RESTARTS   AGE   IP            NODE
-sample-app-6bcd6fdf5b-ks72p   1/1     Running   0          69s   10.244.0.18   kubernetes-node-1
-sample-app-6bcd6fdf5b-nnbvq   1/1     Running   0          16s   10.244.1.12   kubernetes-node-2
-sample-app-6bcd6fdf5b-tltkt   1/1     Running   0          66s   10.244.2.21   kubernetes-node-3
+$ sudo netstat -tuln | grep 6443
+tcp        0      0 10.1.1.3:6443           0.0.0.0:*               LISTEN
 ```
 
-As you can see the three pods are scheduled on different nodes.
-
-## Simulate a Control Plane Node Failure
-
-To test the high-availability configuration, we will simulate a failure by
-shutting down or disconnecting one of the control plane nodes:
-
-SSH into one of the control plane nodes and simulate a failure by stopping the
-`kubelet` service:
-
 ```bash
-$ sudo systemctl stop kubelet
+$ kubectl get pods -n kube-system -w
 ```
 
-Alternatively, you can simulate a network failure by disconnecting the network
-cable or using a firewall rule to block traffic.
-
-After simulating the failure, check the status of the nodes. The failed node
-should eventually be marked as "NotReady", but the cluster should continue to
-operate normally with the remaining control plane nodes:
+Wait for the API server pod to restart and become ready before proceeding.
 
 ```bash
-$ kubectl get nodes
-NAME                STATUS     ROLES           AGE    VERSION
-kubernetes-node-1   Ready      control-plane   2d2h   v1.31.4
-kubernetes-node-2   NotReady   control-plane   2d2h   v1.31.4
-kubernetes-node-3   Ready      control-plane   2d2h   v1.31.4
+$ curl -k https://10.1.1.1:6443/healthz
+ok
 ```
 
-The failed node is now tainted with `node.kubernetes.io/unreachable:NoSchedule`
-and `node.kubernetes.io/not-ready:NoExecute` taints, preventing new pods from
-being scheduled on it. Due to the toleration timeouts in the sample application
-deployment, the pods will be rescheduled on the remaining nodes after the 30
-seconds have passed.
+Repeat this process for all control plane nodes, replacing the IP address with
+the local IP address of each node.
+
+## Configuring Keepalived
+
+Install Keepalived on each control plane node, by running:
 
 ```bash
-$ kubectl get pods -o wide
-NAME                          READY   STATUS        RESTARTS   AGE     IP            NODE                NOMINATED
-sample-app-789ff789c4-7x9f5   1/1     Running       0          3m41s   10.244.0.20   kubernetes-node-1
-sample-app-789ff789c4-f7n7m   1/1     Running       0          2m11s   10.244.0.21   kubernetes-node-1
-sample-app-789ff789c4-qjkkp   1/1     Running       0          3m43s   10.244.2.22   kubernetes-node-3
+$ sudo apt install -y keepalived haproxy
 ```
 
-As you can see now, multiple nodes have been scheduled on the remaining nodes,
-to match the desired number of replicas.
-
-## Restore the Failed Control Plane Node
-
-Restart the stopped control plane node by starting the `kubelet` service:
+Configure the Keepalived service on each control plane node to manage the
+virtual IP address, by editing the configuration file:
 
 ```bash
-$ sudo systemctl start kubelet
+$ sudo nano /etc/keepalived/keepalived.conf
 ```
 
-Alternatively, if you disconnected the network cable or blocked traffic,
-reconnect or unblock the node.
+Let's look at the options `we need to configure in the Keepalived configuration:
 
-Check the status of the nodes again to ensure that the restored node rejoins the
-cluster and becomes "Ready":
+The section vrrp_instance` defines the VRRP instance configuration, including:
 
-```bash
-$ kubectl get nodes
-NAME                STATUS   ROLES           AGE    VERSION
-kubernetes-node-1   Ready    control-plane   2d2h   v1.31.4
-kubernetes-node-2   Ready    control-plane   2d2h   v1.31.4
-kubernetes-node-3   Ready    control-plane   2d2h   v1.31.4
+- **state**: Set to `MASTER` for the primary node and `BACKUP` for the secondary
+  node. In our case we are going to use the node `1` as the primary node and all
+  other nodes as backup.
+- **interface**: Set to the network interface that will be used for the virtual
+  IP address. In our case, it is `eth0`.
+- **virtual_router_id**: A unique identifier for the VRRP instance. Ensure that
+  this value is the same across all control plane nodes. We can use any number
+  between 1 and 255.
+- **priority**: The priority of the node in the VRRP group. The node with the
+  highest priority will become the MASTER node. Adjust the priority value for
+  each node, with the primary node having the highest priority. Make sure the
+  priority values are unique and consistent across all nodes.
+- **advert_int**: The interval in seconds between sending VRRP advertisement
+  packets. The default value is `1`.
+- **auth_pass**: The password used for authentication between the nodes. Make
+  sure to use a strong password.
+- **virtual_ipaddress**: The virtual IP address that will be used to access the
+  Kubernetes API server. Our network is configured with the IP range
+  `10.1.1.0/16`, so we can use an IP address from this range. Let's use
+  `10.1.233.1` as the virtual IP address. This IP address should be unique and
+  not used by any other device on the network. It must be the same across all
+  control plane nodes.
+
+Furthermore we have to define a `static_ipaddress` block to ensure the virtual
+IP address is assigned to the network interface on system boot.
+
+Here is an example configuration for the primary node (node `1`):
+
+```conf
+static_ipaddress {
+    10.1.233.1 dev eth0 scope global
+}
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 51
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass password123
+    }
+    virtual_ipaddress {
+        10.1.233.1
+    }
+}
 ```
 
-Looking at the pods, you might notice that the pods are not rescheduled back to
-the restored node. This is because the tolerations have expired, and the pods
-will not be rescheduled unless they are deleted and recreated.
+For the secondary nodes (nodes `2` and `3`), set the `state` to `BACKUP` and
+adjust the `priority` accordingly:
 
-```bash
-$ kubectl get pods -o wide
-NAME                          READY   STATUS    RESTARTS   AGE     IP            NODE                NOMINATED NODE
-sample-app-789ff789c4-7x9f5   1/1     Running   0          8m5s    10.244.0.20   kubernetes-node-1
-sample-app-789ff789c4-f7n7m   1/1     Running   0          6m35s   10.244.0.21   kubernetes-node-1
-sample-app-789ff789c4-qjkkp   1/1     Running   0          8m7s    10.244.2.22   kubernetes-node-3
+```conf
+static_ipaddress {
+    10.1.233.1 dev eth0 scope global
+}
+
+vrrp_instance VI_1 {
+    state BACKUP
+    interface eth0
+    virtual_router_id 51
+    priority 99 # or 98 for the third node
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass password123
+    }
+    virtual_ipaddress {
+      10.1.233.1
+    }
+}
 ```
 
-To reschedule the pods on the restored node, you can delete one of the pods
-running on a node with multiple pods:
+In order for the Keepalived service to forward network packets properly to the
+real servers, each router node must have IP forwarding turned on in the kernel.
 
-```bash
-$ kubectl delete pod sample-app-789ff789c4-7x9f5
+Edit the `/etc/sysctl.conf` file to enable IP forwarding by adding or editing
+the following line:
+
+```conf
+net.ipv4.ip_forward = 1
 ```
 
-Wait a couple of seconds and the pod is rescheduled on the restored node:
+Load balancing in HAProxy and Keepalived at the same time also requires the
+ability to bind to an IP address that are nonlocal, meaning that it is not
+assigned to a device on the local system. This allows a running load balancer
+instance to bind to an IP that is not local for failover.
 
-```bash
- $ kubectl get pods -o wide
-NAME                          READY   STATUS    RESTARTS   AGE     IP            NODE                NOMINATED NODE   READINESS GATES
-sample-app-789ff789c4-f7n7m   1/1     Running   0          7m36s   10.244.0.21   kubernetes-node-1
-sample-app-789ff789c4-qjkkp   1/1     Running   0          9m8s    10.244.2.22   kubernetes-node-3
-sample-app-789ff789c4-rh7nk   1/1     Running   0          5s      10.244.1.14   kubernetes-node-2
+To enable, edit the line in `/etc/sysctl.conf` and edit or append the following
+line:
+
+```conf
+net.ipv4.ip_nonlocal_bind = 1
 ```
 
-## Cleaning up
-
-After testing the high-availability setup, you can clean up the sample
-application deployment by deleting it:
+Apply the changes to the kernel by running:
 
 ```bash
-$ kubectl delete deployment sample-app
+$ sudo sysctl -p
+```
+
+Before we are able to start the Keepalived service, we need to allow the service
+to advertise itself via multicast, which is currently blocked in our firewall
+settings (managed by `ufw`, as configured in lesson 7).
+
+```bash
+# Allow incoming VRRP multicast traffic
+$ sudo ufw allow in to 224.0.0.18
+
+# Allow outgoing VRRP multicast traffic
+$ sudo ufw allow out to 224.0.0.18
+```
+
+Enable and start the Keepalived service on each control plane node:
+
+```bash
+$ sudo systemctl start keepalived
+$ sudo systemctl enable keepalived
+```
+
+To make sure the Keepalived service is running correctly, reboot the system to
+test if the virtual IP address is assigned to the network interface on system
+boot.
+
+```bash
+$ sudo reboot
+```
+
+After the system has rebooted, check the network interfaces to verify that the
+virtual IP address is assigned:
+
+```bash
+$ sysctl net.ipv4.ip_forward
+net.ipv4.ip_forward = 1
+
+$ sysctl net.ipv4.ip_nonlocal_bind
+net.ipv4.ip_nonlocal_bind = 1
+
+$ ip addr show eth0 | grep 10.1.233.1
+    inet 10.1.233.1/32 scope global eth0
+
+$ systemctl status keepalived
+● keepalived.service - Keepalive Daemon (LVS and VRRP)
+     Loaded: loaded (/lib/systemd/system/keepalived.service; enabled; preset: enabled)
+     Active: active (running) since Fri 2025-01-17 17:26:04 CET; 18s ago
+       Docs: man:keepalived(8)
+             man:keepalived.conf(5)
+             man:genhash(1)
+             https://keepalived.org
+   Main PID: 787 (keepalived)
+      Tasks: 2 (limit: 9566)
+     Memory: 6.0M
+        CPU: 15ms
+     CGroup: /system.slice/keepalived.service
+             ├─787 /usr/sbin/keepalived --dont-fork
+             └─805 /usr/sbin/keepalived --dont-fork
+
+Jan 17 17:26:04 kubernetes-node-1 systemd[1]: keepalived.service: Got notification message from PID 805, but reception only permitted for main PID 787
+Jan 17 17:26:04 kubernetes-node-1 Keepalived_vrrp[805]: (/etc/keepalived/keepalived.conf: Line 13) Truncating auth_pass to 8 characters
+Jan 17 17:26:04 kubernetes-node-1 Keepalived[787]: Startup complete
+Jan 17 17:26:04 kubernetes-node-1 systemd[1]: Started keepalived.service - Keepalive Daemon (LVS and VRRP).
+Jan 17 17:26:04 kubernetes-node-1 Keepalived_vrrp[805]: (VI_1) Entering BACKUP STATE (init)
+Jan 17 17:26:05 kubernetes-node-1 Keepalived_vrrp[805]: (VI_1) received lower priority (99) advert from 10.1.1.2 - discarding
+Jan 17 17:26:06 kubernetes-node-1 Keepalived_vrrp[805]: (VI_1) received lower priority (99) advert from 10.1.1.2 - discarding
+Jan 17 17:26:07 kubernetes-node-1 Keepalived_vrrp[805]: (VI_1) received lower priority (99) advert from 10.1.1.2 - discarding
+Jan 17 17:26:08 kubernetes-node-1 Keepalived_vrrp[805]: (VI_1) received lower priority (99) advert from 10.1.1.2 - discarding
+Jan 17 17:26:08 kubernetes-node-1 Keepalived_vrrp[805]: (VI_1) Entering MASTER STATE
+```
+
+## Configuring HAProxy
+
+Configure HAProxy to load balance traffic to the Kubernetes API server on each
+control plane node. Edit the HAProxy configuration file:
+
+```bash
+$ sudo nano /etc/haproxy/haproxy.cfg
+```
+
+In this configuration file we need to define two sections: the `frontend`
+section, which listens for incoming requests on the virtual IP address and port
+`6443`, and the `backend` section, which defines the backend servers (control
+plane nodes) the requests will be load balanced to.
+
+The frontend will listen on the virtual IP address we defined in the Keepalived
+configuration `10.1.233.1` on the port of the Kubernetes API server `6443`. The
+`mode` is set to `tcp` to enable TLS passthrough, which allows the Kubernetes
+API server to handle the TLS termination. The `default_backend` directive
+specifies the backend servers to which the requests will be forwarded.
+
+The backend section will define the control plane nodes as servers and specify
+the load balancing algorithm. In this example, we use the `roundrobin` algorithm
+to distribute requests evenly across all control plane nodes. Replace the IP
+addresses with the actual IP addresses of your control plane nodes. The `check`
+option enables health checks on the backend servers to ensure that only healthy
+nodes receive traffic. By setting `mode` to `tcp`, HAProxy forwards the TCP
+traffic to the control plane nodes and allowing TLS passthrough.
+
+```conf
+frontend kubernetes-api
+    mode tcp
+    bind 10.1.233.1:6443
+    default_backend kube-apiservers
+    option tcplog
+
+backend kube-apiservers
+    mode tcp
+    balance roundrobin
+    option tcp-check
+    default-server inter 3s fall 3 rise 2
+    server master-1 10.1.1.1:6443 check
+    server master-2 10.1.1.2:6443 check
+    server master-3 10.1.1.3:6443 check
+```
+
+Save the file and exit the editor.
+
+```bash
+$ sudo systemctl restart haproxy
+$ sudo systemctl enable haproxy
+Synchronizing state of haproxy.service with SysV service script with /lib/systemd/systemd-sysv-install.
+Executing: /lib/systemd/systemd-sysv-install enable haproxy
+```
+
+<div class="alert alert-info" role="alert">
+    <strong>Note:</strong> If you decide to add additional nodes later on, which are also part of the control plane, make sure to update the HAProxy configuration file with the new node information.
+</div>
+
+<div class="alert alert-warning" role="alert">
+  <strong>Warning:</strong> If you decide to add additional nodes later on, which are <strong>not</strong> part of the control plane, make sure to <strong>not</strong> include them in the HAProxy configuration file.
+</div>
+
+## Verify the Load Balancer Setup
+
+To verify that the load balancer setup is working correctly, first check the
+status of the Keepalived service on each control plane node:
+
+```bash
+$ systemctl status keepalived
+● keepalived.service - Keepalive Daemon (LVS and VRRP)
+     Loaded: loaded (/lib/systemd/system/keepalived.service; enabled; preset: enabled)
+     Active: active (running) since Fri 2025-01-17 17:26:04 CET; 1min 37s ago
+...
+Jan 17 17:26:08 kubernetes-node-1 Keepalived_vrrp[805]: (VI_1) Entering MASTER STATE
+```
+
+You should see the status of the Keepalived service as `active (running)` on the
+primary node and entering the `MASTER STATE`. The secondary nodes should show
+the status as `active (running)` and entering the `BACKUP STATE`.
+
+```bash
+$ systemctl status keepalived
+● keepalived.service - Keepalive Daemon (LVS and VRRP)
+     Loaded: loaded (/lib/systemd/system/keepalived.service; enabled; preset: enabled)
+     Active: active (running) since Fri 2025-01-17 17:16:20 CET; 12min ago
+...
+Jan 17 17:25:36 kubernetes-node-2 Keepalived_vrrp[812]: (VI_1) Entering MASTER STATE
+Jan 17 17:26:08 kubernetes-node-2 Keepalived_vrrp[812]: (VI_1) Master received advert from 10.1.1.1 with higher priority 100, ours 99
+Jan 17 17:26:08 kubernetes-node-2 Keepalived_vrrp[812]: (VI_1) Entering BACKUP STATE
+```
+
+Next, check the status of the HAProxy service on each control plane node:
+
+```bash
+$ systemctl status haproxy
+● haproxy.service - HAProxy Load Balancer
+     Loaded: loaded (/lib/systemd/system/haproxy.service; enabled; preset: enabled)
+     Active: active (running) since Fri 2025-01-17 17:27:05 CET; 1min 7s ago
+...
+```
+
+You should see the status of the HAProxy service as `active (running)` on all
+control plane nodes.
+
+To verify that the virtual IP address is correctly assigned and the load
+balancer is working, you can check the network interfaces on each control plane
+node:
+
+```bash
+$ ip addr show
+```
+
+It should show the virtual IP address `10.1.233.1` assigned to the `eth0` on the
+all nodes.
+
+Finally, you can test the reachability of the Kubernetes API server on every
+node:
+
+```bash
+# Use the IP of the first node
+$ curl -k https://10.1.1.1:6443/healthz
+ok
+
+# Use the IP of the second node
+$ curl -k https://10.1.1.2:6443/healthz
+ok
+
+# Use the IP of the third node
+$ curl -k https://10.1.1.3:6443/healthz
+ok
+
+# Or use the virtual IP address given by Keepalived
+$ curl -k https://10.1.233.1:6443/healthz
+ok
+```
+
+## Configure Kubernetes to Use the Load Balancer
+
+To ensure that Kubernetes uses the virtual IP address for the API server, you
+need to update the `kubeconfig` file on each control plane node. Edit the
+`kubeconfig` file:
+
+```bash
+$ sudo nano /etc/kubernetes/admin.conf
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0t...
+    server: https://10.1.1.1:6443
+  name: kubernetes
+...
+```
+
+Locate the `server` field and replace the IP address with the virtual IP address
+`10.1.233.1`. Save the file and exit the editor.
+
+Next edit the `~/.kube/config` file to update the `server` field with the
+virtual IP address, to ensure that the `kubectl` command uses the virtual IP
+address:
+
+```bash
+$ nano ~/.kube/config
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0t...
+    server: https://10.1.1.1:6443
+  name: kubernetes
+...
+```
+
+To verify the changes, run the following command to list all nodes in your
+cluster and check if the control plane nodes are listed with a status of
+`Ready`. By setting the `v` flag to `7`, you can see the verbose output of the
+`kubectl` command, which includes the API requests and responses:
+
+```bash
+$ kubectl get nodes -v=7
+I0117 17:38:34.344933    7174 loader.go:395] Config loaded from file:  /home/pi/.kube/config
+I0117 17:38:34.350130    7174 round_trippers.go:463] GET https://10.1.233.1:6443/api/v1/nodes?limit=500
+I0117 17:38:34.350174    7174 round_trippers.go:469] Request Headers:
+I0117 17:38:34.350190    7174 round_trippers.go:473]     Accept: application/json;as=Table;v=v1;g=meta.k8s.io,application/json;as=Table;v=v1beta1;g=meta.k8s.io,application/json
+I0117 17:38:34.350198    7174 round_trippers.go:473]     User-Agent: kubectl/v1.31.4 (linux/arm64) kubernetes/a78aa47
+I0117 17:38:34.373393    7174 round_trippers.go:574] Response Status: 200 OK in 23 milliseconds
+NAME                STATUS   ROLES           AGE   VERSION
+kubernetes-node-1   Ready    control-plane   33m   v1.31.5
+kubernetes-node-2   Ready    control-plane   26m   v1.31.4
+kubernetes-node-3   Ready    control-plane   27m   v1.31.4
 ```
 
 ## Lesson Conclusion
 
-Congratulations! After successfully testing and verifying the high-availability
-setup of your control plane, your cluster is now resilient and capable of
-maintaining operation even during node failures.
+Congratulations! With Keepalived and HAProxy configured, your control plane is
+now set up for high availability, and traffic to the Kubernetes API server will
+be load balanced across all control plane nodes. In the next lesson, we will
+test and verify the high-availability configuration of your Kubernetes control
+plane.
 
 You have completed this lesson and you can now continue with
-[the next section](/building-a-production-ready-kubernetes-cluster-from-scratch/section-7).
+[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-16).

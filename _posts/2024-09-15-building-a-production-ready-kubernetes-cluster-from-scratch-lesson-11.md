@@ -23,21 +23,27 @@ before continuing here. The full list of lessons in the series can be found
 
 2.  Run the following `kubeadm` command to initialize the control plane. This
     command sets up the Kubernetes control plane components, such as the API
-    server, controller manager, and scheduler. To support a virtual network, we
-    specify the `--pod-network-cidr` flag with a compatible CIDR range, in this
-    case `10.244.0.0/16` for compatibility with the Flannel CNI plugin (which we
-    will install later):
+    server, controller manager, and scheduler:
 
     ```bash
     $ sudo kubeadm init \
       --pod-network-cidr=10.244.0.0/16 \
       --control-plane-endpoint=10.1.1.1 \
+      --apiserver-cert-extra-sans=10.1.233.1 \
       --upload-certs
     ```
 
-    The flags `--control-plane-endpoint` is used to define the IP address of the
-    control plane node. The `--upload-certs` flag uploads the certificates to
-    the Kubernetes cluster for secure communication.
+    - The flags `--control-plane-endpoint` is used to define the IP address of
+      the control plane node.
+    - The `--upload-certs` flag uploads the certificates to the Kubernetes
+      cluster for secure communication.
+    - To support a virtual network, we specify the `--pod-network-cidr` flag
+      with a compatible CIDR range, in this case `10.244.0.0/16` for
+      compatibility with the Flannel CNI plugin (which we will install later).
+    - The `--apiserver-cert-extra-sans` flag is used to add additional IP
+      addresses to the API server certificate. This is useful when you have
+      multiple IP addresses on the control plane node, such as the virtual IP
+      `10.1.233.1` used by a load balancer (which we will set up later).
 
     At the beginning of the output, you might see a warning about the remote
     version being newer than the local version. This is because we are using an
@@ -63,8 +69,10 @@ before continuing here. The full list of lessons in the series can be found
       --certificate-key a1a135bf8be403583d2b1e6f7de7b14357e5e96c23deb8718bf2d1a807b08612
     ```
 
-> [!TIP] If anything goes wrong, you can always reset your Kubernetes server
-> using `kubeadm reset`
+<div class="alert alert-info" role="alert">
+  <strong>TIP</strong>: If anything goes wrong, you can always reset your Kubernetes server
+  using <code>kubeadm reset</code>.
+</div>
 
 ## Set Up kubectl for the Local User
 
@@ -86,12 +94,15 @@ Run the following command to check the status of the nodes:
 
 ```bash
 $ kubectl get nodes
+NAME                STATUS     ROLES           AGE     VERSION
+kubernetes-node-1   NotReady   control-plane   2m44s   v1.31.5
 ```
 
-The output should show the control plane node with a status of "Ready." This
-indicates that the control plane is initialized correctly.
+As you can see the node is currently in the `NotReady` state. This is because
+the control plane has no CNI plugin installed yet. We will install the Flannel
+CNI plugin in the next lesson, so it is safe to ignore for now
 
-## Allow Scheduling on the Control Plane Node (Optional)
+## Allow Scheduling on the Control Plane Node
 
 By default, the control plane node is tainted to prevent workloads from being
 scheduled on it.
@@ -117,9 +128,8 @@ $ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 ## Lesson Conclusion
 
 Congratulations! With the control plane initialized, your first node is now set
-up to manage your Kubernetes cluster. In the next lesson, we will learn how to
-join additional Raspberry Pi devices as control plane or worker nodes to create
-a highly available cluster.
+up to manage your Kubernetes cluster. In the next lesson, we will setup the CNI
+plugin to enable networking between pods.
 
 You have completed this lesson and you can now continue with
 [the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-12).

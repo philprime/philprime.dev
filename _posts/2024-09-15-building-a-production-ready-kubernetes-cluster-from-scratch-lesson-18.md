@@ -26,92 +26,255 @@ creating custom storage classes, you can control how Longhorn allocates and
 manages storage resources, ensuring optimal performance and redundancy for
 different workloads.
 
+## Understanding Longhorn Replicas
+
+To quote the [Longhorn documentation](https://longhorn.io/docs/1.7.2/concepts/)
+on replicas:
+
+> When the Longhorn Manager is asked to create a volume, it creates a Longhorn
+> Engine instance on the node the volume is attached to, and it creates a
+> replica on each node where a replica will be placed. Replicas should be placed
+> on separate hosts to ensure maximum availability.
+>
+> The multiple data paths of the replicas ensure high availability of the
+> Longhorn volume. Even if a problem happens with a certain replica or with the
+> Engine, the problem won’t affect all the replicas or the Pod’s access to the
+> volume. The Pod will still function normally.
+>
+> The Longhorn Engine always runs in the same node as the Pod that uses the
+> Longhorn volume. It synchronously replicates the volume across the multiple
+> replicas stored on multiple nodes.
+
+In simpler terms, Longhorn uses replicas to ensure that your data is stored on
+multiple nodes. By configuring the number of replicas in your storage class, you
+can control the level of redundancy and fault tolerance for your volumes.
+
 ## Creating a Longhorn Storage Class
 
-1. **Create a New Storage Class for Longhorn:**
+To create a new storage class, define a YAML file with the desired configuration
+(see
+[reference](https://longhorn.io/docs/1.7.2/references/storage-class-parameters/)
+for all possible fields). By default Longhorn creates two storage classes
+`longhorn` and `longhorn-static` with different default settings. The `longhorn`
+storage class is used for dynamic provisioning of volumes, while the
+`longhorn-static` storage class is used for static provisioning of volumes:
 
-   To create a new storage class, define a YAML file with the desired
-   configuration. For example, create a file named
-   `longhorn-storage-class.yaml`:
+```bash
+$ kubectl get storageclasses
+NAME                 PROVISIONER          RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+longhorn (default)   driver.longhorn.io   Delete          Immediate           true                   4h
+longhorn-static      driver.longhorn.io   Delete          Immediate           true                   4h
+```
 
-   ```yaml
-   apiVersion: storage.k8s.io/v1
-   kind: StorageClass
-   metadata:
-     name: longhorn
-   provisioner: driver.longhorn.io
-   parameters:
-     numberOfReplicas: '2' # Number of replicas for each volume
-     staleReplicaTimeout: '30' # Timeout (in minutes) for stale replicas
-   reclaimPolicy: Delete # Defines whether volumes are retained or deleted when their claims are deleted
-   allowVolumeExpansion: true # Allow dynamic volume expansion
-   volumeBindingMode: Immediate
-   ```
+To view the default settings for the `longhorn` storage class, run:
 
-2. **Apply the Storage Class Configuration:**
+```bash
+$ kubectl describe storageclass longhorn
+```
 
-   Apply the storage class to your Kubernetes cluster using `kubectl`:
+```yaml
+Name:            longhorn
+IsDefaultClass:  Yes
+Annotations:     longhorn.io/last-applied-configmap=kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: longhorn
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: "Delete"
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "3"
+  staleReplicaTimeout: "30"
+  fromBackup: ""
+  fsType: "ext4"
+  dataLocality: "disabled"
+  unmapMarkSnapChainRemoved: "ignored"
+  disableRevisionCounter: "true"
+  dataEngine: "v1"
+,storageclass.kubernetes.io/is-default-class=true
+Provisioner:           driver.longhorn.io
+Parameters:            dataEngine=v1,dataLocality=disabled,disableRevisionCounter=true,fromBackup=,fsType=ext4,numberOfReplicas=3,staleReplicaTimeout=30,unmapMarkSnapChainRemoved=ignored
+AllowVolumeExpansion:  True
+MountOptions:          <none>
+ReclaimPolicy:         Delete
+VolumeBindingMode:     Immediate
+Events:                <none>
+```
 
-   ```bash
-   kubectl apply -f longhorn-storage-class.yaml
-   ```
+Let's create another storage class for Longhorn we can use later on to deploy
+our first services. Define the `apiVersion` and the `kind` indicate the
+Kubernetes resource type. The `metadata` section specifies the `name` of the
+storage class, which must be unique and will be used later on to request
+storage. The `provisioner` field specifies the Longhorn driver and must always
+be `driver.longhorn.io`.
 
-   This command creates a new storage class named `longhorn` that provisions
-   volumes with two replicas by default, allowing for fault tolerance.
+The `parameters` section allows you to configure the storage class with
+additional settings. As we run at least two nodes in our cluster, we can set the
+`numberOfReplicas` to `2` to ensure that each volume has two replicas for fault
+tolerance. The `staleReplicaTimeout` parameter specifies the timeout (in
+minutes) for stale replicas, which can be set to `30` minutes after a replica is
+marked unhealthy before it is deemed useless for rebuilds and is just deleted.
 
-3. **Set the Longhorn Storage Class as Default (Optional):**
+Write the following configuration to a file named
+`longhorn-example-storage-class.yaml`:
 
-   If you want Longhorn to be the default storage class for all persistent
-   volume claims (PVCs) that do not specify a particular storage class, you can
-   set it as the default:
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-example
+provisioner: driver.longhorn.io
+parameters:
+  numberOfReplicas: '2'
+  staleReplicaTimeout: '30'
+```
 
-   ```bash
-   kubectl patch storageclass longhorn -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-   ```
+Apply the storage class to your Kubernetes cluster using `kubectl`:
 
-## Verifying Storage Class Configuration
+```bash
+kubectl apply -f longhorn-storage-class.yaml
+```
 
-- List all storage classes in your cluster to ensure that the Longhorn storage
-  class is correctly created:
+## Using the Longhorn Storage Class
 
-  ```bash
-  kubectl get storageclass
-  ```
+Now that you have created a new Longhorn storage class, you can use it to
+dynamically provision volumes for your applications. When creating a new
+PersistentVolumeClaim (PVC), specify the storage class name in the
+`storageClassName` field to use the Longhorn storage class:
 
-  The output should display the new `longhorn` storage class with the desired
-  settings.
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: example-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-example
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-example
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: html
+              mountPath: /usr/share/nginx/html
+      volumes:
+        - name: html
+          persistentVolumeClaim:
+            claimName: example-pvc
+```
 
-- Test the storage class by creating a Persistent Volume Claim (PVC) that uses
-  it:
+Apply this configuration using:
 
-  ```yaml
-  apiVersion: v1
-  kind: PersistentVolumeClaim
-  metadata:
-    name: test-claim
-  spec:
-    accessModes:
-      - ReadWriteOnce
-    resources:
-      requests:
-        storage: 1Gi
-    storageClassName: longhorn
-  ```
+```bash
+$ kubectl apply -f example-deployment.yaml
+```
 
-  Save this file as `test-pvc.yaml` and apply it with:
+This creates a simple nginx deployment with a persistent volume using our new
+storage class. You can check the status of the deployment using:
 
-  ```bash
-  kubectl apply -f test-pvc.yaml
-  ```
+```bash
+$ kubectl get pods
+NAME                           READY   STATUS    RESTARTS   AGE
+nginx-example-d9d77448-jptwk   1/1     Running   0          30s
 
-- Check the status of the PVC to ensure it is correctly provisioned:
+$ kubectl get pvc
+NAME          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS       VOLUMEATTRIBUTESCLASS   AGE
+example-pvc   Bound    pvc-c5777d29-69e8-48f1-9f2a-b12e66808ab4   1Gi        RWO            longhorn-example   <unset>                 63s
 
-  ```bash
-  kubectl get pvc
-  ```
+$ kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                 STORAGECLASS       VOLUMEATTRIBUTESCLASS   REASON   AGE
+pvc-c5777d29-69e8-48f1-9f2a-b12e66808ab4   1Gi        RWO            Delete           Bound    default/example-pvc   longhorn-example   <unset>                          77s
 
-  The PVC should be in a "Bound" state, indicating that the storage class is
-  functioning correctly and the volume has been provisioned.
+$ kubectl describe pv pvc-c5777d29-69e8-48f1-9f2a-b12e66808ab4
+Name:            pvc-c5777d29-69e8-48f1-9f2a-b12e66808ab4
+Labels:          <none>
+Annotations:     longhorn.io/volume-scheduling-error:
+                 pv.kubernetes.io/provisioned-by: driver.longhorn.io
+                 volume.kubernetes.io/provisioner-deletion-secret-name:
+                 volume.kubernetes.io/provisioner-deletion-secret-namespace:
+Finalizers:      [kubernetes.io/pv-protection external-attacher/driver-longhorn-io]
+StorageClass:    longhorn-example
+Status:          Bound
+Claim:           default/example-pvc
+Reclaim Policy:  Delete
+Access Modes:    RWO
+VolumeMode:      Filesystem
+Capacity:        1Gi
+Node Affinity:   <none>
+Message:
+Source:
+    Type:              CSI (a Container Storage Interface (CSI) volume source)
+    Driver:            driver.longhorn.io
+    FSType:            ext4
+    VolumeHandle:      pvc-c5777d29-69e8-48f1-9f2a-b12e66808ab4
+    ReadOnly:          false
+    VolumeAttributes:      numberOfReplicas=2
+                           staleReplicaTimeout=30
+                           storage.kubernetes.io/csiProvisionerIdentity=1737135687617-3747-driver.longhorn.io
+Events:                <none>
+```
+
+To view the available storage in the example app, exec into the pod and view the
+disk space using `df`:
+
+```bash
+$ kubectl exec -it nginx-example-d9d77448-jptwk -- df -h
+Filesystem                                              Size  Used Avail Use% Mounted on
+overlay                                                  57G  8.1G   46G  16% /
+tmpfs                                                    64M     0   64M   0% /dev
+/dev/mmcblk0p2                                           57G  8.1G   46G  16% /etc/hosts
+shm                                                      64M     0   64M   0% /dev/shm
+/dev/longhorn/pvc-c5777d29-69e8-48f1-9f2a-b12e66808ab4  974M   24K  958M   1% /usr/share/nginx/html
+tmpfs                                                   7.8G   48K  7.8G   1% /run/secrets/kubernetes.io/serviceaccount
+tmpfs                                                   4.0G     0  4.0G   0% /proc/asound
+tmpfs                                                   4.0G     0  4.0G   0% /sys/firmware
+```
+
+As you can see, the volume is mounted at `/usr/share/nginx/html` and has a size
+of `958M`, or `1Gi` as requested in the PVC.
+
+## Cleaning Up
+
+To clean up the resources created in this lesson, delete the deployment and the
+storage class:
+
+```bash
+$ kubectl delete -f example-deployment.yml
+persistentvolumeclaim "example-pvc" deleted
+deployment.apps "nginx-example" deleted
+
+$ rm example-deployment.yaml
+```
+
+```bash
+$ kubectl delete -f longhorn-example-storage-class.yaml
+storageclass.storage.k8s.io "longhorn-example" deleted
+
+$ rm longhorn-example-storage-class.yaml
+```
 
 ## Optimizing Longhorn Storage Class for Performance
 

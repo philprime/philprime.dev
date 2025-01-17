@@ -22,6 +22,23 @@ cluster.
 > [!WARNING] We are not using the latest version of Kubernetes tools in this
 > lesson, so we will be able to upgrade them in lesson 30.
 
+<div class="alert-warning" role="alert">
+<strong>WARNING:</strong> All commands used in this lesson require <code>sudo</code> privileges.
+Either prepend <code>sudo</code> to each command or switch to the root user using <code>sudo -i</code>.
+</div>
+
+## Update the System
+
+Before installing the Kubernetes tools, ensure your Raspberry Pi devices are up
+to date by running the following commands:
+
+```bash
+# Update the package list
+$ apt update
+# Upgrade the installed packages
+$ apt upgrade
+```
+
 ## Installing Kubernetes Tools on Each Raspberry Pi
 
 The Kubernetes tools are essential for managing your cluster and interacting
@@ -29,12 +46,10 @@ with the Kubernetes API. To install these tools on your Raspberry Pi devices,
 follow these steps (or follow the
 [documentation](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)):
 
-1.  Update the apt package index and install packages needed to use the
-    Kubernetes apt repository:
+1.  Install dependencies required for the Kubernetes apt repository:
 
     ```bash
-    $ sudo apt update
-    $ sudo apt-get install -y apt-transport-https ca-certificates curl gnupg
+    $ apt-get install -y apt-transport-https ca-certificates curl gnupg
     ```
 
 2.  Download the public signing key for the Kubernetes package repositories. The
@@ -42,11 +57,11 @@ follow these steps (or follow the
     version in the URL:
 
     ```bash
-    $ sudo mkdir -p -m 755 /etc/apt/keyrings
-    $ curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    $ mkdir -p -m 755 /etc/apt/keyrings
+    $ curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
     # allow unprivileged APT programs to read this keyring
-    $ sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    $ chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     ```
 
 3.  Add the appropriate Kubernetes apt repository. We will install version 1.31,
@@ -54,23 +69,22 @@ follow these steps (or follow the
     upgrade it later on:
 
     ```bash
-    $ echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-    # helps tools such as command-not-found to work correctly
-    $ sudo chmod 644 /etc/apt/sources.list.d/kubernetes.list
+    $ echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' >> /etc/apt/sources.list.d/kubernetes.list
+    $ chmod 644 /etc/apt/sources.list.d/kubernetes.list
     ```
 
 4.  Update apt package index, then install `kubeadm`, `kubectl`, and `kubelet`:
 
     ```bash
-    $ sudo apt update
-    $ sudo apt install -y kubelet kubeadm kubectl
+    $ apt update
+    $ apt install -y kubelet kubeadm kubectl
     ```
 
 5.  Holding these packages ensures they will not be automatically updated, which
     helps maintain cluster stability.
 
     ```bash
-    $ sudo apt-mark hold kubelet kubeadm kubectl
+    $ apt-mark hold kubelet kubeadm kubectl
     ```
 
 ## Verifying the Installation
@@ -88,12 +102,44 @@ To confirm that the Kubernetes tools have been successfully installed:
 
 ## Configuring Kubernetes Tools
 
-- Ensure that `kubelet` is enabled to start on boot and is running:
+Ensure that `kubelet` is enabled to start on boot and is running:
 
-  ```bash
-  $ sudo systemctl enable kubelet
-  $ sudo systemctl start kubelet
-  ```
+```bash
+$ systemctl enable kubelet
+$ systemctl start kubelet
+```
+
+We can see the status of the service by using `systemctl` and `journalctl`:
+
+```bash
+$ systemctl status kubelet
+● kubelet.service - kubelet: The Kubernetes Node Agent
+     Loaded: loaded (/lib/systemd/system/kubelet.service; enabled; preset: enabled)
+    Drop-In: /usr/lib/systemd/system/kubelet.service.d
+             └─10-kubeadm.conf
+     Active: activating (auto-restart) (Result: exit-code) since Fri 2025-01-17 16:19:50 CET; 5s ago
+       Docs: https://kubernetes.io/docs/
+    Process: 18044 ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS (code=exited, status=1/FAILURE)
+   Main PID: 18044 (code=exited, status=1/FAILURE)
+        CPU: 66ms
+```
+
+```bash
+$ journalctl -u kubelet.service
+Jan 17 16:14:53 kubernetes-node-1 systemd[1]: Started kubelet.service - kubelet: The Kubernetes Node Agent.
+Jan 17 16:14:53 kubernetes-node-1 kubelet[17651]: E0117 16:14:53.701110   17651 run.go:72] "command failed" err="failed to load kubelet config file, path: /var/lib/kubelet/config.yaml, error: failed to load Kubelet config file /var/lib/kubelet/config.yaml, error failed to read kubelet config file \"/var/lib/kubelet/config.yaml\", error: open /var/lib/kubelet/co>
+Jan 17 16:14:53 kubernetes-node-1 systemd[1]: kubelet.service: Main process exited, code=exited, status=1/FAILURE
+Jan 17 16:14:53 kubernetes-node-1 systemd[1]: kubelet.service: Failed with result 'exit-code'.
+Jan 17 16:15:03 kubernetes-node-1 systemd[1]: kubelet.service: Scheduled restart job, restart counter is at 1.
+Jan 17 16:15:03 kubernetes-node-1 systemd[1]: Stopped kubelet.service - kubelet: The Kubernetes Node Agent.
+Jan 17 16:15:03 kubernetes-node-1 systemd[1]: Started kubelet.service - kubelet: The Kubernetes Node Agent.
+Jan 17 16:15:03 kubernetes-node-1 kubelet[17660]: E0117 16:15:03.937337   17660 run.go:72] "command failed" err="failed to load kubelet config file, path: /var/lib/kubelet/config.yaml, error: failed to load Kubelet config file /var/lib/kubelet/config.yaml, error failed to read kubelet config file \"/var/lib/kubelet/config.yaml\", error: open /var/lib/kubelet/co>
+Jan 17 16:15:03 kubernetes-node-1 systemd[1]: kubelet.service: Main process exited, code=exited, status=1/FAILURE
+```
+
+As you can see the service is not running correctly, because we have not yet set
+up a Kubernetes cluster. We will do that in an upcoming lesson and you can
+safely ignore the errors for now.
 
 ## Installing k9s (Optional)
 
@@ -123,7 +169,7 @@ To install k9s on your Raspberry Pi devices, follow these steps:
 2. Install the k9s package:
 
    ```bash
-   $ sudo dpkg -i /tmp/k9s_linux_arm64.deb
+   $ dpkg -i /tmp/k9s_linux_arm64.deb
    ```
 
 3. Run k9s to verify the installation:
@@ -132,13 +178,15 @@ To install k9s on your Raspberry Pi devices, follow these steps:
    $ k9s version
    ```
 
-> [!NOTE] We are downloading the ARM64 version of k9s because we are using
-> Raspberry Pi devices. If you are using a different architecture, download the
-> appropriate version.
+<div class="alert-note" role="note">
+<strong>NOTE:</strong> We are downloading the ARM64 version of k9s because we are using Raspberry Pi devices.
+If you are using a different architecture, download the appropriate version.
+</div>
 
-> [!NOTE] We are downloading the debian package to the `/tmp` directory, so it
-> gets removed automatically by the system after a reboot. We do not need to
-> keep the package after installation.
+<div class="alert-note" role="note">
+<strong>NOTE:</strong> We are downloading the debian package to the <code>/tmp</code> directory, so it gets removed
+automatically by the system after a reboot. We do not need to keep the package after installation.
+</div>
 
 ## Lesson Conclusion
 

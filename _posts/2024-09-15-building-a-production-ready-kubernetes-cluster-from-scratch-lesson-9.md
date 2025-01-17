@@ -16,6 +16,11 @@ cluster from scratch. Make sure you have completed the
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
+<div class="alert-warning" role="alert">
+<strong>WARNING:</strong> All commands used in this lesson require <code>sudo</code> privileges.
+Either prepend <code>sudo</code> to each command or switch to the root user using <code>sudo -i</code>.
+</div>
+
 ## Installing containerd on Each Raspberry Pi
 
 To begin, make sure you are connected to each Raspberry Pi via SSH. Perform the
@@ -24,58 +29,55 @@ following steps on each device:
 1. Update the package list and install required dependencies:
 
    ```bash
-   $ sudo apt update
-   $ sudo apt install -y apt-transport-https curl gnupg2 software-properties-common
+   $ apt update
+   $ apt install -y apt-transport-https curl gnupg2 software-properties-common
    ```
 
 2. Install containerd:
 
    ```bash
-   $ sudo apt install -y containerd
+   $ apt install -y containerd
    ```
 
 ## Configuring containerd for Kubernetes
 
 Once containerd is installed, it needs to be configured properly to work with
-Kubernetes:
+Kubernetes.
 
-1. Create a default configuration file for containerd:
+Create a default configuration file for containerd:
 
-   ```bash
-   $ sudo mkdir -p /etc/containerd
-   $ sudo containerd config default | sudo tee /etc/containerd/config.toml
-   ```
+```bash
+$ mkdir -p /etc/containerd
+$ containerd config default | tee /etc/containerd/config.toml
+```
 
-2. Open the configuration file with a text editor like `vi` or `nano` to modify
-   the cgroup driver:
+Open the configuration file with a text editor like `vi` or `nano` to modify the
+cgroup driver:
 
-   ```bash
-   $ sudo vi /etc/containerd/config.toml
-   ```
+```bash
+$ vi /etc/containerd/config.toml
+```
 
-   Find the line that specifies the `SystemdCgroup` setting (typically under the
-   `[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]`
-   section) and set it to `true`. When using `vi`, you can search for the line
-   using `/SystemdCgroup`:
+Find the line that specifies the `SystemdCgroup` setting (typically under the
+`[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]`
+section) and set it to `true`. When using `vi`, you can search for the line
+using `/SystemdCgroup`:
 
-   ```toml
-   [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-     SystemdCgroup = true
-   ```
+```toml
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+  SystemdCgroup = true
+```
 
-3. Save the changes and exit the editor (in `vi`, press `Esc` followed by `:wq`
-   and `Enter`).
-4. Restart containerd to apply the configuration:
+Save the changes and exit the editor (in `vi`, press `Esc` followed by `:wq` and
+`Enter`).
 
-   ```bash
-   $ sudo systemctl restart containerd
-   ```
+Restart containerd to apply the configuration changes and enable it to start on
+boot:
 
-5. Enable containerd to start on boot:
-
-   ```bash
-   $ sudo systemctl enable containerd
-   ```
+```bash
+$ systemctl restart containerd
+$ systemctl enable containerd
+```
 
 ## Verifying containerd Installation
 

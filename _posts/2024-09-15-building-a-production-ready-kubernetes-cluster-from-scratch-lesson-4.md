@@ -1,6 +1,6 @@
 ---
 layout: course-lesson
-title: Understanding High Availability and Kubernetes Basics (L4)
+title: Unboxing Raspberry Pi devices (L4)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-4
 ---

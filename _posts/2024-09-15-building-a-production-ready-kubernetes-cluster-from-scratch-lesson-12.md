@@ -1,142 +1,240 @@
 ---
 layout: course-lesson
-title: Joining Additional Control Plane Nodes (L12)
+title: Installing a Pod Network (CNI Plugin) (L12)
 tags: cloud kubernetes devops
 permalink: /building-a-production-ready-kubernetes-cluster-from-scratch/lesson-12
 ---
 
-In this lesson, we will join additional Raspberry Pi devices as control plane
-nodes to create a high-availability Kubernetes cluster. Adding more control
-plane nodes ensures that your cluster remains resilient and operational, even if
-one of the nodes fails.
+In this lesson, we will install a Container Network Interface (CNI) plugin to
+enable communication between the pods running on different nodes in your
+Kubernetes cluster. The CNI plugin is essential for networking in Kubernetes, as
+it ensures that all pods can communicate securely and efficiently across the
+cluster.
 
-This is the twelfth lesson in the series on building a production-ready
+This is the thirteenth lesson in the series on building a production-ready
 Kubernetes cluster from scratch. Make sure you have completed the
-[previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-11)
+[previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-12)
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
-## Joining Additional Control Plane Nodes
+## What is a CNI Plugin?
 
-On each additional control plane node, use the `kubeadm join` command that you
-saved from the initialization of the first control plane node. The command
-should look similar to this:
+A **CNI (Container Network Interface) plugin** is a critical component in
+Kubernetes that facilitates networking for containers running across multiple
+nodes in a cluster. It provides the necessary networking capabilities to allow
+pods (the smallest deployable units in Kubernetes) to communicate with each
+other and with services both inside and outside the cluster. A CNI plugin works
+by configuring the network interfaces of containers and managing the underlying
+network policies, routes, and IP address assignments to ensure that all
+containers can communicate seamlessly and securely.
 
-```bash
-$ kubeadm join 10.1.1.1:6443 \
-  --token <your token> \
-  --discovery-token-ca-cert-hash <your hash> \
-  --certificate-key <your certificate key> \
-  --control-plane
-```
+## Why Choose Flannel as the CNI Plugin?
 
-Replace `<your-token>`, `<your certificate key>` and `<your hash>` with the
-actual values from the output of the `kubeadm init` command. The
-`--control-plane` flag indicates that this node will be part of the control
-plane.
+We chose **Flannel** as our CNI plugin for this course because it is
+lightweight, simple to set up, and well-suited for use with resource-constrained
+environments like Raspberry Pi devices. Flannel creates a virtual overlay
+network that connects all pods across the cluster, ensuring that each pod gets a
+unique IP address from a pre-defined CIDR range. This setup simplifies
+networking by abstracting the complexities of the underlying network
+infrastructure, making it easier to deploy and manage a Kubernetes cluster.
+Flannel is also highly compatible with Kubernetes and requires minimal
+configuration, which makes it an ideal choice for those who are new to
+Kubernetes or working with smaller clusters.
 
-**Example:**
+## Install the Flannel CNI Plugin
 
-```bash
-$ sudo kubeadm join 10.1.1.1:6443 \
-  --token wjuudc.jqqqqrfx6vau3vyw \
-  --discovery-token-ca-cert-hash sha256:ba65057d5290647aa8fcceb33a9624d3e9eb3640d13d11265fe48a611c5b8f3f \
-  --certificate-key a1a135bf8be403583d2b1e6f7de7b14357e5e96c23deb8718bf2d1a807b08612 \
-  --control-plane
-```
-
-This command will connect the additional control plane nodes to the existing
-cluster and synchronize the necessary control plane components.
-
-## Verify the Nodes Have Joined the Cluster
-
-To start administering your cluster from this node, you need to run the
-following as a regular user:
+To install Flannel, run the following command on any of the control plane nodes:
 
 ```bash
-$ mkdir -p $HOME/.kube
-$ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-$ sudo chown $(id -u):$(id -g) $HOME/.kube/config
+$ kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 ```
 
-Run 'kubectl get nodes' to see this node join the cluster:
+This command downloads the Flannel manifest file from the official GitHub page
+and applies it to your cluster. The manifest file contains the necessary
+configurations to deploy Flannel across all nodes in your cluster.
+
+## Verify the CNI Plugin Installation
+
+To confirm that Flannel is correctly installed, check the status of the pods in
+the `kube-flannel` namespace:
+
+```bash
+$ kubectl get pods -n kube-flannel -o wide
+NAME                    READY   STATUS    RESTARTS      AGE   IP         NODE                NOMINATED NODE   READINESS GATES
+kube-flannel-ds-4c28n   1/1     Running   0             1m    10.1.1.2   kubernetes-node-2   <none>           <none>
+kube-flannel-ds-8d9tg   1/1     Running   0             1m    10.1.1.1   kubernetes-node-1   <none>           <none>
+kube-flannel-ds-j8xnq   1/1     Running   0             1m    10.1.1.3   kubernetes-node-3   <none>           <none>
+```
+
+You should see several `kube-flannel-ds` pods, one for each node, with a status
+of "Running". This indicates that Flannel is successfully deployed and operating
+across all nodes.
+
+## Check the Node Status
+
+We conclued the
+[previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-11)
+with our node in a `NotReady` state, due to the abscence of a CNI plugin. After
+installing Flannel, the node should now be in a `Ready` state:
 
 ```bash
 $ kubectl get nodes
-NAME                STATUS     ROLES           AGE     VERSION
-kubernetes-node-1   Ready   control-plane   3m58s   v1.31.4
-kubernetes-node-2   Ready   control-plane   87s     v1.31.4
-kubernetes-node-3   Ready   control-plane   84s     v1.31.4
+NAME                STATUS   ROLES           AGE   VERSION
+kubernetes-node-1   Ready    control-plane   17m   v1.31.5
 ```
 
-You should see all control plane nodes in the list with a status of "Ready."
+### Common Issues
 
-> [!TIP] If the nodes are not ready, check the logs for any errors that may have
-> occurred during the join process. You can use `journalctl -u kubelet` to
-> inspect the logs.
->
-> Consider running `kubeadm reset` on the node and rejoining it to the cluster
-> if you encounter any issues.
->
-> You can also use `sudo reboot` to restart the node.
+- `Node kubernetes-node-1 status is now: CIDRAssignmentFailed`:
 
-> [!TIP] If you want to communicate with the Kubernetes API server running on
-> the local node, you can edit the `~/.kube/config` file and replace the server
-> address with `10.1.1.X` (with `X` being the number of the node).
-
-## Verify Control Plane High Availability
-
-To ensure high availability, check that all control plane components are running
-correctly on each node:
+Try to restart the `kubelet` service on the node:
 
 ```bash
-$ kubectl get pods -n kube-system -o wide
-NAME                                        READY   STATUS    RESTARTS       AGE   IP           NODE                NOMINATED NODE   READINESS GATES
-coredns-7c65d6cfc9-ccqh9                    1/1     Running   0              23m   10.244.0.3   kubernetes-node-1   <none>           <none>
-coredns-7c65d6cfc9-s6tll                    1/1     Running   0              23m   10.244.0.2   kubernetes-node-1   <none>           <none>
-etcd-kubernetes-node-1                      1/1     Running   13             23m   10.1.1.1     kubernetes-node-1   <none>           <none>
-etcd-kubernetes-node-2                      1/1     Running   0              19m   10.1.1.2     kubernetes-node-2   <none>           <none>
-etcd-kubernetes-node-3                      1/1     Running   2 (104s ago)   19m   10.1.1.3     kubernetes-node-3   <none>           <none>
-kube-apiserver-kubernetes-node-1            1/1     Running   13             23m   10.1.1.1     kubernetes-node-1   <none>           <none>
-kube-apiserver-kubernetes-node-2            1/1     Running   0              19m   10.1.1.2     kubernetes-node-2   <none>           <none>
-kube-apiserver-kubernetes-node-3            1/1     Running   2 (104s ago)   19m   10.1.1.3     kubernetes-node-3   <none>           <none>
-kube-controller-manager-kubernetes-node-1   1/1     Running   13             23m   10.1.1.1     kubernetes-node-1   <none>           <none>
-kube-controller-manager-kubernetes-node-2   1/1     Running   3              19m   10.1.1.2     kubernetes-node-2   <none>           <none>
-kube-controller-manager-kubernetes-node-3   1/1     Running   6 (104s ago)   19m   10.1.1.3     kubernetes-node-3   <none>           <none>
-kube-proxy-d8nzr                            1/1     Running   0              23m   10.1.1.1     kubernetes-node-1   <none>           <none>
-kube-proxy-vmnfr                            1/1     Running   2 (104s ago)   19m   10.1.1.3     kubernetes-node-3   <none>           <none>
-kube-proxy-wcdxf                            1/1     Running   0              19m   10.1.1.2     kubernetes-node-2   <none>           <none>
-kube-scheduler-kubernetes-node-1            1/1     Running   13             23m   10.1.1.1     kubernetes-node-1   <none>           <none>
-kube-scheduler-kubernetes-node-2            1/1     Running   3              19m   10.1.1.2     kubernetes-node-2   <none>           <none>
-kube-scheduler-kubernetes-node-3            1/1     Running   6 (104s ago)   19m   10.1.1.3     kubernetes-node-3   <none>           <none>
+$ sudo systemctl restart kubelet
 ```
 
-You should see the control plane components (like `kube-apiserver`,
-`kube-scheduler`, and `kube-controller-manager`) distributed across all control
-plane nodes.
+## Check the Pod Network CIDR
 
-## Distribute the etcd Cluster
+Ensure the pod network CIDR matches the one specified during control plane
+initialization (`10.244.0.0/16` for Flannel). The pod network CIDR is a range of
+IP addresses used for assigning IPs to pods within the cluster. It is crucial to
+ensure that this range matches the one specified during the control plane
+initialization to avoid network conflicts and ensure proper communication
+between pods.
 
-Verify that the `etcd` cluster is also running across all control plane nodes:
+You can check this by looking at the cluster configuration:
 
 ```bash
-$ kubectl get pods -n kube-system -l component=etcd -o wide
-NAME                     READY   STATUS    RESTARTS        AGE   IP         NODE                NOMINATED NODE   READINESS GATES
-etcd-kubernetes-node-1   1/1     Running   13              24m   10.1.1.1   kubernetes-node-1   <none>           <none>
-etcd-kubernetes-node-2   1/1     Running   0               19m   10.1.1.2   kubernetes-node-2   <none>           <none>
-etcd-kubernetes-node-3   1/1     Running   2               19m   10.1.1.3   kubernetes-node-3   <none>           <none>
+$ kubectl cluster-info dump | grep -m 1 cluster-cidr
+                            "--cluster-cidr=10.244.0.0/16",
 ```
 
-You should see one `etcd` pod per control plane node, confirming that the `etcd`
-cluster is distributed and redundant.
+The output should confirm the correct CIDR range we configured for Flannel.
+
+## Allow Flannel Traffic Through the Firewall
+
+1. Flannel uses UDP ports `8285` and `8472` for backend communication between
+   nodes. Ensure these ports are open in the firewall on every single node, to
+   allow Flannel to function correctly:
+
+   ```bash
+   # Allowing Flannel UDP backend traffic
+   $ sudo ufw allow 8285/udp
+   $ sudo ufw allow out 8285/udp
+
+   # Allow Flannel VXLAN backend traffic
+   $ sudo ufw allow 8472/udp
+   $ sudo ufw allow out 8472/udp
+   ```
+
+2. Next up, we need to allow traffic from our pod network CIDR range
+   (`10.244.0.0/16`). This is necessary for the pods to communicate with each
+   other across nodes:
+
+   ```bash
+   # Allow traffic from pod network CIDR to Kubernetes API server
+   $ sudo ufw allow from 10.244.0.0/16 to any port 6443
+   $ sudo ufw allow out to 10.244.0.0/16 port 6443
+   ```
+
+3. Flannel also requires node-to-node communication for overlay networking.
+
+   ```bash
+   # Allow incoming intra-pod network communication within pod network CIDR
+   $ sudo ufw allow from 10.244.0.0/16 to 10.244.0.0/16
+   # Allow outgoing intra-pod network communication within pod network CIDR
+   $ sudo ufw allow out to 10.244.0.0/16
+   ```
+
+4. Allow routed traffic for Flannel overlay network
+
+   ```bash
+   $ sudo ufw allow in on flannel.1
+   $ sudo ufw allow out on flannel.1
+   ```
+
+5. Enable packet forwarding in the kernel. Open the `sysctl.conf` file for and
+   uncomment the following lines to route packets between interfaces:
+
+   ```
+   $ sudo nano /etc/ufw/sysctl.conf
+   #net/ipv4/ip_forward=1
+   #net/ipv6/conf/default/forwarding=1
+   #net/ipv6/conf/all/forwarding=1
+   ```
+
+   Remove the leading `#` from the lines to uncomment them:
+
+   ```
+   $ sudo nano /etc/ufw/sysctl.conf
+   net/ipv4/ip_forward=1
+   net/ipv6/conf/default/forwarding=1
+   net/ipv6/conf/all/forwarding=1
+   ```
+
+   Save the file and exit the editor.
+
+6. After opening these ports, reload the firewall to apply the changes:
+
+   ```bash
+   $ sudo ufw reload
+   ```
+
+7. Afterwards you firewall table should include these rules:
+
+   ```bash
+   $ sudo ufw status verbose
+   Status: active
+   Logging: on (low)
+   Default: deny (incoming), deny (outgoing), deny (routed)
+   New profiles: skip
+
+   To                         Action      From
+   --                         ------      ----
+   22/tcp                     ALLOW IN    Anywhere
+   6443/tcp                   ALLOW IN    10.1.1.0/24
+   2379:2380/tcp              ALLOW IN    10.1.1.0/24
+   10250/tcp                  ALLOW IN    10.1.1.0/24
+   10251/tcp                  ALLOW IN    127.0.0.1
+   10252/tcp                  ALLOW IN    127.0.0.1
+   8285/udp                   ALLOW IN    Anywhere
+   8472/udp                   ALLOW IN    Anywhere
+   6443                       ALLOW IN    10.244.0.0/16
+   10.244.0.0/16              ALLOW IN    10.244.0.0/16
+   Anywhere on flannel.1      ALLOW IN    Anywhere
+   22/tcp (v6)                ALLOW IN    Anywhere (v6)
+   8285/udp (v6)              ALLOW IN    Anywhere (v6)
+   8472/udp (v6)              ALLOW IN    Anywhere (v6)
+   Anywhere (v6) on flannel.1 ALLOW IN    Anywhere (v6)
+
+   53                         ALLOW OUT   Anywhere
+   123/udp                    ALLOW OUT   Anywhere
+   10.1.1.0/24 6443/tcp       ALLOW OUT   Anywhere
+   10.1.1.0/24 2379:2380/tcp  ALLOW OUT   Anywhere
+   10.1.1.0/24 10250/tcp      ALLOW OUT   Anywhere
+   127.0.0.1 10251/tcp        ALLOW OUT   Anywhere
+   127.0.0.1 10252/tcp        ALLOW OUT   Anywhere
+   8285/udp                   ALLOW OUT   Anywhere
+   8472/udp                   ALLOW OUT   Anywhere
+   10.244.0.0/16 6443         ALLOW OUT   Anywhere
+   10.244.0.0/16              ALLOW OUT   Anywhere
+   Anywhere                   ALLOW OUT   Anywhere on flannel.1
+   53 (v6)                    ALLOW OUT   Anywhere (v6)
+   123/udp (v6)               ALLOW OUT   Anywhere (v6)
+   8285/udp (v6)              ALLOW OUT   Anywhere (v6)
+   8472/udp (v6)              ALLOW OUT   Anywhere (v6)
+   Anywhere (v6)              ALLOW OUT   Anywhere (v6) on flannel.1
+   ```
+
+For details on the ports required to be allowed for Flannel, please see the
+[Flannel documentation on firewalls](https://github.com/flannel-io/flannel/blob/master/Documentation/troubleshooting.md#firewalls)
 
 ## Lesson Conclusion
 
-Congratulations! With all control plane nodes successfully joined and the
-high-availability configuration verified, your Kubernetes cluster is now more
-resilient and can withstand node failures. In the next lesson, we will install a
-pod network (CNI plugin) to enable communication between all pods within the
-cluster.
+Congratulations! With the CNI plugin installed and verified, your Kubernetes
+cluster is now ready to support communication between all pods across nodes. In
+the next lesson, we will learn how to join additional Raspberry Pi devices as
+control plane or worker nodes to create a highly available cluster.
 
 You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-12).
+[the next section](/building-a-production-ready-kubernetes-cluster-from-scratch/section-5).

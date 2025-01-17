@@ -16,6 +16,11 @@ Kubernetes cluster from scratch. Make sure you have completed the
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
+<div class="alert-warning" role="alert">
+<strong>WARNING:</strong> All commands used in this lesson require <code>sudo</code> privileges.
+Either prepend <code>sudo</code> to each command or switch to the root user using <code>sudo -i</code>.
+</div>
+
 ## Configuring the Network for Your Cluster
 
 To ensure your Raspberry Pi devices are properly connected, follow these steps:
@@ -33,7 +38,7 @@ To ensure your Raspberry Pi devices are properly connected, follow these steps:
   with the other Raspberry Pi devices. For example:
   ```bash
   $ ping 10.1.1.1
-  $ ssh pi@10.1.1.1
+  $ ssh -i ~/.ssh/k8s_cluster_id_ed25519 pi@10.1.1.1
   ```
 
 ## Configuring Additional Network Security
@@ -55,7 +60,7 @@ outgoing traffic on each Raspberry Pi. It should be pre-installed on the
 Raspberry Pi OS, but you can install it using the following command:
 
 ```bash
-$ sudo apt install ufw
+$ apt install ufw
 ```
 
 Next, configure the firewall rules to deny any incoming and outgoing traffic by
@@ -63,21 +68,21 @@ default but make exceptions for SSH access:
 
 ```bash
 # Deny all incoming and outgoing traffic by default
-$ sudo ufw default deny incoming
-$ sudo ufw default deny outgoing
+$ ufw default deny incoming
+$ ufw default deny outgoing
 
 # Allow SSH access
-$ sudo ufw allow ssh
+$ ufw allow ssh
 ```
 
 Finally, enable the firewall to apply the rules:
 
 ```bash
 # Enable the firewall
-$ sudo ufw enable
+$ ufw enable
 
 # Verify the firewall status
-$ sudo ufw status verbose
+$ ufw status verbose
 Status: active
 Logging: on (low)
 Default: deny (incoming), deny (outgoing), deny (routed)
@@ -89,9 +94,10 @@ To                         Action      From
 22/tcp (v6)                ALLOW IN    Anywhere (v6)
 ```
 
-> [!WARNING] When enabling `ufw`, you may be prompted to allow or deny certain
-> services. Ensure that you allow SSH access to prevent being locked out of your
-> devices.
+<div class="alert-warning" role="alert">
+<strong>WARNING:</strong> When enabling <code>ufw</code>, you may be prompted to allow or deny certain services.
+Ensure that you allow SSH access to prevent being locked out of your devices.
+</div>
 
 Next we will need to configure the firewall to allow traffic to system services
 such as DNS and NTP. This will allow your Raspberry Pi devices to resolve domain
@@ -99,14 +105,14 @@ names and synchronize time with external servers:
 
 ```bash
 # Allow  outcoming traffic for the DNS service (port 53)
-$ sudo ufw allow out domain
+$ ufw allow out domain
 
 # Allow outcoming traffic for the NTP service (port 123)
-$ sudo ufw allow out ntp
+$ ufw allow out ntp
 
 # Allow outgoing HTTP and HTTPS traffic required to fetch external resources
-$ sudo ufw allow out http
-$ sudo ufw allow out https
+$ ufw allow out http
+$ ufw allow out https
 ```
 
 To support outgoing ICMP traffic, which is used for `ping` and other network
@@ -122,10 +128,10 @@ Save the file and reload the firewall to apply the changes:
 
 ```bash
 # Reload the firewall
-$ sudo ufw reload
+$ ufw reload
 
 # Verify the firewall status
-$ sudo ufw status verbose
+$ ufw status verbose
 Status: active
 Logging: on (low)
 Default: deny (incoming), deny (outgoing), deny (routed)
@@ -155,33 +161,8 @@ PING philprime.dev (104.21.66.10) 56(84) bytes of data.
 64 bytes from 104.21.66.10 (104.21.66.10): icmp_seq=1 ttl=57 time=3.87 ms
 ```
 
-To test the NTP service, you can check the time synchronization with an external
-NTP server using `chrony`:
-
-```bash
-# Trigger a time synchronization
-$ sudo chronyc -a makestep
-200 OK
-
-# Check the synchronization status
-$ chronyc sources
-MS Name/IP address         Stratum Poll Reach LastRx Last sample
-===============================================================================
-^- 185.119.117.217               2   6     0  1095    -99us[  -99us] +/- 9024us
-^- 91.206.8.70                   2   6     0  1095   +593us[ +708us] +/-   29ms
-^- 185.144.161.170               2   6     0  1095  -1116ns[ +113us] +/- 5438us
-^- 91.206.8.34                   2   6     1     0   +752us[ +752us] +/-   26ms
-```
-
-Looking at the output of `chronyc sources`, you should see a list of NTP servers
-with their synchronization status. The `*` symbol indicates the selected source
-for synchronization, while the `^` symbol indicates candidate sources.
-
-If you see a `?` or `x` symbol, it means the source is unreachable.
-
-> [!NOTE] The list of NTP servers may vary depending on your location and
-> network configuration. Ensure that the selected sources are reachable and
-> provide accurate time synchronization.
+Testing the NTP service will require additional setup, which is covered in the
+[Lesson 10](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-10).
 
 ## Lesson Conclusion
 
