@@ -1,7 +1,7 @@
 GIT
   remote: https://github.com/jekyll/minima.git
-  revision: 6b9b78dad3e5c9f733c901e10287465735b36169
-  ref: 6b9b78dad3e5c9f733c901e10287465735b36169
+  revision: 93b192192c0777018c9ac4daadaafd5af5a4f750
+  ref: 93b192192c0777018c9ac4daadaafd5af5a4f750
   specs:
     minima (3.0.0.dev)
       jekyll (>= 3.5, < 5.0)
@@ -13,7 +13,7 @@ GEM
   specs:
     addressable (2.8.6)
       public_suffix (>= 2.0.2, < 6.0)
-    bigdecimal (3.1.8)
+    bigdecimal (3.1.9)
     colorator (1.1.0)
     concurrent-ruby (1.2.3)
     em-websocket (0.5.3)
@@ -26,7 +26,7 @@ GEM
       net-http
     ffi (1.16.3)
     forwardable-extended (2.6.0)
-    google-protobuf (4.27.0)
+    google-protobuf (4.27.5)
       bigdecimal
       rake (>= 13)
     http_parser.rb (0.8.0)
