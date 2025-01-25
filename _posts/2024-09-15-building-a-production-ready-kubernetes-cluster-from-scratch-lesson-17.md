@@ -161,9 +161,22 @@ Ensure that all necessary kernel modules are loaded. Run the following commands
 to load the required modules:
 
 ```bash
-$ modprobe iscsi_tcp
+$ sudo modprobe iscsi_tcp
 ```
 
+To make these changes persistent, create a configuration file:
+
+```bash
+$ sudo touch /etc/modules-load.d/longhorn.conf
+$ sudo tee /etc/modules-load.d/longhorn.conf <<EOF
+dm_crypt
+iscsi_tcp
+EOF
+
+$ cat /etc/modules-load.d/longhorn.conf
+dm_crypt
+iscsi_tcp
+```
 ### Verifying the Longhorn Dependencies
 
 After installing the dependencies, you can run the preflight check again to

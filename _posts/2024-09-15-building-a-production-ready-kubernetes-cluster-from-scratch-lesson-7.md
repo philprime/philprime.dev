@@ -80,6 +80,7 @@ Finally, enable the firewall to apply the rules:
 ```bash
 # Enable the firewall
 $ ufw enable
+Command may disrupt existing ssh connections. Proceed with operation (y|n)? y
 
 # Verify the firewall status
 $ ufw status verbose
@@ -106,13 +107,22 @@ names and synchronize time with external servers:
 ```bash
 # Allow  outcoming traffic for the DNS service (port 53)
 $ ufw allow out domain
+Rule added
+Rule added (v6)
 
 # Allow outcoming traffic for the NTP service (port 123)
 $ ufw allow out ntp
+Rule added
+Rule added (v6)
 
 # Allow outgoing HTTP and HTTPS traffic required to fetch external resources
 $ ufw allow out http
+Rule added
+Rule added (v6)
+
 $ ufw allow out https
+Rule added
+Rule added (v6)
 ```
 
 To support outgoing ICMP traffic, which is used for `ping` and other network

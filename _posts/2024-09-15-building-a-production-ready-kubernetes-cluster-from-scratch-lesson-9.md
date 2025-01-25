@@ -85,7 +85,7 @@ To confirm that containerd is installed and configured correctly, checkout the
 status of the containerd service:
 
 ```bash
-$ sudo systemctl status containerd
+$ systemctl status containerd
 ● containerd.service - containerd container runtime
      Loaded: loaded (/lib/systemd/system/containerd.service; enabled; preset: enabled)
      Active: active (running) since Sun 2025-01-12 20:16:00 CET; 21s ago

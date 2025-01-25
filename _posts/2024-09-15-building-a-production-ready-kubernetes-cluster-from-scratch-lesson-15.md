@@ -134,6 +134,19 @@ $ sudo netstat -tuln | grep 6443
 tcp        0      0 10.1.1.3:6443           0.0.0.0:*               LISTEN
 ```
 
+To connect to the local API server, you must also configure the `kubectl` client
+configuration to use the local IP address of the control plane node. Edit the
+`~/.kube/config` file and replace the `server` field with the local IP address of
+the control plane node:
+
+```yaml
+clusters:
+- cluster:
+    certificate-authority-data: DATA+OMITTED
+    server: https://10.1.1.X:6443
+```
+
+
 ```bash
 $ kubectl get pods -n kube-system -w
 ```
@@ -266,6 +279,8 @@ Apply the changes to the kernel by running:
 
 ```bash
 $ sudo sysctl -p
+net.ipv4.ip_forward = 1
+net.ipv4.ip_nonlocal_bind = 1
 ```
 
 Before we are able to start the Keepalived service, we need to allow the service
@@ -284,7 +299,37 @@ Enable and start the Keepalived service on each control plane node:
 
 ```bash
 $ sudo systemctl start keepalived
+
 $ sudo systemctl enable keepalived
+Synchronizing state of keepalived.service with SysV service script with /lib/systemd/systemd-sysv-install.
+Executing: /lib/systemd/systemd-sysv-install enable keepalived
+
+$ sudo systemctl status keepalived
+● keepalived.service - Keepalive Daemon (LVS and VRRP)
+     Loaded: loaded (/lib/systemd/system/keepalived.service; enabled; preset: enabled)
+     Active: active (running) since Sat 2025-01-25 15:52:48 CET; 17s ago
+       Docs: man:keepalived(8)
+             man:keepalived.conf(5)
+             man:genhash(1)
+             https://keepalived.org
+   Main PID: 6993 (keepalived)
+      Tasks: 2 (limit: 9566)
+     Memory: 3.8M
+        CPU: 14ms
+     CGroup: /system.slice/keepalived.service
+             ├─6993 /usr/sbin/keepalived --dont-fork
+             └─6994 /usr/sbin/keepalived --dont-fork
+
+Jan 25 15:52:48 kubernetes-node-3 Keepalived[6993]: Running on Linux 6.6.62+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.6.62-1+rpt1 (2024-11-25) (built for Linux 5.19.11)
+Jan 25 15:52:48 kubernetes-node-3 Keepalived[6993]: Command line: '/usr/sbin/keepalived' '--dont-fork'
+Jan 25 15:52:48 kubernetes-node-3 Keepalived[6993]: Configuration file /etc/keepalived/keepalived.conf
+Jan 25 15:52:48 kubernetes-node-3 Keepalived[6993]: NOTICE: setting config option max_auto_priority should result in better keepalived performance
+Jan 25 15:52:48 kubernetes-node-3 Keepalived[6993]: Starting VRRP child process, pid=6994
+Jan 25 15:52:48 kubernetes-node-3 systemd[1]: keepalived.service: Got notification message from PID 6994, but reception only permitted for main PID 6993
+Jan 25 15:52:48 kubernetes-node-3 Keepalived_vrrp[6994]: (/etc/keepalived/keepalived.conf: Line 13) Truncating auth_pass to 8 characters
+Jan 25 15:52:48 kubernetes-node-3 Keepalived[6993]: Startup complete
+Jan 25 15:52:48 kubernetes-node-3 systemd[1]: Started keepalived.service - Keepalive Daemon (LVS and VRRP).
+Jan 25 15:52:48 kubernetes-node-3 Keepalived_vrrp[6994]: (VI_1) Entering BACKUP STATE (init)
 ```
 
 To make sure the Keepalived service is running correctly, reboot the system to
@@ -440,17 +485,6 @@ $ systemctl status haproxy
 You should see the status of the HAProxy service as `active (running)` on all
 control plane nodes.
 
-To verify that the virtual IP address is correctly assigned and the load
-balancer is working, you can check the network interfaces on each control plane
-node:
-
-```bash
-$ ip addr show
-```
-
-It should show the virtual IP address `10.1.233.1` assigned to the `eth0` on the
-all nodes.
-
 Finally, you can test the reachability of the Kubernetes API server on every
 node:
 
@@ -473,6 +507,8 @@ ok
 ```
 
 ## Configure Kubernetes to Use the Load Balancer
+
+REALLY?
 
 To ensure that Kubernetes uses the virtual IP address for the API server, you
 need to update the `kubeconfig` file on each control plane node. Edit the

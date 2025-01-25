@@ -29,7 +29,14 @@ before continuing here. The full list of lessons in the series can be found
     $ sudo kubeadm init \
       --pod-network-cidr=10.244.0.0/16 \
       --control-plane-endpoint=10.1.1.1 \
+      --apiserver-cert-extra-sans=127.0.0.1 \
       --apiserver-cert-extra-sans=10.1.233.1 \
+      --apiserver-cert-extra-sans=10.1.1.1 \
+      --apiserver-cert-extra-sans=10.1.1.2 \
+      --apiserver-cert-extra-sans=10.1.1.3 \
+      --apiserver-cert-extra-sans=kubernetes-node-1 \
+      --apiserver-cert-extra-sans=kubernetes-node-2 \
+      --apiserver-cert-extra-sans=kubernetes-node-3 \
       --upload-certs
     ```
 
@@ -43,7 +50,12 @@ before continuing here. The full list of lessons in the series can be found
     - The `--apiserver-cert-extra-sans` flag is used to add additional IP
       addresses to the API server certificate. This is useful when you have
       multiple IP addresses on the control plane node, such as the virtual IP
-      `10.1.233.1` used by a load balancer (which we will set up later).
+      `10.1.233.1` used by a load balancer (which we will set up later) or
+      `127.0.0.1` when the kube-api-server is bound to the local host. If you
+      are planning on port-forwarding the API server, you should also add the
+      external IP address of the control plane node to the certificate by
+      repeating the argument `--apiserver-cert-extra-sans=EXTERNAL_IP_ADDRESS`,
+      i.e. `--apiserver-cert-extra-sans=10.0.0.10`
 
     At the beginning of the output, you might see a warning about the remote
     version being newer than the local version. This is because we are using an

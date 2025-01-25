@@ -59,11 +59,9 @@ To confirm that Flannel is correctly installed, check the status of the pods in
 the `kube-flannel` namespace:
 
 ```bash
-$ kubectl get pods -n kube-flannel -o wide
+$ kubectl get pods -n kube-flannel -o wide --watch
 NAME                    READY   STATUS    RESTARTS      AGE   IP         NODE                NOMINATED NODE   READINESS GATES
-kube-flannel-ds-4c28n   1/1     Running   0             1m    10.1.1.2   kubernetes-node-2   <none>           <none>
 kube-flannel-ds-8d9tg   1/1     Running   0             1m    10.1.1.1   kubernetes-node-1   <none>           <none>
-kube-flannel-ds-j8xnq   1/1     Running   0             1m    10.1.1.3   kubernetes-node-3   <none>           <none>
 ```
 
 You should see several `kube-flannel-ds` pods, one for each node, with a status

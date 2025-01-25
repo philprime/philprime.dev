@@ -16,6 +16,11 @@ cluster from scratch. Make sure you have completed the
 before continuing here. The full list of lessons in the series can be found
 [in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
 
+<div class="alert-warning" role="alert">
+<strong>WARNING:</strong> All commands used in this lesson require <code>sudo</code> privileges.
+Either prepend <code>sudo</code> to each command or switch to the root user using <code>sudo -i</code>.
+</div>
+
 ## Configuring the NVMe SSDs for Use
 
 Once the SSDs are physically installed, the next step is to configure them for
@@ -54,7 +59,7 @@ use with the Raspberry Pi after connecting to them via SSH:
    partition on it:
 
    ```bash
-   $ sudo fdisk /dev/nvme0n1
+   $ fdisk /dev/nvme0n1
    ```
 
    Follow these steps in the interactive `fdisk` prompt:
@@ -117,7 +122,7 @@ use with the Raspberry Pi after connecting to them via SSH:
    systems:
 
    ```bash
-   $ sudo mkfs.ext4 /dev/nvme0n1p1
+   $ mkfs.ext4 /dev/nvme0n1p1
    ```
 
    This process may take a few moments depending on the size of the SSD.
@@ -126,7 +131,7 @@ use with the Raspberry Pi after connecting to them via SSH:
    location, then mount the SSD to that directory:
 
    ```bash
-   $ sudo mkdir -p /mnt/nvme
+   $ mkdir -p /mnt/nvme
    ```
 
 6. We want the SSD to be mounted automatically on boot of the system. We can
@@ -139,7 +144,7 @@ use with the Raspberry Pi after connecting to them via SSH:
    Verify the entry by running:
 
    ```bash
-   $ sudo mount -a
+   $ mount -a
    ```
 
 ## Verifying the SSD Setup

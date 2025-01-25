@@ -83,7 +83,10 @@ settings to optimize the nodes for Kubernetes:
   overlay
   br_netfilter
   EOF
+
   $ cat /etc/modules-load.d/k8s.conf
+  overlay
+  br_netfilter
   ```
 
 - Adjust the sysctl settings for Kubernetes networking. Configure the necessary
@@ -95,13 +98,34 @@ settings to optimize the nodes for Kubernetes:
   net.ipv4.ip_forward                 = 1
   net.bridge.bridge-nf-call-ip6tables = 1
   EOF
+
   $ cat /etc/sysctl.d/k8s.conf
+  net.bridge.bridge-nf-call-iptables  = 1
+  net.ipv4.ip_forward                 = 1
+  net.bridge.bridge-nf-call-ip6tables = 1
   ```
 
   Apply the changes:
 
   ```bash
   $ sysctl --system
+  * Applying /usr/lib/sysctl.d/50-pid-max.conf ...
+  * Applying /etc/sysctl.d/98-rpi.conf ...
+  * Applying /usr/lib/sysctl.d/99-protect-links.conf ...
+  * Applying /etc/sysctl.d/99-sysctl.conf ...
+  * Applying /etc/sysctl.d/k8s.conf ...
+  * Applying /etc/sysctl.conf ...
+  kernel.pid_max = 4194304
+  kernel.printk = 3 4 1 3
+  vm.min_free_kbytes = 16384
+  net.ipv4.ping_group_range = 0 2147483647
+  fs.protected_fifos = 1
+  fs.protected_hardlinks = 1
+  fs.protected_regular = 2
+  fs.protected_symlinks = 1
+  net.bridge.bridge-nf-call-iptables = 1
+  net.ipv4.ip_forward = 1
+  net.bridge.bridge-nf-call-ip6tables = 1
   ```
 
 ## Enable CGroup Memory
@@ -175,10 +199,43 @@ for Kubernetes operations:
 
 ```bash
 $ apt update
+
 $ apt install -y chrony
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+Suggested packages:
+  dnsutils networkd-dispatcher
+The following packages will be REMOVED:
+  systemd-timesyncd
+The following NEW packages will be installed:
+  chrony
+0 upgraded, 1 newly installed, 1 to remove and 0 not upgraded.
+Need to get 278 kB of archives.
+After this operation, 540 kB of additional disk space will be used.
+Get:1 http://deb.debian.org/debian bookworm/main arm64 chrony arm64 4.3-2+deb12u1 [278 kB]
+Fetched 278 kB in 0s (7,947 kB/s)
+(Reading database ... 79942 files and directories currently installed.)
+Removing systemd-timesyncd (252.33-1~deb12u1) ...
+Selecting previously unselected package chrony.
+(Reading database ... 79926 files and directories currently installed.)
+Preparing to unpack .../chrony_4.3-2+deb12u1_arm64.deb ...
+Unpacking chrony (4.3-2+deb12u1) ...
+Setting up chrony (4.3-2+deb12u1) ...
+
+Creating config file /etc/chrony/chrony.conf with new version
+
+Creating config file /etc/chrony/chrony.keys with new version
+dpkg-statoverride: warning: --update given but /var/log/chrony does not exist
+Created symlink /etc/systemd/system/chronyd.service → /lib/systemd/system/chrony.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/chrony.service → /lib/systemd/system/chrony.service.
+Processing triggers for dbus (1.14.10-1~deb12u1) ...
+Processing triggers for man-db (2.11.2-2) ...
+
 $ systemctl enable chrony
 Synchronizing state of chrony.service with SysV service script with /lib/systemd/systemd-sysv-install.
 Executing: /lib/systemd/systemd-sysv-install enable chrony
+
 $ systemctl start chrony
 ```
 

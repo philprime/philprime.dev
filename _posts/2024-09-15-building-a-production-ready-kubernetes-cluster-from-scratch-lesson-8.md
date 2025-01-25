@@ -77,7 +77,27 @@ follow these steps (or follow the
 
     ```bash
     $ apt update
+    Hit:1 http://deb.debian.org/debian bookworm InRelease
+    Hit:2 http://deb.debian.org/debian-security bookworm-security InRelease
+    Hit:3 http://deb.debian.org/debian bookworm-updates InRelease
+    Hit:4 http://archive.raspberrypi.com/debian bookworm InRelease
+    Get:5 https://prod-cdn.packages.k8s.io/repositories/isv:/kubernetes:/core:/stable:/v1.31/deb  InRelease [1,186 B]
+    Get:6 https://prod-cdn.packages.k8s.io/repositories/isv:/kubernetes:/core:/stable:/v1.31/deb  Packages [9,749 B]
+    Fetched 10.9 kB in 1s (21.1 kB/s)
+    Reading package lists... Done
+    Building dependency tree... Done
+    Reading state information... Done
+    All packages are up to date.
+
     $ apt install -y kubelet kubeadm kubectl
+    Reading package lists... Done
+    Building dependency tree... Done
+    Reading state information... Done
+    The following additional packages will be installed:
+      conntrack cri-tools kubernetes-cni
+    The following NEW packages will be installed:
+      conntrack cri-tools kubeadm kubectl kubelet kubernetes-cni
+    ...
     ```
 
 5.  Holding these packages ensures they will not be automatically updated, which
@@ -85,6 +105,9 @@ follow these steps (or follow the
 
     ```bash
     $ apt-mark hold kubelet kubeadm kubectl
+    kubelet set on hold.
+    kubeadm set on hold.
+    kubectl set on hold.
     ```
 
 ## Verifying the Installation
