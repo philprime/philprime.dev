@@ -115,7 +115,7 @@ DEPENDENCIES
   rouge
   tzinfo (~> 1.2)
   tzinfo-data
-  wdm (~> 0.1.1)
+  wdm (~> 0.2.0)
   webrick
 
 BUNDLED WITH
