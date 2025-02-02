@@ -141,17 +141,17 @@ Replace `X` with the corresponding number for each Raspberry Pi device.
 If all devices respond successfully, your network configuration is correct, and
 your Raspberry Pi devices are ready for the next steps.
 
-> [!TIP] You can also connect the Raspberry Pi devices to a monitor and keyboard
-> to verify that the devices boot correctly and that the network configuration
-> is applied. You can see the IP address assigned to the device at the login:
->
-> ```bash
-> Debian GNU/Linux 11 kubernetes-node-X tty1
->
-> My IP address is 10.1.1.X
->
-> kubernetes-node-X login:
-> ```
+<div class="alert alert-tip">
+  <strong>TIP:</strong> You can also connect the Raspberry Pi devices to a monitor and keyboard to verify that the devices boot correctly and that the network configuration is applied. You can see the IP address assigned to the device at the login:
+
+  <pre>
+  Debian GNU/Linux 11 kubernetes-node-X tty1
+
+  My IP address is 10.1.1.X
+
+  kubernetes-node-X login:
+ </pre>
+</div>
 
 ## Lesson Conclusion
 

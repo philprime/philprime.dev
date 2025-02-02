@@ -26,20 +26,20 @@ Either prepend <code>sudo</code> to each command or switch to the root user usin
 To begin, make sure you are connected to each Raspberry Pi via SSH. Perform the
 following steps on each device:
 
-1. Update the package list and install required dependencies:
+Update the package list and install required dependencies:
 
-   ```bash
-   $ apt update
-   $ apt install -y apt-transport-https curl gnupg2 software-properties-common
-   ```
+```bash
+$ apt update
+$ apt install -y apt-transport-https curl gnupg2 software-properties-common
+```
 
-2. Install containerd:
+Next you can install containerd using the following commands:
 
-   ```bash
-   $ apt install -y containerd
-   ```
+```bash
+$ apt install -y containerd
+```
 
-## Configuring containerd for Kubernetes
+## Preparing the containerd Configuration
 
 Once containerd is installed, it needs to be configured properly to work with
 Kubernetes.
@@ -50,6 +50,37 @@ Create a default configuration file for containerd:
 $ mkdir -p /etc/containerd
 $ containerd config default | tee /etc/containerd/config.toml
 ```
+
+## Configuring containerd to Use the NVMe Drive
+
+Configure containerd to use the path `/mnt/nvme/containerd` as the root dir, so that
+containerd can store its data on the NVMe drive:
+
+```bash
+$ mkdir -p /mnt/nvme/containerd
+```
+
+Open the configuration file with a text editor like `vi` or `nano` to modify the
+`root` setting:
+
+```bash
+$ vi /etc/containerd/config.toml
+```
+
+Find the line that specifies the `root` setting (typically under the
+`[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]`
+section) and set it to `/mnt/nvme/containerd`. This section is the configuration related to
+the `runc` runtime, which is the default runtime used by containerd:
+
+```toml
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+  root = "/mnt/nvme/containerd"
+```
+
+Save the changes and exit the editor (in `vi`, press `Esc` followed by `:wq` and
+`Enter`).
+
+## Configuring containerd for Kubernetes
 
 Open the configuration file with a text editor like `vi` or `nano` to modify the
 cgroup driver:
@@ -70,6 +101,15 @@ using `/SystemdCgroup`:
 
 Save the changes and exit the editor (in `vi`, press `Esc` followed by `:wq` and
 `Enter`).
+
+## Adding symbolic link to the containerd directory
+
+Adding a symbolic link to the containerd directory will allow containerd to
+store its data on the NVMe drive:
+
+```bash
+$ ln -s /mnt/nvme/containerd /var/lib/containerd
+```
 
 Restart containerd to apply the configuration changes and enable it to start on
 boot:
@@ -119,4 +159,4 @@ we will prepare the nodes for Kubernetes initialization by ensuring they meet
 all requirements and are correctly configured.
 
 You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-9).
+[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-10).

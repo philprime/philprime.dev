@@ -103,7 +103,7 @@ is necessary to avoid conflicts when the virtual IP address is assigned by the
 load balancer. Edit the Kubernetes API server configuration file:
 
 ```bash
-$ sudo nano /etc/kubernetes/manifests/kube-apiserver.yaml
+$ sudo vi /etc/kubernetes/manifests/kube-apiserver.yaml
 ```
 
 Locate the `--advertise-address` and `--bind-address` to set both to the local
@@ -146,15 +146,35 @@ clusters:
     server: https://10.1.1.X:6443
 ```
 
-
 ```bash
-$ kubectl get pods -n kube-system -w
+$ kubectl get pods -n kube-system -w -v=6
+I0201 18:35:22.919015    8694 loader.go:395] Config loaded from file:  /root/.kube/config
+I0201 18:35:22.949778    8694 round_trippers.go:553] GET https://10.1.1.3:6443/api/v1/namespaces/kube-system/pods?limit=500 200 OK in 23 milliseconds
+NAME                                        READY   STATUS    RESTARTS       AGE
+coredns-7c65d6cfc9-px2jq                    1/1     Running   1 (52m ago)    17h
+coredns-7c65d6cfc9-vclq2                    1/1     Running   1 (52m ago)    17h
+etcd-kubernetes-node-1                      1/1     Running   5 (52m ago)    14m
+etcd-kubernetes-node-2                      1/1     Running   1              30m
+etcd-kubernetes-node-3                      1/1     Running   1              10m
+kube-apiserver-kubernetes-node-1            1/1     Running   11 (52m ago)   17h
+kube-apiserver-kubernetes-node-2            1/1     Running   1              30m
+kube-apiserver-kubernetes-node-3            1/1     Running   0              89s
+kube-controller-manager-kubernetes-node-1   1/1     Running   1 (52m ago)    17h
+kube-controller-manager-kubernetes-node-2   1/1     Running   1              30m
+kube-controller-manager-kubernetes-node-3   1/1     Running   79             10m
+kube-proxy-2l4px                            1/1     Running   1 (52m ago)    17h
+kube-proxy-6l4wr                            1/1     Running   0              10m
+kube-proxy-r794n                            1/1     Running   0              30m
+kube-scheduler-kubernetes-node-1            1/1     Running   4 (52m ago)    17h
+kube-scheduler-kubernetes-node-2            1/1     Running   1              30m
+kube-scheduler-kubernetes-node-3            1/1     Running   81             10m
+I0201 18:35:22.963015    8694 round_trippers.go:553] GET https://10.1.1.3:6443/api/v1/namespaces/kube-system/pods?resourceVersion=7097&watch=true 200 OK in 1 milliseconds
 ```
 
 Wait for the API server pod to restart and become ready before proceeding.
 
 ```bash
-$ curl -k https://10.1.1.1:6443/healthz
+$ curl -k https://10.1.1.X:6443/healthz
 ok
 ```
 
@@ -344,15 +364,6 @@ After the system has rebooted, check the network interfaces to verify that the
 virtual IP address is assigned:
 
 ```bash
-$ sysctl net.ipv4.ip_forward
-net.ipv4.ip_forward = 1
-
-$ sysctl net.ipv4.ip_nonlocal_bind
-net.ipv4.ip_nonlocal_bind = 1
-
-$ ip addr show eth0 | grep 10.1.233.1
-    inet 10.1.233.1/32 scope global eth0
-
 $ systemctl status keepalived
 ● keepalived.service - Keepalive Daemon (LVS and VRRP)
      Loaded: loaded (/lib/systemd/system/keepalived.service; enabled; preset: enabled)
@@ -379,7 +390,22 @@ Jan 17 17:26:06 kubernetes-node-1 Keepalived_vrrp[805]: (VI_1) received lower pr
 Jan 17 17:26:07 kubernetes-node-1 Keepalived_vrrp[805]: (VI_1) received lower priority (99) advert from 10.1.1.2 - discarding
 Jan 17 17:26:08 kubernetes-node-1 Keepalived_vrrp[805]: (VI_1) received lower priority (99) advert from 10.1.1.2 - discarding
 Jan 17 17:26:08 kubernetes-node-1 Keepalived_vrrp[805]: (VI_1) Entering MASTER STATE
+
+$ sysctl net.ipv4.ip_forward
+net.ipv4.ip_forward = 1
+
+$ sysctl net.ipv4.ip_nonlocal_bind
+net.ipv4.ip_nonlocal_bind = 1
 ```
+
+To check if the virtual IP address is assigned to the network interface, run:
+
+```bash
+$ ip addr show eth0 | grep 10.1.233.1
+    inet 10.1.233.1/32 scope global eth0
+```
+
+On the master node, you should see the virtual IP address assigned to the network, while the backup nodes should not have the virtual IP address assigned.
 
 ## Configuring HAProxy
 
@@ -387,7 +413,7 @@ Configure HAProxy to load balance traffic to the Kubernetes API server on each
 control plane node. Edit the HAProxy configuration file:
 
 ```bash
-$ sudo nano /etc/haproxy/haproxy.cfg
+$ sudo vi /etc/haproxy/haproxy.cfg
 ```
 
 In this configuration file we need to define two sections: the `frontend`
@@ -508,7 +534,7 @@ ok
 
 ## Configure Kubernetes to Use the Load Balancer
 
-REALLY?
+TODO: Is this really the way to go?
 
 To ensure that Kubernetes uses the virtual IP address for the API server, you
 need to update the `kubeconfig` file on each control plane node. Edit the

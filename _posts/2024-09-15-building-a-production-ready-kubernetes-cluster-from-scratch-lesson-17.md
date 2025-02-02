@@ -96,6 +96,13 @@ on our primary node.
 environment before installing Longhorn. This command checks for the necessary
 dependencies and configurations required for Longhorn to run successfully.
 
+<div class="alert alert-warning">
+<strong>Warning:</strong> The preflight check needs to be run on every node in your
+Kubernetes cluster to ensure that all nodes meet the requirements for Longhorn.
+Make sure you have removed the `control-plane` taint from the nodes before
+running the preflight check using <code>kubectl taint nodes --all node-role.kubernetes.io/control-plane-</code>.
+</div>
+
 On the node you installed the CLI on, run the following command:
 
 ```bash
@@ -433,8 +440,8 @@ the bottom of the dialog.
 
 ![Longhorn Dashboard](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-4.png)
 
-When adding the disk you need to specify a name, e.g. `nvme-1`, the path of the
-disk, i.e. `/mnt/nvme`.
+When adding the disk you need to specify a name, e.g. `storage-1`, the path of the
+disk, i.e. `/mnt/nvme/storage-1`.
 
 For the disk type you can choose between `File System` and `Block Device`. The
 `File System` option is used when the disk is formatted with a file system,
@@ -490,6 +497,8 @@ the main dashboard. You can now see that the disk space has changed to `1.34 Ti`
 being available for use.
 
 ![Longhorn Dashboard](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-9.png)
+
+TODO: change to reserve 100GB because we use NVMe for other purposes as well.
 
 ### Adding NVMe Disks to Longhorn via the Kubernetes API
 

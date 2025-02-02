@@ -221,14 +221,55 @@ sample-app-789ff789c4-qjkkp   1/1     Running   0          9m8s    10.244.2.22  
 sample-app-789ff789c4-rh7nk   1/1     Running   0          5s      10.244.1.14   kubernetes-node-2
 ```
 
+# (Optional) Test Availability of the Kubernetes API Server
+
+To test the availability of the Kubernetes API server during a control plane
+node failure, you can run the following command on every node at the same time:
+
+```bash
+
 ## Cleaning up
 
 After testing the high-availability setup, you can clean up the sample
 application deployment by deleting it:
 
 ```bash
-$ kubectl delete deployment sample-app
+$ while true; do kubectl get nodes -v=6; sleep 1; done
+I0201 18:54:34.844034   14063 loader.go:395] Config loaded from file:  /home/pi/.kube/config
+I0201 18:54:34.867009   14063 round_trippers.go:553] GET https://10.1.233.1:6443/api/v1/nodes?limit=500 200 OK in 16 milliseconds
+NAME                STATUS     ROLES           AGE   VERSION
+kubernetes-node-1   Ready      control-plane   18h   v1.31.5
+kubernetes-node-2   Ready      control-plane   49m   v1.31.5
+kubernetes-node-3   Ready      control-plane   29m   v1.31.5
+...
 ```
+
+As you can see all nodes are listed with a status of "Ready". Now to test the high-availability setup, we will simulate a failure by stopping the `kubelet` service on the current HAProxy `MASTER` node, which should be `kubernetes-node-1`:
+
+```bash
+$ sudo systemctl stop kubelet
+```
+
+You will notice that the output changes to show that the `kubernetes-node-1` is no longer "Ready" and the other nodes are still operational:
+
+```bash
+...
+I0201 18:55:38.705804    7675 loader.go:395] Config loaded from file:  /home/pi/.kube/config
+I0201 18:55:38.726537    7675 round_trippers.go:553] GET https://10.1.233.1:6443/api/v1/nodes?limit=500 200 OK in 15 milliseconds
+NAME                STATUS     ROLES           AGE   VERSION
+kubernetes-node-1   NotReady   control-plane   18h   v1.31.5
+kubernetes-node-2   Ready      control-plane   50m   v1.31.5
+kubernetes-node-3   Ready      control-plane   30m   v1.31.5
+...
+```
+
+The failed node is now marked as "NotReady" and the other nodes are still operational. This demonstrates that the control plane is resilient to node failures and can continue to operate with the remaining nodes.
+
+Counter-Theory: If the high-availability would not work, it would not be possible to access the Kubernetes API server on the other nodes. This would result in an error message like `The connection to the server could not be established` when running the `kubectl get nodes` command.
+
+<div class="alert alert-warning">
+  <strong>Warning:</strong> Do not forget to restart the `kubelet` service on the failed node to restore the high-availability setup.
+</div>
 
 ## Lesson Conclusion
 

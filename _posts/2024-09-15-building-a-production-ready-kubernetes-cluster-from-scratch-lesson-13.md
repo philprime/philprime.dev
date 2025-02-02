@@ -45,8 +45,57 @@ $ sudo kubeadm join 10.1.1.1:6443 \
   --control-plane
 ```
 
-This command will connect the additional control plane nodes to the existing
-cluster and synchronize the necessary control plane components.
+In case you have lost the `kubeadm join` command, you can create a new certificate key and token by running these commands:
+
+```bash
+$ kubeadm init phase upload-certs --upload-certs
+[upload-certs] Storing the certificates in Secret "kubeadm-certs" in the "kube-system" Namespace
+[upload-certs] Using certificate key:
+d28d8618a4435b9173682516702696b6346b9b9c4c83e19dba03d478c672f85b
+
+$ kubeadm token create --print-join-command --certificate-key d28d8618a4435b9173682516702696b6346b9b9c4c83e19dba03d478c672f85b
+# Output:
+kubeadm join 10.1.1.1:6443 --token 9d83iw.dtu6bd7wc9n31s49 --discovery-token-ca-cert-hash sha256:da8ae30fec57d12427ddd753cc12befce7f7e6251fc2cb12cd784bdcfb45d82d --control-plane --certificate-key d28d8618a4435b9173682516702696b6346b9b9c4c83e19dba03d478c672f85b
+```
+
+## Changing the root-dir for containerd
+
+After the node has joined the cluster, you need to change the `root-dir` for
+the kubelet to use the NVMe drive. This is useful when pods require ephemeral storage.
+
+As a first step, stop the kubelet service:
+
+```bash
+$ systemctl stop kubelet
+```
+
+Then create a directory on the NVMe drive to store the kubelet data, move the existing kubelet data to the new location, and create a symlink to the new location. The symlink is necessary because some services might require the kubelet data to be in the default location:
+
+```bash
+$ mkdir -p /mnt/nvme/kubelet
+$ mv /var/lib/kubelet/* /mnt/nvme/kubelet
+$ ln -s /mnt/nvme/kubelet /var/lib/kubelet
+```
+
+Next, edit the systemctl override file for the kubelet service to set the `--root-dir` flag to the new location:
+
+```bash
+$ systemctl edit kubelet
+```
+
+Add the following lines to the file:
+
+```ini
+[Service]
+Environment="KUBELET_EXTRA_ARGS=--root-dir=/mnt/nvme/kubelet"
+```
+
+Save and close the file. Then reload the systemd manager configuration and start the kubelet service:
+
+```bash
+$ systemctl daemon-reload
+$ systemctl start kubelet
+```
 
 ## Verify the Nodes Have Joined the Cluster
 
