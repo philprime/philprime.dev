@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: page
 ---
 
 These are some of my projects:
