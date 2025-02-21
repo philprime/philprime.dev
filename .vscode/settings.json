@@ -2,5 +2,8 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[liquid]": {
     "editor.defaultFormatter": "Shopify.theme-check-vscode"
+  },
+  "files.associations": {
+    "*.liquid.html": "liquid"
   }
 }

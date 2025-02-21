@@ -1,12 +1,13 @@
 ---
-layout: page
+layout: page.liquid
 title: About
 permalink: /about/
 ---
 
 Hi, I'm Phil and I am a creator.
 
-At some point in the past I realised how flawed some parts of our daily lives truely are. At the same point I found myself in the space of software development.
+At some point in the past I realised how flawed some parts of our daily lives truely are. At the same point I found
+myself in the space of software development.
 
 I found my passion.
 

@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang='{{ page.lang | default: site.lang | default: 'en' }}'>
-  {%- render head.html.liquid -%}
+  {%- include head.liquid.html -%}
 
   <body>
-    {%- render header.html.liquid -%}
+    {%- include header.liquid.html -%}
 
     <main class='page-content' aria-label='Content'>
       <div class='wrapper'>
@@ -11,6 +11,6 @@
       </div>
     </main>
 
-    {%- render footer.html.liquid -%}
+    {%- include footer.liquid.html -%}
   </body>
 </html>

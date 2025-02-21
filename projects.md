@@ -1,5 +1,5 @@
 ---
-layout: page
+layout: page.liquid
 ---
 
 These are some of my projects:

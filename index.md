@@ -1,5 +1,5 @@
 ---
-layout: home
+layout: home.liquid
 ---
 
 ### Hi, I’m Phil – welcome to my personal website!
