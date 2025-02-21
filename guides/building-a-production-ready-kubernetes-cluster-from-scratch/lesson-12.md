@@ -29,7 +29,7 @@ policies, routes, and IP address assignments to ensure that all containers can c
 
 ## Why Choose Flannel as the CNI Plugin?
 
-We chose **Flannel** as our CNI plugin for this course because it is lightweight, simple to set up, and well-suited for
+We chose **Flannel** as our CNI plugin for this guide because it is lightweight, simple to set up, and well-suited for
 use with resource-constrained environments like Raspberry Pi devices. Flannel creates a virtual overlay network that
 connects all pods across the cluster, ensuring that each pod gets a unique IP address from a pre-defined CIDR range.
 This setup simplifies networking by abstracting the complexities of the underlying network infrastructure, making it

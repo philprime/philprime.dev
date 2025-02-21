@@ -3,39 +3,48 @@ layout: default.liquid
 ---
 {% include assign-guide.liquid.html %}
 
-<h1>{{ page.title | escape }} (S{{ page.guide_section_id }})</h1>
+<header>
+  <h1>Section {{ page.guide_section_id }}: {{ page.title | escape }}</h1>
+  <p style='font-size: 0.8em;'>
+    <span>
+      <a href='{{ guide.url }}'>{{ guide.title }}</a>
+    </span>
+  </p>
+</header>
 
-{{ content }}
+<div>
+  {{ content }}
 
-{% include guide-overview-link.liquid.html %}
+  {% include guide-overview-link.liquid.html %}
 
-{% assign lessons = site.pages
-  | where: 'guide_section_id', page.guide_section_id
-  | where_exp: 'item', 'item.url != page.url'
-  | sort: 'guide_lesson_id'
-%}
+  {% assign lessons = site.pages
+    | where: 'guide_section_id', page.guide_section_id
+    | where_exp: 'item', 'item.url != page.url'
+    | sort: 'guide_lesson_id'
+  %}
 
-<h2>Lessons</h2>
+  <h2>Lessons</h2>
 
-<ul>
-  {% for other_page in lessons %}
-    <li>
-      <p>
-        <a href='{{ other_page.url | relative_url }}'>
-          Lesson {{ other_page.guide_lesson_id }}: {{ other_page.title | escape }}
-        </a>
-      </p>
-      <blockquote>
-        <p>{{ other_page.guide_lesson_abstract }}</p>
-      </blockquote>
-    </li>
-  {% endfor %}
-</ul>
+  <ul>
+    {% for other_page in lessons %}
+      <li>
+        <p>
+          <a href='{{ other_page.url | relative_url }}'>
+            Lesson {{ other_page.guide_lesson_id }}: {{ other_page.title | escape }}
+          </a>
+        </p>
+        <blockquote>
+          <p>{{ other_page.guide_lesson_abstract }}</p>
+        </blockquote>
+      </li>
+    {% endfor %}
+  </ul>
 
-<h2>Getting Started</h2>
+  <h2>Getting Started</h2>
 
-<p>
-  To get started with the section, head over to the
-  <a href='{{ lessons.first.url | relative_url }}'>first lesson in this section</a> to
-  {{ page.guide_section_cta }}
-</p>
+  <p>
+    To get started with the section, head over to the
+    <a href='{{ lessons.first.url | relative_url }}'>first lesson in this section</a> to
+    {{ page.guide_section_cta }}
+  </p>
+</div>

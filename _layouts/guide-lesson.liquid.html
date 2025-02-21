@@ -2,45 +2,28 @@
 layout: default.liquid
 ---
 {% include assign-guide.liquid.html %}
+{% include assign-guide-section.liquid.html %}
 
-<article
-  class='post h-entry'
-  itemscope
-  itemtype='http://schema.org/BlogPosting'
->
-  <header class='post-header'>
-    <h1 class='post-title p-name' itemprop='name headline'>
-      {{ page.title | escape }}
-    </h1>
-    <p class='post-meta'>
-      <span>
-        Guide: <a href='{{ guide.url }}'>{{ guide.title }}</a>
-      </span>
-      <time
-        class='dt-published'
-        datetime='{{ page.date | date_to_xmlschema }}'
-        itemprop='datePublished'
-      >
-        {%- assign date_format = site.minima.date_format | default: '%b %-d, %Y' -%}
-        {{ page.date | date: date_format }}
-      </time>
-      {%- if page.author -%}
-        •
-        <span itemprop='author' itemscope itemtype='http://schema.org/Person'
-          ><span class='p-author h-card' itemprop='name'>{{ page.author }}</span></span
-        >
-      {%- endif -%}
-    </p>
-  </header>
+<header>
+  <h1>Lesson {{ page.guide_lesson_id }}: {{ page.title | escape }}</h1>
+  <p style='font-size: 0.8em;'>
+    <span>
+      <a href='{{ guide.url }}'>{{ guide.title }}</a>
+    </span>
+    /
+    <span>
+      <a href='{{ guide_section.url }}'>{{ guide_section.title }}</a>
+    </span>
+  </p>
+</header>
 
-  <div class='post-content e-content' itemprop='articleBody'>
-    {{ content }}
+<div>
+  {{ content }}
 
-    <h2>Lesson Conclusion</h2>
+  <h2>Lesson Conclusion</h2>
 
-    <p>
-      Congratulations! {{ page.guide_lesson_conclusion }} You have completed this lesson and you can now continue with
-      <a href='lesson-{{ page.guide_lesson_id | plus: 1 }}'>the next one</a>.
-    </p>
-  </div>
-</article>
+  <p>
+    Congratulations! {{ page.guide_lesson_conclusion }} You have completed this lesson and you can now continue with
+    <a href='lesson-{{ page.guide_lesson_id | plus: 1 }}'>the next one</a>.
+  </p>
+</div>

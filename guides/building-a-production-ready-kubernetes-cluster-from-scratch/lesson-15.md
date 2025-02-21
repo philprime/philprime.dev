@@ -69,7 +69,7 @@ For a small-scale, self-hosted Kubernetes cluster using Raspberry Pi devices, th
   MetalLB can run in either Layer 2 or BGP mode, but it requires careful network configuration and is more suitable if
   you plan to scale your cluster or if you want a native Kubernetes solution.
 
-For this course, we will use **Keepalived with HAProxy** due to its simplicity, reliability, and low resource
+For this guide, we will use **Keepalived with HAProxy** due to its simplicity, reliability, and low resource
 requirements, making it ideal for a Raspberry Pi environment.
 
 ## Preparing the Kubernetes API Server

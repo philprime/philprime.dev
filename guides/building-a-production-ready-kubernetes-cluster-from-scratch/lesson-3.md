@@ -8,17 +8,17 @@ guide_section_id: 1
 guide_lesson_id: 3
 guide_lesson_abstract: >
   Learn the basics of Kubernetes, its core components, and the principles of high availability. Understand how these
-  concepts apply to the cluster you’ll build in this course.
+  concepts apply to the cluster you’ll build in this guide.
 ---
 
 In this lesson, you will learn the basics of Kubernetes, its core components, and the principles of high availability.
-Furthremore, you will understand how these concepts apply to the cluster you’ll build in this course.
+Furthremore, you will understand how these concepts apply to the cluster you’ll build in this guide.
 
 {% include guide-overview-link.liquid.html %}
 
 Before we dive into building our Kubernetes cluster, it’s essential to understand the key concepts that underpin
 Kubernetes and high availability, to establish a solid foundation and knowledge on terminology for the rest of the
-course.
+guide.
 
 ## What is Kubernetes?
 
@@ -79,7 +79,7 @@ or have high service-level agreements (SLAs).
 
 ## Applying These Concepts to Your Raspberry Pi Cluster
 
-Throughout this course, we will build a high-availability Kubernetes cluster using Raspberry Pi devices. You will learn
+Throughout this guide, we will build a high-availability Kubernetes cluster using Raspberry Pi devices. You will learn
 to set up multiple control plane nodes, configure etcd for fault tolerance, and use load balancers to distribute
-traffic. By the end of this course, you will have a robust cluster that can handle real-world scenarios and continue
+traffic. By the end of this guide, you will have a robust cluster that can handle real-world scenarios and continue
 running even when faced with challenges.

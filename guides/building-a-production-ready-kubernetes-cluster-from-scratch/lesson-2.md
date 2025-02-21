@@ -8,18 +8,18 @@ guide_section_id: 1
 guide_lesson_id: 2
 guide_lesson_abstract: >
   Discover the hardware and software requirements for building your Kubernetes cluster. Learn about the specific tools
-  and equipment you’ll need to follow along with the course.
+  and equipment you’ll need to follow along with the guide.
 ---
 
 {% include assign-guide.liquid.html %}
 
 In this lesson, you will discover the hardware and software requirements for building your Kubernetes cluster, and learn
-about the specific tools and equipment you’ll need to follow along with the course.
+about the specific tools and equipment you’ll need to follow along with the guide.
 
 {% include guide-overview-link.liquid.html %}
 
 Before we start building our Kubernetes cluster, it’s important to gather all the necessary tools and equipment. In this
-lesson, we’ll go over everything you need to follow along with this course, from hardware components to essential
+lesson, we’ll go over everything you need to follow along with this guide, from hardware components to essential
 software tools.
 
 ## Hardware Requirements
@@ -41,7 +41,7 @@ To set up your Kubernetes cluster, you will need several hardware components:
 
 // TODO: add more details on the hardware components
 
-The following is the exact list of hardware components used in this course:
+The following is the exact list of hardware components used in this guide:
 
 **Raspberry Pi 5:**
 
@@ -100,7 +100,7 @@ The following is the exact list of hardware components used in this course:
 
 ## Software Requirements
 
-You will also need several software tools to complete this course:
+You will also need several software tools to complete this guide:
 
 - An SSH client, such as OpenSSH (pre-installed on most Unix-like systems) or PuTTY (for Windows), is required to
   remotely access the Raspberry Pi devices.
