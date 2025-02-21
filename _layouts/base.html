@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="{{ page.lang | default: site.lang | default: " en" }}">
+
+{%- include head.html -%}
+
+<body>
+
+  {%- include header.html -%}
+
+  <main class="page-content" aria-label="Content">
+    <div class="wrapper">
+      {{ content }}
+    </div>
+  </main>
+
+  {%- include footer.html -%}
+
+  <script data-no-cookie async src="https://cdn.splitbee.io/sb.js"></script>
+  <script defer src="https://analytics.lab.philprime.dev/umami" data-website-id="d76c9bd6-29a0-4443-8e8d-142faa39eb12"></script>
+
+</body>
+
+</html>
