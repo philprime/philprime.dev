@@ -1,9 +1,10 @@
 title: philprime.dev
-author: Philip Niedertscheider
-email: hello@philprime.dev
+author:
+  name: Philip Niedertscheider
+  email: hello@philprime.dev
+
 description: >
-  Personal website of Philip Niedertscheider, highlighting his current projects
-  and endeavors.
+  Personal website of Philip Niedertscheider, highlighting his current projects and endeavors.
 
 show_excerpts: true
 future: true
@@ -15,21 +16,26 @@ github_username: philprime
 
 timezone: Europe/Vienna
 
-# Build settings
-theme: minima
-minima:
-  date_format: '%b %-d, %Y'
-  skin: dark
-
-  social_links:
-    - { platform: github, user_url: 'https://github.com/philprime' }
-    - { platform: twitter, user_url: 'https://twitter.com/philprimes' }
-    - {
-        platform: linkedin,
-        user_url: 'https://twitter.com/philipniedertscheider',
-      }
+date_format: '%b %-d, %Y'
+social_links:
+  - title: GitHub
+    url: 'https://github.com/philprime'
+    icon: github
+  - title: X
+    url: 'https://twitter.com/philprimes'
+    icon: x-twitter
+  - title: LinkedIn
+    url: 'https://twitter.com/philipniedertscheider'
+    icon: linkedin
+  - title: BlueSky
+    url: 'https://bsky.app/profile/philprime.dev'
+    icon: bluesky
+  - title: Stack Overflow
+    url: 'https://stackoverflow.com/users/3515302/philip-niedertscheider'
+    icon: stack-overflow
 
 plugins:
+  - jekyll-seo-tag
   - jekyll-analytics
   - jekyll-feed
   - jekyll-gist

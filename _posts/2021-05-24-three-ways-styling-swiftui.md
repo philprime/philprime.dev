@@ -1,11 +1,12 @@
 ---
-layout: post
-title: "3 ways of styling SwiftUI views"
+layout: post.liquid
+title: '3 ways of styling SwiftUI views'
 date: 2021-05-24 17:00:00 +0200
 categories: blog
 ---
 
-Styling a view is the most important part of building beautiful user interfaces. When it comes to the actual code syntax, we want reusable, customizable and clean solutions in our code.
+Styling a view is the most important part of building beautiful user interfaces. When it comes to the actual code
+syntax, we want reusable, customizable and clean solutions in our code.
 
 This article will show you these 3 ways of styling a `SwiftUI.View`:
 
@@ -13,7 +14,8 @@ This article will show you these 3 ways of styling a `SwiftUI.View`:
 2. Method chaining using return-self
 3. Styles in the Environment
 
-As a general rule of thumb, any approach is viable. In the end, it comes down to your general code-style guidelines and personal preferences.
+As a general rule of thumb, any approach is viable. In the end, it comes down to your general code-style guidelines and
+personal preferences.
 
 ![The property wrapper you will find in chapter 3 “Styles in Environment”](/assets/blog/three-ways-styling-swiftui/1_4Kk_v9ER65tuYvoK0aCeIw.png)
 
@@ -41,9 +43,11 @@ struct InitializerBasedConfigurationView: View {
 InitializerBasedConfigurationView(backgroundColor: .green, textColor: .white)
 ```
 
-This view takes two parameters backgroundColor and textColor, which are both required when instantiating the struct. They are also both constant let values, as the view most likely isn’t going to be mutated (at this point).
+This view takes two parameters backgroundColor and textColor, which are both required when instantiating the struct.
+They are also both constant let values, as the view most likely isn’t going to be mutated (at this point).
 
-Conveniently Swift automatically synthesizes the (internal) required initializer, but they can also manually be defined be us:
+Conveniently Swift automatically synthesizes the (internal) required initializer, but they can also manually be defined
+be us:
 
 ```swift
 struct InitializerBasedConfigurationView: View {
@@ -68,12 +72,13 @@ struct InitializerBasedConfigurationView: View {
 InitializerBasedConfigurationView(backgroundColor: .green, textColor: .white)
 ```
 
-**Quick Tip:**
-Xcode also provides us with a built-in function to generate memberwise initializers. All you have to do is CMD(⌘) + left-click on the type name, and select the action.
+**Quick Tip:** Xcode also provides us with a built-in function to generate memberwise initializers. All you have to do
+is CMD(⌘) + left-click on the type name, and select the action.
 
 ![Xcode can automatically generate memberwise initializers](/assets/blog/three-ways-styling-swiftui/1_NptvXt3t8gt4Ay_MDhHIgg.png)
 
-Using a custom initializer allows us to add default values directly there without changing the let of the parameters to var ones:
+Using a custom initializer allows us to add default values directly there without changing the let of the parameters to
+var ones:
 
 ```swift
 struct InitializerBasedConfigurationView: View {
@@ -90,9 +95,12 @@ struct InitializerBasedConfigurationView: View {
 }
 ```
 
-As mentioned before, Swift synthesizes only internal initializers, so in case your view is part of a package and needs to be public, you are required to use this approach. Otherwise the application using the package won’t be able to find or instantiate the view.
+As mentioned before, Swift synthesizes only internal initializers, so in case your view is part of a package and needs
+to be public, you are required to use this approach. Otherwise the application using the package won’t be able to find
+or instantiate the view.
 
-On the other hand, if this view is only used inside your app, you can also let the Swift compiler do the work for you 🚀 All that is needed is changing from let to var and directly set the default values on the instance properties:
+On the other hand, if this view is only used inside your app, you can also let the Swift compiler do the work for you 🚀
+All that is needed is changing from let to var and directly set the default values on the instance properties:
 
 ```swift
 struct InitializerBasedConfigurationView: View {
@@ -111,7 +119,8 @@ InitializerBasedConfigurationView(backgroundColor: .black, textColor: .red)
 
 ## 2. Method chaining using Return-Self
 
-Your views keep growing and requires more parameters to be set. As the initializer keeps growing too, it eventually becomes a large piece of code.
+Your views keep growing and requires more parameters to be set. As the initializer keeps growing too, it eventually
+becomes a large piece of code.
 
 ```swift
 struct MethodChainingView: View {
@@ -157,7 +166,8 @@ MethodChainingView(actionA: {
 })
 ```
 
-However, from my personal experience at some point the Swift compiler has too much work to do at the same time and simply gives up (it crashes).
+However, from my personal experience at some point the Swift compiler has too much work to do at the same time and
+simply gives up (it crashes).
 
 One approach of breaking down large initializers (with default values) is using a return-self-chaining pattern:
 
@@ -193,11 +203,13 @@ MethodChainingView()
     }
 ```
 
-As the view itself is immutable, but consists out of pure data (structs are not objects), we can create a local copy with `var view = self`. As this is now a local variable, we can mutate it and set the action, before returning it.
+As the view itself is immutable, but consists out of pure data (structs are not objects), we can create a local copy
+with `var view = self`. As this is now a local variable, we can mutate it and set the action, before returning it.
 
 ## 3. Styles in the Environment
 
-Apart from manually configuring every single view we can define a global style guide. An example might look like the following:
+Apart from manually configuring every single view we can define a global style guide. An example might look like the
+following:
 
 ```swift
 enum Style {
@@ -223,8 +235,8 @@ struct EnvironmentStylesheetsView: View {
 }
 ```
 
-Unfortunately, this solution has a big issue:
-Global static variables means, they are not customizable for different use cases (for example in an Xcode preview) 😕
+Unfortunately, this solution has a big issue: Global static variables means, they are not customizable for different use
+cases (for example in an Xcode preview) 😕
 
 Our solution is opting in for instance configuration once again:
 
@@ -284,7 +296,9 @@ struct ContentView_Previews: PreviewProvider {
 }
 ```
 
-Quite a clean solution. But you might already be wondering “But wait! How is this a **global** solution?” and your doubts are justified! This solution requires us to pass the style down to every single view, just as in the following code snippet:
+Quite a clean solution. But you might already be wondering “But wait! How is this a **global** solution?” and your
+doubts are justified! This solution requires us to pass the style down to every single view, just as in the following
+code snippet:
 
 ```swift
 struct ContentView: View {
@@ -324,12 +338,14 @@ struct FooBar: View {
 }
 ```
 
-It took three passes just to get the “global” style object into the nested FooBar view. This is unacceptable. We don’t want this much unnecessary code (especially because you also strive for clean code, don’t you?).
+It took three passes just to get the “global” style object into the nested FooBar view. This is unacceptable. We don’t
+want this much unnecessary code (especially because you also strive for clean code, don’t you?).
 
-Okay so what else could we think off? Well, how about a mix between the static and the instance solution?
-All we need is a static object where we can set the style from Foo and read it from FooBar … sounds like some shared *environment*💡
+Okay so what else could we think off? Well, how about a mix between the static and the instance solution? All we need is
+a static object where we can set the style from Foo and read it from FooBar … sounds like some shared *environment*💡
 
-SwiftUI introduced the property wrapper [@Environment](https://developer.apple.com/documentation/swiftui/environment) which allows us to read a value from the shared environment of our view🥳
+SwiftUI introduced the property wrapper [@Environment](https://developer.apple.com/documentation/swiftui/environment)
+which allows us to read a value from the shared environment of our view🥳
 
 As a first step, create a new `EnvironmentKey` by creating a struct implementing the defaultValue:
 
@@ -339,7 +355,8 @@ struct StyleEnvironmentKey: EnvironmentKey {
 }
 ```
 
-Next you need to add the new environment key as an extension to the EnvironmentValues so it can be accessed from the property wrapper:
+Next you need to add the new environment key as an extension to the EnvironmentValues so it can be accessed from the
+property wrapper:
 
 ```swift
 extension EnvironmentValues {
@@ -351,7 +368,8 @@ extension EnvironmentValues {
 }
 ```
 
-Finally set the value using `.environment(\.style, ...)` in the root view and read the value using the keypath of the style in `@Environment(\.style)` in the child views:
+Finally set the value using `.environment(\.style, ...)` in the root view and read the value using the keypath of the
+style in `@Environment(\.style)` in the child views:
 
 ```swift
 struct ContentView: View {
@@ -411,7 +429,8 @@ struct FooBar: View {
 }
 ```
 
-All you need for this beautiful syntax is creating a custom property wrapper `@Theme` which wraps our environment configuration and accesses the style value by a keypath.
+All you need for this beautiful syntax is creating a custom property wrapper `@Theme` which wraps our environment
+configuration and accesses the style value by a keypath.
 
 ```swift
 @propertyWrapper struct Theme<Value> {
@@ -453,14 +472,16 @@ struct ContentView: View {
 }
 ```
 
-> Note:
-> The reason the style is now called theme is quite honestly just a naming conflict of a property wrapper @Style with the struct Style. If you rename the style structure you can also use this name for the property wrapper.
+> Note: The reason the style is now called theme is quite honestly just a naming conflict of a property wrapper @Style
+> with the struct Style. If you rename the style structure you can also use this name for the property wrapper.
 
 ## Conclusion
 
-SwiftUI offers multiple different ways of building our view hierarchy, and we explored just a few of them. Additional options such as e.g. ViewModifier already exist, and even more will surface in the future.
+SwiftUI offers multiple different ways of building our view hierarchy, and we explored just a few of them. Additional
+options such as e.g. ViewModifier already exist, and even more will surface in the future.
 
-At the time of writing **best** practices don’t really exist yet, as the technology is still quite new. Instead we have different **good** practices to choose from and can focus on re-usability, customizability and cleanness of our code.
+At the time of writing **best** practices don’t really exist yet, as the technology is still quite new. Instead we have
+different **good** practices to choose from and can focus on re-usability, customizability and cleanness of our code.
 
-If you would like to know more, checkout my other articles, follow me on [Twitter](https://twitter.com/philprimes) and feel free to drop me a DM.
-You have a specific topic you want me to cover? Let me know! 😃
+If you would like to know more, checkout my other articles, follow me on [Twitter](https://twitter.com/philprimes) and
+feel free to drop me a DM. You have a specific topic you want me to cover? Let me know! 😃
