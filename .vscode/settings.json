@@ -1,12 +1,6 @@
 {
-    "cSpell.words": [
-        "FOSS",
-        "Freund",
-        "kula",
-        "Niedertscheider",
-        "philipniedertscheider",
-        "philprime",
-        "philprimes",
-        "TPPDF"
-    ]
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[liquid]": {
+    "editor.defaultFormatter": "Shopify.theme-check-vscode"
+  }
 }
