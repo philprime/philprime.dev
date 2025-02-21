@@ -1,0 +1,11 @@
+{% assign guide = site.pages | where: 'guide_component', 'guide' | where: 'guide_id', page.guide_id | first %}
+<p>
+  This is the {{ page.guide_section_id }} section of the guide <strong>{{ guide.title | escape }}</strong>.
+  {% if page.guide_section_id > 1 -%}
+    Make sure you have completed the
+    <a href='{{ page.guide_id }}/section-{{ page.guide_section_id | minus: 1 }}'>previous section</a> before continuing
+    here.
+  {% endif -%}
+  The full list of lessons in the guide can be found
+  <a href='{{ guide.url | relative_url }}#overview'>in the overview</a>.
+</p>
