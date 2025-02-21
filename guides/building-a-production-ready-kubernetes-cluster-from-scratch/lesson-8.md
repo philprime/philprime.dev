@@ -9,27 +9,27 @@ guide_lesson_id: 8
 guide_lesson_abstract: >
   Install and configure essential Kubernetes tools on your Raspberry Pi devices to prepare them for cluster
   initialization.
+guide_lesson_conclusion: >
+  With the Kubernetes tools installed and configured, your Raspberry Pi devices are now ready to initialize the cluster
 ---
 
 In this lesson, you will learn how to install and configure essential Kubernetes tools on your Raspberry Pi devices to
 prepare them for cluster initialization.
 
-This is the eighth lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure you
-have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-7) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
 In this lesson, we will install the essential Kubernetes tools required to set up and manage your cluster: `kubectl`,
 `kubeadm`, and `kubelet`. These tools will allow you to initialize the control plane, manage nodes, and control your
 cluster.
 
-> [!WARNING] We are not using the latest version of Kubernetes tools in this lesson, so we will be able to upgrade them
-> in lesson 30.
+{% include alert.liquid.html type='warning' title='WARNING:' content='
+We are not using the latest version of Kubernetes tools in this lesson, so we will be able to upgrade them in lesson 30.
+' %}
 
-<div class="alert-warning" role="alert">
-<strong>WARNING:</strong> All commands used in this lesson require <code>sudo</code> privileges.
+{% include alert.liquid.html type='warning' title='WARNING:' content='
+All commands used in this lesson require <code>sudo</code> privileges.
 Either prepend <code>sudo</code> to each command or switch to the root user using <code>sudo -i</code>.
-</div>
+' %}
 
 ## Update the System
 
@@ -46,13 +46,13 @@ $ apt upgrade
 ## Installing Kubernetes Tools on Each Raspberry Pi
 
 The Kubernetes tools are essential for managing your cluster and interacting with the Kubernetes API. To install these
-tools on your Raspberry Pi devices, follow these steps (or follow the
+tools on your Raspberry Pi devices, follow these steps (or the
 [documentation](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)):
 
 1.  Install dependencies required for the Kubernetes apt repository:
 
     ```bash
-    $ apt-get install -y apt-transport-https ca-certificates curl gnupg
+    $ apt install -y apt-transport-https ca-certificates curl gnupg
     ```
 
 2.  Download the public signing key for the Kubernetes package repositories. The same signing key is used for all
@@ -117,8 +117,12 @@ To confirm that the Kubernetes tools have been successfully installed:
 - Check the versions of the installed tools by running:
   ```bash
   $ kubectl version --client
+  Client Version: v1.31.6
+  Kustomize Version: v5.4.2
   $ kubeadm version
+  kubeadm version: &version.Info{Major:"1", Minor:"31", GitVersion:"v1.31.6", GitCommit:"6b3560758b37680cb713dfc71da03c04cadd657c", GitTreeState:"clean", BuildDate:"2025-02-12T21:31:09Z", GoVersion:"go1.22.12", Compiler:"gc", Platform:"linux/arm64"}
   $ kubelet --version
+  Kubernetes v1.31.6
   ```
   Ensure that each command returns a version number, indicating the tools are correctly installed.
 
@@ -169,50 +173,53 @@ k9s offers a terminal-based UI for interacting with your Kubernetes clusters and
 applications in the terminal. It continuously monitors Kubernetes for changes and provides commands to interact with the
 observed resources.
 
-To install k9s on your Raspberry Pi devices, follow these steps:
+To install k9s on your Raspberry Pi devices, we will add the k9s Debian repository to your system:
 
-1. Add the k9s Debian repository to your system:
+```bash
+$ wget https://github.com/derailed/k9s/releases/download/v0.32.7/k9s_linux_arm64.deb -O /tmp/k9s_linux_arm64.deb
+```
 
-   ```bash
-   $ wget https://github.com/derailed/k9s/releases/download/v<version>/k9s_linux_arm64.deb -O /tmp/k9s_linux_arm64.deb
-   ```
+{% include alert.liquid.html type='note' title='NOTE:' content='
+Replace `v0.32.7` with the latest version available on the
+<a href="https://github.com/derailed/k9s/releases" target="_blank">k9s GitHub releases page</a>.
+' %}
 
-   Replace `<version>` with the latest version available on the
-   [k9s GitHub releases page](https://github.com/derailed/k9s/releases)
-
-   **Example:**
-
-   ```bash
-   $ wget https://github.com/derailed/k9s/releases/download/v0.32.7/k9s_linux_arm64.deb -O /tmp/k9s_linux_arm64.deb
-   ```
-
-2. Install the k9s package:
-
-   ```bash
-   $ dpkg -i /tmp/k9s_linux_arm64.deb
-   ```
-
-3. Run k9s to verify the installation:
-
-   ```bash
-   $ k9s version
-   ```
-
-<div class="alert-note" role="note">
-<strong>NOTE:</strong> We are downloading the ARM64 version of k9s because we are using Raspberry Pi devices.
+{% include alert.liquid.html type='note' title='NOTE:' content='
+We are downloading the ARM64 version of k9s because we are using Raspberry Pi devices.
 If you are using a different architecture, download the appropriate version.
-</div>
+' %}
 
-<div class="alert-note" role="note">
-<strong>NOTE:</strong> We are downloading the debian package to the <code>/tmp</code> directory, so it gets removed
+Install the k9s package: Install the k9s package:
+
+```bash
+$ dpkg -i /tmp/k9s_linux_arm64.deb
+
+Selecting previously unselected package k9s.
+(Reading database ... 78776 files and directories currently installed.)
+Preparing to unpack /tmp/k9s_linux_arm64.deb ...
+Unpacking k9s (0.32.7) ...
+Setting up k9s (0.32.7) ...
+```
+
+Run k9s to verify the installation:
+
+```bash
+$ k9s version
+
+ ____  __.________
+|    |/ _/   __   \______
+|      < \____    /  ___/
+|    |  \   /    /\___ \
+|____|__ \ /____//____  >
+        \/            \/
+
+Version:    v0.32.7
+Commit:     6b5d24f5741a1789fb97ba3e11f0ee868d93459d
+Date:       2024-11-16T20:22:28Z
+root@kubernetes-node-2:~#
+```
+
+{% include alert.liquid.html type='note' title='NOTE:' content='
+We are downloading the debian package to the <code>/tmp</code> directory, so it gets removed
 automatically by the system after a reboot. We do not need to keep the package after installation.
-</div>
-
-## Lesson Conclusion
-
-Congratulations! With the Kubernetes tools installed and configured, your Raspberry Pi devices are now ready to
-initialize the cluster. In the next lesson, we will set up a container runtime like container.d or Docker, which is
-necessary to run containers on your cluster.
-
-You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-9).
+' %}

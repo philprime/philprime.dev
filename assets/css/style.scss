@@ -17,6 +17,10 @@
   color: #2175d9;
 }
 
+.alert-note a {
+  color: black;
+}
+
 .alert-tip {
   background-color: #e7fce7;
   border-left: 4px solid #4caf50;
@@ -39,4 +43,13 @@
   background-color: #fdecea;
   border-left: 4px solid #f44336;
   color: #d32f2f;
+}
+
+// Fix the text color of the code in the alerts as the code background color is dark
+.alert code {
+  color: white;
+}
+
+.alert pre {
+  color: white;
 }

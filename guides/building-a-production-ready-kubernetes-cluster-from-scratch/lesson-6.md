@@ -8,21 +8,20 @@ guide_section_id: 2
 guide_lesson_id: 6
 guide_lesson_abstract: >
   Learn how to install NVMe HATs and configure SSD storage for use with Longhorn and local container image storage.
+guide_lesson_conclusion: >
+  With your NVMe SSDs installed and configured, you have successfully prepared your persistent storage solution.
 ---
 
 In this lesson, we’ll set up the NVMe SSDs for each Raspberry Pi device to provide persistent storage for your
 Kubernetes cluster. This storage will be used for container images, data volumes, and other persistent needs within the
 cluster, ensuring data durability and reliability.
 
-This is the sixth lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure you
-have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-5) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
-<div class="alert-warning" role="alert">
-<strong>WARNING:</strong> All commands used in this lesson require <code>sudo</code> privileges.
+{% include alert.liquid.html type='warning' title='WARNING:' content='
+All commands used in this lesson require <code>sudo</code> privileges.
 Either prepend <code>sudo</code> to each command or switch to the root user using <code>sudo -i</code>.
-</div>
+' %}
 
 ## Configuring the NVMe SSDs for Use
 
@@ -75,7 +74,7 @@ connecting to them via SSH:
    The output should look similar to this:
 
    ```bash
-   $ sudo fdisk /dev/nvme0n1
+   $ fdisk /dev/nvme0n1
 
    Welcome to fdisk (util-linux 2.38.1).
    Changes will remain in memory only, until you decide to write them.
@@ -136,7 +135,7 @@ connecting to them via SSH:
    `/etc/fstab` file:
 
    ```bash
-   $ echo '/dev/nvme0n1p1 /mnt/nvme ext4 defaults 0 0' | sudo tee -a /etc/fstab
+   $ echo '/dev/nvme0n1p1 /mnt/nvme ext4 defaults 0 0' | tee -a /etc/fstab
    ```
 
    Verify the entry by running:
@@ -152,29 +151,20 @@ To confirm that the SSD setup is complete:
 - Run the `df -h` command to check that the SSD is mounted correctly and the available storage matches the size of your
   SSD:
 
-```bash
-$ df -h
-Filesystem      Size  Used Avail Use% Mounted on
-udev            3.8G     0  3.8G   0% /dev
-tmpfs           805M  5.5M  800M   1% /run
-/dev/mmcblk0p2   57G  2.2G   52G   5% /
-tmpfs           4.0G     0  4.0G   0% /dev/shm
-tmpfs           5.0M   48K  5.0M   1% /run/lock
-/dev/mmcblk0p1  510M   66M  445M  13% /boot/firmware
-tmpfs           805M     0  805M   0% /run/user/1000
-/dev/nvme0n1p1  458G   28K  435G   1% /mnt/nvme
-```
+  ```bash
+  $ df -h
+  Filesystem      Size  Used Avail Use% Mounted on
+  udev            3.8G     0  3.8G   0% /dev
+  tmpfs           805M  5.5M  800M   1% /run
+  /dev/mmcblk0p2   57G  2.2G   52G   5% /
+  tmpfs           4.0G     0  4.0G   0% /dev/shm
+  tmpfs           5.0M   48K  5.0M   1% /run/lock
+  /dev/mmcblk0p1  510M   66M  445M  13% /boot/firmware
+  tmpfs           805M     0  805M   0% /run/user/1000
+  /dev/nvme0n1p1  458G   28K  435G   1% /mnt/nvme
+  ```
 
-- Reboot the Raspberry Pi devices with `sudo reboot` and verify that the SSDs are automatically mounted at startup.
+- Reboot the Raspberry Pi devices with `reboot` and verify that the SSDs are automatically mounted at startup.
 
-If everything is set up correctly, your NVMe SSDs are now ready to provide persistent storage for your Kubernetes
-cluster.
-
-## Lesson Conclusion
-
-Congratulations! With your NVMe SSDs installed and configured, you have successfully prepared your persistent storage
-solution. Next, we will configure the network settings to ensure all Raspberry Pi devices are properly connected and can
-communicate within the cluster.
-
-You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-7).
+  If everything is set up correctly, your NVMe SSDs are now ready to provide persistent storage for your Kubernetes
+  cluster.

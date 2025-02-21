@@ -9,15 +9,15 @@ guide_lesson_id: 5
 guide_lesson_abstract: >
   Follow a step-by-step guide to install Raspberry Pi OS on your devices, configure essential settings, and prepare them
   for networking.
+guide_lesson_conclusion: >
+  With the operating system flashed and the initial configuration complete, you are now ready to set up the NVMe SSDs
+  for persistent storage.
 ---
 
 In this lesson, you will follow a step-by-step guide to install Raspberry Pi OS on your devices, configure essential
 settings, and prepare them for networking.
 
-This is the fifth lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure you
-have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-4) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
 Now that your Raspberry Pi devices are unboxed, assembled, and connected, it's time to install the operating system. In
 this lesson, we’ll walk through the process of flashing Raspberry Pi OS onto your microSD cards and performing the
@@ -25,19 +25,20 @@ initial configuration needed to prepare your devices for the Kubernetes cluster.
 
 ## Preparing the MicroSD Cards
 
+{% include alert.liquid.html type='tip' title='TIP:' content='
+You will need to repeat the following steps for each microSD card, replacing <code>X</code> with the corresponding
+number for each Raspberry Pi device (e.g., <code>1</code>, <code>2</code>, <code>3</code>, etc.).
+' %}
+
 To begin, you need to prepare the microSD cards that will host the Raspberry Pi OS using the
 [Raspberry Pi Imager](https://www.raspberrypi.com/software/). In addition to the OS we will also set up the SSH access
 for headless setup and a hostname for each Raspberry Pi.
-
-<div class="alert alert-tip">
-  <strong>TIP:</strong>You will need to repeat the following steps for each microSD card, replacing <code>X</code> with the corresponding number for each Raspberry Pi device (e.g., <code>1</code>, <code>2</code>, <code>3</code>, etc.).
-</div>
 
 - Insert each microSD card into your computer using a card reader.
 - Download and install the [Raspberry Pi Imager](https://www.raspberrypi.com/software/) for your operating system (if
   you haven’t already).
 - Open the Raspberry Pi Imager and select the **Raspberry Pi OS (other)** option.
-- Choose the **Raspberry Pi OS Lite (64-bit)** version for a minimal installation.
+- Choose the **Raspberry Pi OS Lite (64-bit)** version (or 32-bit for older models) for a minimal installation.
   ![OS Selection](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-1.png)
 - Select the microSD card you want to flash the OS to (ensure you have the correct card selected), and click on
   **Next**.
@@ -65,12 +66,14 @@ for headless setup and a hostname for each Raspberry Pi.
 - Once the flashing process is complete, the microSD card will be ejected automatically. Remove the card from your
   computer and insert it again to edit the boot configuration for additional settings.
 
-<div class="alert alert-tip">
-  <strong>TIP:</strong> Useful information that users should know, even when skimming content. Add a label to your Raspberry Pi to identify the device by its hostname. This will help you distinguish between the devices when connecting to them remotely.
-  <img src="/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-with-labels.jpg" alt="Raspberry Pi with labels">
-</div>
+{% include alert.liquid.html type='tip' title='TIP:' content='
+Add a label to your Raspberry Pi to identify the device by its hostname.
+This will help you distinguish between the devices when connecting to them remotely.
+'
+img_src="/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-with-labels.jpg"
+img_alt="Raspberry Pi with labels" %}
 
-## Pre-configure Static IP Addresses
+## Pre-Configure Static IP Addresses
 
 Instead of using DHCP to assign IP addresses to the Raspberry Pi devices, you can configure static IP addresses to
 ensure that each device has a consistent address on the network. This is particularly useful when setting up a
@@ -80,8 +83,7 @@ As we have disabled the DHCP service on the router, we need to configure the sta
 devices directly. So that it is already configured on the first boot.
 
 After you mounted the microSD card again, the boot partition should be mounted as `bootfs`. The Raspberry Pi Imager
-should have created a file `firstrun.sh`, which is used to configure the Raspberry Pi on first boot. You can edit this
-file to configure the static IP address for each device:
+should have created a file `firstrun.sh`, which is used to configure the Raspberry Pi on first boot.
 
 Open `firstrun.sh` in your text editor of choice. Then right before the deletion of the script
 `rm -f /boot/firstrun.sh`, add the following lines to configure a static IP address. Make sure to replace `X` with the
@@ -109,15 +111,17 @@ Save the changes and safely eject the microSD card from your computer.
 
 ## Verifying Connectivity
 
-To verify that each Raspberry Pi is correctly configured and accessible:
+Insert the microSD card into the Raspberry Pi device and power it on. To verify that each Raspberry Pi is correctly
+configured and accessible, ping each Raspberry Pi from your main computer or from one Raspberry Pi to another to ensure
+network connectivity.
 
-Ping each Raspberry Pi from your main computer or from one Raspberry Pi to another to ensure network connectivity:
+{% include alert.liquid.html type='warning' title='Warning:' content='
+Remember to replace <code>X</code> with the corresponding number for each Raspberry Pi device.
+' %}
 
 ```bash
 $ ping 10.1.1.X
 ```
-
-Replace `X` with the corresponding number for each Raspberry Pi device.
 
 Connect to the Raspberry Pi devices using SSH to confirm that you can access them remotely:
 
@@ -125,25 +129,19 @@ Connect to the Raspberry Pi devices using SSH to confirm that you can access the
 $ ssh -i ~/.ssh/k8s_cluster_id_ed25519 pi@10.1.1.X
 ```
 
-Replace `X` with the corresponding number for each Raspberry Pi device.
-
 If all devices respond successfully, your network configuration is correct, and your Raspberry Pi devices are ready for
 the next steps.
 
-<div class="alert alert-tip">
-  <strong>TIP:</strong> You can also connect the Raspberry Pi devices to a monitor and keyboard to verify that the devices boot correctly and that the network configuration is applied. You can see the IP address assigned to the device at the login:
+{% include alert.liquid.html type='tip' title='TIP:' content='You can also connect the Raspberry Pi devices to a monitor
+and keyboard to verify that the devices boot correctly and that the network configuration is applied. You can see the IP
+address assigned to the device at the login:
 
-  <pre>
-  Debian GNU/Linux 11 kubernetes-node-X tty1
+<pre>
+Debian GNU/Linux 11 kubernetes-node-X tty1
 
-  My IP address is 10.1.1.X
+My IP address is 10.1.1.X
 
-  kubernetes-node-X login:
- </pre>
-</div>
+kubernetes-node-X login:
+</pre>
 
-## Lesson Conclusion
-
-Congratulations! With the operating system flashed and the initial configuration complete, you are now ready to set up
-the NVMe SSDs for persistent storage. You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-6).
+' %}

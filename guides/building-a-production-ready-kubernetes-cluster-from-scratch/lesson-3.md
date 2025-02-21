@@ -14,10 +14,7 @@ guide_lesson_abstract: >
 In this lesson, you will learn the basics of Kubernetes, its core components, and the principles of high availability.
 Furthremore, you will understand how these concepts apply to the cluster you’ll build in this course.
 
-This is the third lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure you
-have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-2) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
 Before we dive into building our Kubernetes cluster, it’s essential to understand the key concepts that underpin
 Kubernetes and high availability, to establish a solid foundation and knowledge on terminology for the rest of the
@@ -86,8 +83,3 @@ Throughout this course, we will build a high-availability Kubernetes cluster usi
 to set up multiple control plane nodes, configure etcd for fault tolerance, and use load balancers to distribute
 traffic. By the end of this course, you will have a robust cluster that can handle real-world scenarios and continue
 running even when faced with challenges.
-
-## Lesson Conclusion
-
-Congratulations! You have completed this lesson and you can now continue with
-[the next section](/building-a-production-ready-kubernetes-cluster-from-scratch/section-4).

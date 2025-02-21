@@ -1,6 +1,8 @@
 ---
 layout: default.liquid
 ---
+{% include assign-guide.liquid.html %}
+
 <article
   class='post h-entry'
   itemscope
@@ -11,6 +13,9 @@ layout: default.liquid
       {{ page.title | escape }}
     </h1>
     <p class='post-meta'>
+      <span>
+        Guide: <a href='{{ guide.url }}'>{{ guide.title }}</a>
+      </span>
       <time
         class='dt-published'
         datetime='{{ page.date | date_to_xmlschema }}'
@@ -28,11 +33,14 @@ layout: default.liquid
     </p>
   </header>
 
-  <div class='post-content e-content' itemprop='articleBody'>{{ content }}</div>
+  <div class='post-content e-content' itemprop='articleBody'>
+    {{ content }}
 
-  {%- if site.disqus.shortname -%}
-    {%- include disqus_comments.html -%}
-  {%- endif -%}
+    <h2>Lesson Conclusion</h2>
 
-  <a class='u-url' href='{{ page.url | relative_url }}' hidden></a>
+    <p>
+      Congratulations! {{ page.guide_lesson_conclusion }} You have completed this lesson and you can now continue with
+      <a href='lesson-{{ page.guide_lesson_id | plus: 1 }}'>the next one</a>.
+    </p>
+  </div>
 </article>

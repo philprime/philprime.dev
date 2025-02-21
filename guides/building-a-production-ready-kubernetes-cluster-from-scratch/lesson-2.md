@@ -11,13 +11,12 @@ guide_lesson_abstract: >
   and equipment you’ll need to follow along with the course.
 ---
 
+{% include assign-guide.liquid.html %}
+
 In this lesson, you will discover the hardware and software requirements for building your Kubernetes cluster, and learn
 about the specific tools and equipment you’ll need to follow along with the course.
 
-This is the second lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure you
-have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-1) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
 Before we start building our Kubernetes cluster, it’s important to gather all the necessary tools and equipment. In this
 lesson, we’ll go over everything you need to follow along with this course, from hardware components to essential
@@ -32,8 +31,8 @@ To set up your Kubernetes cluster, you will need several hardware components:
 - For persistent storage, you will need 500GB NVMe SSDs along with compatible NVMe HATs for each Raspberry Pi. Make sure
   the lengths of the SSDs are supported by the HATs.
 - Each device also requires a 5V/5A USB-C power supply to ensure stable operation.
-- To connect all Raspberry Pi devices, you will need a gigabit wired router like the TP-LINK ER605 (or any other
-  networking router) to create a local network for your cluster.
+- To connect all Raspberry Pi devices, you will need a gigabit wired router like the [TP-LINK ER605](// TODO: ADD
+  AFFILIATE LINK) (or any other networking router) to create a local network for your cluster.
 - You should have CAT5e or higher Ethernet cables available to connect the Raspberry Pi devices to the router.
 
 ![Hardware Overview](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/hardware-overview.jpg)
@@ -121,8 +120,3 @@ There are a few more things that will be helpful as you follow along:
 Make sure to gather all the hardware components and install the necessary software tools before proceeding to the next
 lesson. Having everything prepared will make the setup process smoother and allow you to focus on building your
 Kubernetes cluster step-by-step.
-
-## Lesson Conclusion
-
-Congratulations! You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-3).

@@ -14,21 +14,19 @@ guide_lesson_abstract: >
 In this lesson, you will unbox your Raspberry Pi devices and prepare them for the cluster setup, and learn about the
 hardware components and their roles in the Kubernetes cluster.
 
-This is the fourth lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure you
-have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-3) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
 ## What You Will Need for This Lesson
 
 To get started, make sure you have the following components:
 
-- You will need at least three Raspberry Pi 5 devices, ideally with 8GB of RAM for better performance.
+- You will need at least three [Raspberry Pi 5](// TODO: ADD AFFILIATE LINK) devices, ideally with 8GB of RAM for better
+  performance.
 - Each Raspberry Pi requires a 64GB (or higher) microSD card, with high-endurance cards recommended for reliability.
-- For persistent storage, you will need 500GB NVMe SSDs along with compatible NVMe HATs for each Raspberry Pi.
-- Each device also requires a 5V/5A USB-C power supply to ensure stable operation.
-- To connect all Raspberry Pi devices, you will need a gigabit wired router like the TP-LINK ER605 (or any other
-  networking router) to create a local network for your cluster.
+- For persistent storage, you will need at least 500GB NVMe SSDs along with compatible NVMe HATs for each Raspberry Pi.
+- Each device also requires a [5V/5A USB-C power supply](// TODO: ADD AFFILIATE LINK) to ensure stable operation.
+- To connect all Raspberry Pi devices, you will need a gigabit wired router like the [TP-LINK ER605](// TODO: ADD
+  AFFILIATE LINK) (or any other networking router) to create a local network for your cluster.
 - You should have CAT5e or higher Ethernet cables available to connect the Raspberry Pi devices to the router.
 
 ## Unboxing the Raspberry Pi Devices
@@ -60,16 +58,14 @@ Once you have assembled your Raspberry Pi devices, you can connect them to the n
 - Ensure all devices are powered on and that the LEDs on the Raspberry Pi boards are lit, indicating they are receiving
   power.
 
-<div class="alert alert-info" role="alert">
-  <strong>Note:</strong> The Raspberry Pi devices will not boot up yet, as they
-  don’t have an operating system installed. We will cover this in a later lesson.
-</div>
+{% include alert.liquid.html type='note' title='Note:' content='
+The Raspberry Pi devices will not boot up yet, as they don’t have an operating system installed. We will cover this in a later lesson.
+' %}
 
-<div class="alert alert-warning" role="alert">
-  <strong>Warning:</strong> Always handle the Raspberry Pi devices with care and
-  avoid touching the components directly. Make sure the devices are powered off
-  before connecting or disconnecting any cables.
-</div>
+{% include alert.liquid.html type='warning' title='Warning:' content='
+Always handle the Raspberry Pi devices with care and avoid touching the components directly. Make sure the devices are
+powered off before connecting or disconnecting any cables.
+' %}
 
 ## Setup The Network
 
@@ -89,8 +85,10 @@ Now we configure the router to assign static IP addresses to the Raspberry Pi:
   necessary.
   ![Router Login](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/router-setup-1.png)
 
-> [!NOTE] The following steps are specific to the TP-LINK ER605 router. If you are using a different router, the steps
-> may vary slightly, but the general process should be similar.
+{% include alert.liquid.html type='note' title='Note:' content='
+The following steps are specific to the TP-LINK ER605 router. If you are using a different router, the steps may
+vary slightly, but the general process should be similar.
+' %}
 
 - Configure the additional WAN port as a normal LAN port. This will allow you to use all 4 ports for your Raspberry Pi
   devices and your computer.
@@ -117,8 +115,3 @@ At this stage you should have three Raspberry Pi devices, each with an NVME SSD 
 should be connected to a network router and powered on. The Raspberry Pi do not have an microSD card with an operating
 system yet. Your computer should be connected to the same network and have a static IP address assigned, being able to
 access the internet.
-
-## Lesson Conclusion
-
-Congratulations! You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-5).

@@ -8,16 +8,16 @@ guide_section_id: 4
 guide_lesson_id: 12
 guide_lesson_abstract: >
   Install a Container Network Interface (CNI) plugin to enable communication between pods running on different nodes.
+guide_lesson_conclusion: >
+  With the CNI plugin installed and verified, your Kubernetes cluster is now ready to support communication between all
+  pods across nodes
 ---
 
 In this lesson, we will install a Container Network Interface (CNI) plugin to enable communication between the pods
 running on different nodes in your Kubernetes cluster. The CNI plugin is essential for networking in Kubernetes, as it
 ensures that all pods can communicate securely and efficiently across the cluster.
 
-This is the thirteenth lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure
-you have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-12) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
 ## What is a CNI Plugin?
 
@@ -74,7 +74,9 @@ kubernetes-node-1   Ready    control-plane   17m   v1.31.5
 
 ### Common Issues
 
-- `Node kubernetes-node-1 status is now: CIDRAssignmentFailed`:
+Here are some common issues you may encounter and how to fix them:
+
+#### Error: `Node kubernetes-node-1 status is now: CIDRAssignmentFailed`
 
 Try to restart the `kubelet` service on the node:
 
@@ -213,12 +215,3 @@ The output should confirm the correct CIDR range we configured for Flannel.
 
 For details on the ports required to be allowed for Flannel, please see the
 [Flannel documentation on firewalls](https://github.com/flannel-io/flannel/blob/master/Documentation/troubleshooting.md#firewalls)
-
-## Lesson Conclusion
-
-Congratulations! With the CNI plugin installed and verified, your Kubernetes cluster is now ready to support
-communication between all pods across nodes. In the next lesson, we will learn how to join additional Raspberry Pi
-devices as control plane or worker nodes to create a highly available cluster.
-
-You have completed this lesson and you can now continue with
-[the next section](/building-a-production-ready-kubernetes-cluster-from-scratch/section-5).

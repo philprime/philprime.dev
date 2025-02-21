@@ -9,6 +9,8 @@ guide_lesson_id: 11
 guide_lesson_abstract: >
   Step-by-step guide to initializing the first control plane node in your Kubernetes cluster, including running kubeadm
   init and configuring the control plane.
+guide_lesson_conclusion: >
+  With the control plane initialized, your first node is now set up to manage your Kubernetes cluster.
 ---
 
 In this lesson, we will initialize the first control plane node for your Kubernetes cluster. The control plane is
@@ -101,10 +103,9 @@ $ kubeadm join 10.1.1.1:6443 \
   --certificate-key a1a135bf8be403583d2b1e6f7de7b14357e5e96c23deb8718bf2d1a807b08612
 ```
 
-<div class="alert alert-info" role="alert">
-  <strong>TIP</strong>: If anything goes wrong, you can always reset your Kubernetes server
-  using <code>kubeadm reset</code>.
-</div>
+{% include alert.liquid.html type='tip' title='TIP:' content='
+If anything goes wrong, you can always reset your Kubernetes server using <code>kubeadm reset</code>.
+' %}
 
 ## Set Up kubectl for the Local User
 
@@ -152,11 +153,3 @@ environments), you can remove the taint with:
 ```bash
 $ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 ```
-
-## Lesson Conclusion
-
-Congratulations! With the control plane initialized, your first node is now set up to manage your Kubernetes cluster. In
-the next lesson, we will setup the CNI plugin to enable networking between pods.
-
-You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-12).

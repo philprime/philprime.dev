@@ -9,21 +9,21 @@ guide_lesson_id: 9
 guide_lesson_abstract: >
   Set up Docker or another container runtime to run containers on your Raspberry Pi devices as part of the Kubernetes
   cluster.
+guide_lesson_conclusion: >
+  With containerd installed and configured, your Raspberry Pi devices are now ready to run containers as part of the
+  part of the Kubernetes cluster.
 ---
 
 In this lesson, we will set up **containerd** as the container runtime on each Raspberry Pi device. Containerd is a
 lightweight and efficient container runtime that is widely used in Kubernetes environments due to its simplicity and
 compatibility with Kubernetes' container runtime interface (CRI).
 
-This is the ninth lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure you
-have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-8) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
-<div class="alert-warning" role="alert">
-<strong>WARNING:</strong> All commands used in this lesson require <code>sudo</code> privileges.
+{% include alert.liquid.html type='warning' title='WARNING:' content='
+All commands used in this lesson require <code>sudo</code> privileges.
 Either prepend <code>sudo</code> to each command or switch to the root user using <code>sudo -i</code>.
-</div>
+' %}
 
 ## Installing containerd on Each Raspberry Pi
 
@@ -69,8 +69,8 @@ $ vi /etc/containerd/config.toml
 ```
 
 Find the line that specifies the `root` setting (typically under the
-`[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]` section) and set it to `/mnt/nvme/containerd`.
-This section is the configuration related to the `runc` runtime, which is the default runtime used by containerd:
+`[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]` section). This section is the configuration
+related to the `runc` runtime, which is the default runtime used by containerd:
 
 ```toml
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
@@ -81,15 +81,10 @@ Save the changes and exit the editor (in `vi`, press `Esc` followed by `:wq` and
 
 ## Configuring containerd for Kubernetes
 
-Open the configuration file with a text editor like `vi` or `nano` to modify the cgroup driver:
+We need to configure the system cgroup driver to `systemd` because we are using the `systemd` cgroup driver. `cgroup` is
+a Linux kernel feature that limits the resources that can be used by a process.
 
-```bash
-$ vi /etc/containerd/config.toml
-```
-
-Find the line that specifies the `SystemdCgroup` setting (typically under the
-`[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]` section) and set it to `true`. When using `vi`,
-you can search for the line using `/SystemdCgroup`:
+In the same section as the `root` setting, we need to configure the `SystemdCgroup` setting to `true`:
 
 ```toml
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
@@ -100,7 +95,11 @@ Save the changes and exit the editor (in `vi`, press `Esc` followed by `:wq` and
 
 ## Adding symbolic link to the containerd directory
 
-Adding a symbolic link to the containerd directory will allow containerd to store its data on the NVMe drive:
+Even though we have configured containerd to use the NVMe drive, we need to add a symbolic link to the containerd
+directory to allow containerd to store its data on the NVMe drive. This is because some Kubernetes components expect the
+containerd data to be stored at the default location.
+
+Create a symbolic link to the containerd directory:
 
 ```bash
 $ ln -s /mnt/nvme/containerd /var/lib/containerd
@@ -142,12 +141,3 @@ Jan 12 20:16:00 kubernetes-node-1 containerd[4629]: time="2025-01-12T20:16:00.48
 ```
 
 As you can see, the output shows that the containerd service is active and running.
-
-## Lesson Conclusion
-
-Congratulations! With containerd installed and configured, your Raspberry Pi devices are now ready to run containers as
-part of the Kubernetes cluster. Next, we will prepare the nodes for Kubernetes initialization by ensuring they meet all
-requirements and are correctly configured.
-
-You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-10).
