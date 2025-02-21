@@ -1,19 +1,25 @@
 ---
-layout: post
-title: "Creating your own Markdown Parser from Scratch in Swift"
+layout: post.liquid
+title: 'Creating your own Markdown Parser from Scratch in Swift'
 date: 2021-05-11 17:00:00 +0200
 categories: blog
 ---
 
-You know Markdown, right? That text format which uses funky characters like `**` or `>` to create well formatted documents? Awesome! Many platforms use it on a daily basis, so you will eventually use it too.
+You know Markdown, right? That text format which uses funky characters like `**` or `>` to create well formatted
+documents? Awesome! Many platforms use it on a daily basis, so you will eventually use it too.
 
-Now, what if you need a markdown parser for your Swift application? Well, we could just use one of the well-tested ones (which can be found using your favorite search engine on GitHub), but instead... you can also create your own version.
+Now, what if you need a markdown parser for your Swift application? Well, we could just use one of the well-tested ones
+(which can be found using your favorite search engine on GitHub), but instead... you can also create your own version.
 
 ![Drake might also prefer writing his own solution](/assets/blog/creating-own-markdown-parser-swift/1_S5uBWbywD4XLTwR16-cGoQ.jpeg)
 
-All jokes aside: if possible, do not _reinvent the wheel._ If an existing framework with an active maintainer fits your needs, use that one. At [techprimate](https://techprimate.com) we decided to create our own solution, [CoolDown](https://github.com/techprimate/CoolDown), because an upcoming app uses Markdown with many custom extensions, therefore it was more convenient to have full control.
+All jokes aside: if possible, do not _reinvent the wheel._ If an existing framework with an active maintainer fits your
+needs, use that one. At [techprimate](https://techprimate.com) we decided to create our own solution,
+[CoolDown](https://github.com/techprimate/CoolDown), because an upcoming app uses Markdown with many custom extensions,
+therefore it was more convenient to have full control.
 
-This article will also give you a general idea on how to parse a structured plain text document. Here a quick outline what we will cover:
+This article will also give you a general idea on how to parse a structured plain text document. Here a quick outline
+what we will cover:
 
 1. Markdown Document Structure
 2. Structure of a Document Parser
@@ -24,11 +30,15 @@ This article will also give you a general idea on how to parse a structured plai
 
 Markdown documents are written entirely in plain text, and any additional assets are only added as URL references.
 
-Over the years multiple Markdown specs surfaced and many platforms (e.g. GitHub) adapted and extended it. Eventually it got standardized to remove ambiguity. For this tutorial, we will use the [CommonMark 0.29](https://spec.commonmark.org/0.29/) specification as a reference, as it is quite a common one (pun intended).
+Over the years multiple Markdown specs surfaced and many platforms (e.g. GitHub) adapted and extended it. Eventually it
+got standardized to remove ambiguity. For this tutorial, we will use the
+[CommonMark 0.29](https://spec.commonmark.org/0.29/) specification as a reference, as it is quite a common one (pun
+intended).
 
 ### Structural Elements
 
-A major structural element of the document is the _double-newline/empty line_, as it structures our document into a sequence of _blocks_. Just look at the following example:
+A major structural element of the document is the _double-newline/empty line_, as it structures our document into a
+sequence of _blocks_. Just look at the following example:
 
 ```
 This is the first block of text.\n
@@ -43,7 +53,9 @@ This is the first line of the block.\n
 This is the second line of the block.
 ```
 
-These blocks can be categorized even further into *Leaf Block*s (e.g. headings), _Container Blocks_ (e.g. lists) and _Inlines_ (e.g. code spans). I won’t go further into detail for now, as you can just look at the detailed CommonMark documentation.
+These blocks can be categorized even further into *Leaf Block*s (e.g. headings), _Container Blocks_ (e.g. lists) and
+_Inlines_ (e.g. code spans). I won’t go further into detail for now, as you can just look at the detailed CommonMark
+documentation.
 
 Now we need to take a closer look at a single block:
 
@@ -61,13 +73,17 @@ This is still a single block, but it consists out of 5 inline blocks/elements:
 
 ## Structure of a Document Parser
 
-Alright, at this point you have some basic understanding of what data we are dealing with. Now you need to know how to parse a plain text document in general. A rule of thumb:
+Alright, at this point you have some basic understanding of what data we are dealing with. Now you need to know how to
+parse a plain text document in general. A rule of thumb:
 
 > Break the text it into the smallest possible chunks, before processing each chunk
 
-As mentioned before, our document consists out of a sequence of blocks. This already makes our lives way easier, as we can now analyze the blocks individually.
+As mentioned before, our document consists out of a sequence of blocks. This already makes our lives way easier, as we
+can now analyze the blocks individually.
 
-Next we know that none of the Markdown elements span more than a single line. Even the following example, a multi-line code segment, can be seen as three “sub-blocks”. To simplify our naming, I will from now on refer to them as _Fragments:_
+Next we know that none of the Markdown elements span more than a single line. Even the following example, a multi-line
+code segment, can be seen as three “sub-blocks”. To simplify our naming, I will from now on refer to them as
+_Fragments:_
 
 ````
 ```                           <-- opening fragment
@@ -75,7 +91,8 @@ print("Hello World!")         <-- code fragment
 ```                           <-- closing fragment
 ````
 
-We already broke down a large document into blocks and afterwards into fragments. As the content of the individual fragments varies, we can not break it down any further.
+We already broke down a large document into blocks and afterwards into fragments. As the content of the individual
+fragments varies, we can not break it down any further.
 
 ![Markdown documents consist out of blocks, which are made up of fragments and inlines further down](/assets/blog/creating-own-markdown-parser-swift/1_oV75cDIooAre7oB0o4u64g.png)
 
@@ -95,10 +112,12 @@ By keeping this structure in mind we can create the following basic algorithm:
 
 Your time has come. It’s time to write some code 🔥
 
-As our library is entirely logic based and works as a black box (text as input, parsed document as output) this is a great use-case for **Test-Driven-Development (TDD)**.
-The main idea of this development strategy is first defining a test case, which will fail on purpose, and then writing the code to fix it.
+As our library is entirely logic based and works as a black box (text as input, parsed document as output) this is a
+great use-case for **Test-Driven-Development (TDD)**. The main idea of this development strategy is first defining a
+test case, which will fail on purpose, and then writing the code to fix it.
 
-As the first step create a new Swift package **_MarkdownParser_** using either your Terminal of choice and swift package init --type library or using Xcode:
+As the first step create a new Swift package **_MarkdownParser_** using either your Terminal of choice and swift package
+init --type library or using Xcode:
 
 ![Xcode also offers an option to create a Swift Package](/assets/blog//creating-own-markdown-parser-swift/1_FbgWdOyIAHKC8IjAnfvgmw.png)
 
@@ -116,7 +135,9 @@ final class MarkdownParserTests: XCTestCase {
 }
 ```
 
-This code is straight forward, but for the sake of the tutorial I will explain it: First define the input text, then create a parser using the input text and call parse() to convert it into a node tree. Finally we write a test assertion to check that it returns the expected result.
+This code is straight forward, but for the sake of the tutorial I will explain it: First define the input text, then
+create a parser using the input text and call parse() to convert it into a node tree. Finally we write a test assertion
+to check that it returns the expected result.
 
 Xcode will usually tell you about the syntax issues rather quickly:
 
@@ -189,12 +210,13 @@ class MarkdownParser {
 }
 ```
 
-**Note:**
-In this tutorial I am using an enum to define the different nodes, because of it’s simplicity. You can also create struct's or even classes to return the parsed nodes.
+**Note:** In this tutorial I am using an enum to define the different nodes, because of it’s simplicity. You can also
+create struct's or even classes to return the parsed nodes.
 
 ### Stepping up our parsing game
 
-Alright, alright, alright… enough with the simple text parsing. By now you hopefully understand how TDD is working, so let’s jump a few steps forward and create a more advanced test case:
+Alright, alright, alright… enough with the simple text parsing. By now you hopefully understand how TDD is working, so
+let’s jump a few steps forward and create a more advanced test case:
 
 ```swift
 func testParsing_multipleTextBlocksWithNestedBold_shouldReturnMultipleParagraphs() {
@@ -232,8 +254,9 @@ enum MarkdownNode: Equatable {
 }
 ```
 
-Now remember the algorithm in the introduction: First we need to split the text into blocks to then iterate them. We do this in a testable way by creating a so called Lexer , a class to split our raw content into smaller chunks (the so called _lexems_).
-Additionally it implements the iterator protocol, to use a standardized looping mechanism:
+Now remember the algorithm in the introduction: First we need to split the text into blocks to then iterate them. We do
+this in a testable way by creating a so called Lexer , a class to split our raw content into smaller chunks (the so
+called _lexems_). Additionally it implements the iterator protocol, to use a standardized looping mechanism:
 
 ```swift
 import Foundation
@@ -369,11 +392,15 @@ return result
 
 ## Parsing fragments by their characters
 
-Up until this point the structure of the document was well-known (blocks split by empty lines, fragments split by newline characters).
+Up until this point the structure of the document was well-known (blocks split by empty lines, fragments split by
+newline characters).
 
-For the actual fragment parsing logic you can choose from multiple approaches (such as using Regex’s) but in this approach we are using a character-based lexer.
+For the actual fragment parsing logic you can choose from multiple approaches (such as using Regex’s) but in this
+approach we are using a character-based lexer.
 
-The fragment lexer differs from the previous ones, as it iterates the content by each character and also offers additional methods to _peak_ at further characters (does not increase the iterator counter) and _rewind_ to move the iterator backwards.
+The fragment lexer differs from the previous ones, as it iterates the content by each character and also offers
+additional methods to _peak_ at further characters (does not increase the iterator counter) and _rewind_ to move the
+iterator backwards.
 
 ```swift
 class FragmentLexer: IteratorProtocol {
@@ -422,8 +449,10 @@ class FragmentLexer: IteratorProtocol {
 }
 ```
 
-Using all the knowledge we gathered during this tutorial, let’s create the last missing parser, the `FragmentParser`. This class is going to use our FragmentLexer and identify the different nodes by specific characters, as declared in the specification.
-In the first version, we concatenate each character into a `.text(...)` node to fulfill our second test case:
+Using all the knowledge we gathered during this tutorial, let’s create the last missing parser, the `FragmentParser`.
+This class is going to use our FragmentLexer and identify the different nodes by specific characters, as declared in the
+specification. In the first version, we concatenate each character into a `.text(...)` node to fulfill our second test
+case:
 
 ```swift
 class FragmentParser {
@@ -451,11 +480,13 @@ class FragmentParser {
 }
 ```
 
-This works fine for the simple use case, but for more complex use-cases we need an additional data structure to efficiently track the abstract nesting position inside the fragment.
+This works fine for the simple use case, but for more complex use-cases we need an additional data structure to
+efficiently track the abstract nesting position inside the fragment.
 
 ### The Inline Stack
 
-To understand what is going on, we think through the parsing logic of a more complex block (even more complicated than the previous ones):
+To understand what is going on, we think through the parsing logic of a more complex block (even more complicated than
+the previous ones):
 
 ```md
 This is a text block **with bold _and cursive_** text.
@@ -525,11 +556,15 @@ Unfortunately this also depends on our parser, as the following output could be 
 ]),
 ```
 
-This is a software design decision you have to make. In case you are curious how I implemented it, checkout the [BoldCursiveInlineSpec.swift](https://github.com/techprimate/CoolDown/blob/main/Tests/CoolDownParserTests/BoldCursiveInlineSpec.swift) of CoolDown on GitHub.
+This is a software design decision you have to make. In case you are curious how I implemented it, checkout the
+[BoldCursiveInlineSpec.swift](https://github.com/techprimate/CoolDown/blob/main/Tests/CoolDownParserTests/BoldCursiveInlineSpec.swift)
+of CoolDown on GitHub.
 
-As an efficient way of tracking the nesting, I decided to use a stack, which adds an additional node on the beginning characters (such as `**`) and removes it from the stack when the closing characters are found.
+As an efficient way of tracking the nesting, I decided to use a stack, which adds an additional node on the beginning
+characters (such as `**`) and removes it from the stack when the closing characters are found.
 
-To not increase the complexity of this tutorial any further, I will not cover the exact implementation of the stack mechanism. If you want to know now more, [CoolDown](https://github.com/techprimate/CoolDown) is very well commented.
+To not increase the complexity of this tutorial any further, I will not cover the exact implementation of the stack
+mechanism. If you want to know now more, [CoolDown](https://github.com/techprimate/CoolDown) is very well commented.
 
 ### Finishing up our parser
 
@@ -598,7 +633,8 @@ class FragmentParser {
 }
 ```
 
-The code is commented so it should be self-explanatory. In this example you can also see why our FragmentLexer has additional peak and rewind methods.
+The code is commented so it should be self-explanatory. In this example you can also see why our FragmentLexer has
+additional peak and rewind methods.
 
 When you run the test case once again, they still fails with the following result:
 
@@ -630,7 +666,8 @@ When you run the test case once again, they still fails with the following resul
 
 If you are fine with the two blocks being merged into a single one, good job, change the tests and you are done 😄
 
-If not, change the `MarkdownParser.parse()` method to group the nodes per block and if more than one block was found, it shall wrap them in paragraph nodes:
+If not, change the `MarkdownParser.parse()` method to group the nodes per block and if more than one block was found, it
+shall wrap them in paragraph nodes:
 
 ```swift
 func parse() -> [MarkdownNode] {
@@ -655,11 +692,15 @@ func parse() -> [MarkdownNode] {
 
 You made it! Congratulations 🥳
 
-This tutorial only covered a small subset of the possibilities in using and parsing Markdown. Obviously the three tests are not enough to covert the implemented functionality, so make sure to write more tests!
+This tutorial only covered a small subset of the possibilities in using and parsing Markdown. Obviously the three tests
+are not enough to covert the implemented functionality, so make sure to write more tests!
 
-I also referenced our custom parser @ techprimate called CoolDown multiple times, which is still a work-in-progress, but is eventually getting production ready. We decided to build it as an Open Source Swift package, so checkout the [GitHub repository](https://github.com/techprimate/CoolDown).
+I also referenced our custom parser @ techprimate called CoolDown multiple times, which is still a work-in-progress, but
+is eventually getting production ready. We decided to build it as an Open Source Swift package, so checkout the
+[GitHub repository](https://github.com/techprimate/CoolDown).
 
-Next to actually writing a small working parser, you also got more insight into the document format itself. Now you should be able to pick it up from there and continue working on the parser.
+Next to actually writing a small working parser, you also got more insight into the document format itself. Now you
+should be able to pick it up from there and continue working on the parser.
 
-If you would like to know more, checkout my other articles, follow me on [Twitter](https://twitter.com/philprimes) and feel free to drop me a DM.
-You have a specific topic you want me to cover? Let me know! 😃
+If you would like to know more, checkout my other articles, follow me on [Twitter](https://twitter.com/philprimes) and
+feel free to drop me a DM. You have a specific topic you want me to cover? Let me know! 😃

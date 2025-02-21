@@ -1,39 +1,50 @@
 ---
-layout: post
-title: "Modularize Xcode Projects using local Swift Packages"
+layout: post.liquid
+title: 'Modularize Xcode Projects using local Swift Packages'
 date: 2021-04-12 17:00:00 +0200
 categories: blog
 tags: iOS Swift SPM
 ---
 
-Swift Package Manager… SPM… It is everywhere, many use it and it is most likely the future of working with Swift dependencies. A single file to fetch all the sweet Open Source packages. And with higher acceptance of the community, even more packages will get available without installing any more tools, such as Cocoapods or Carthage.
+Swift Package Manager… SPM… It is everywhere, many use it and it is most likely the future of working with Swift
+dependencies. A single file to fetch all the sweet Open Source packages. And with higher acceptance of the community,
+even more packages will get available without installing any more tools, such as Cocoapods or Carthage.
 
-But how can we leverage this dependency structure even further? Is external code the only reason for using a package manager?
+But how can we leverage this dependency structure even further? Is external code the only reason for using a package
+manager?
 
-Our codebases are growing with every single new file. First, we create a folder structure to organize our _.swift_ files, but then even the slightest code requires Xcode to recompile everything. Our build process becomes slower… and slower… and ….… _**goes away to grab a coffee while waiting for Xcode to finish compilation**_ ….… slower.
+Our codebases are growing with every single new file. First, we create a folder structure to organize our _.swift_
+files, but then even the slightest code requires Xcode to recompile everything. Our build process becomes slower… and
+slower… and ….… _**goes away to grab a coffee while waiting for Xcode to finish compilation**_ ….… slower.
 
-Even worse when working with feature-rich, large-scale apps. They become clunky and you spend a lot of time waiting for rebuilding unchanged parts when you just want to iterate your own new, fresh feature.
+Even worse when working with feature-rich, large-scale apps. They become clunky and you spend a lot of time waiting for
+rebuilding unchanged parts when you just want to iterate your own new, fresh feature.
 
 _Example:_
 
-A feature-rich receipt tracking app, which connects to your bank account for matching transactions, uses a cloud for live synchronization, sharing accounts with friends, etc.
-You want to add a scanning feature, which takes a photo and converts it into the receipt data your app uses.
+A feature-rich receipt tracking app, which connects to your bank account for matching transactions, uses a cloud for
+live synchronization, sharing accounts with friends, etc. You want to add a scanning feature, which takes a photo and
+converts it into the receipt data your app uses.
 
 ## SPM to the rescue!
 
-Swift Package Manager allows us to create small, reusable code packages. On the one hand, this allows us to isolate unchanged code during the build process, and on the other hand, it allows us to simply create a spin-off demo version of the app, with only the necessary parts to improve a single feature.
+Swift Package Manager allows us to create small, reusable code packages. On the one hand, this allows us to isolate
+unchanged code during the build process, and on the other hand, it allows us to simply create a spin-off demo version of
+the app, with only the necessary parts to improve a single feature.
 
-_Continuing the example above:
-Using local SPM packages, you can create a small prototyping app that only shows the scan feature. When the feature is done, it can be used in the main app._
+_Continuing the example above: Using local SPM packages, you can create a small prototyping app that only shows the scan
+feature. When the feature is done, it can be used in the main app._
 
-Let me give you a quick overview of how we are going to build our own multi-platform *Calculator *as an iOS app and a command-line tool (the guide for creating the iOS app can be applied for macOS too):
+Let me give you a quick overview of how we are going to build our own multi-platform *Calculator *as an iOS app and a
+command-line tool (the guide for creating the iOS app can be applied for macOS too):
 
 1. Create a starter SPM command-line tool
 2. Moving logic code into own SPM library
 3. Create the iOS project using the library
 4. Create more local libraries to build a dependency graph
 
-If you are more interested in the final solution, check out [this GitHub repository](https://github.com/philprime/CalculatorSPMSample) for the final code.
+If you are more interested in the final solution, check out
+[this GitHub repository](https://github.com/philprime/CalculatorSPMSample) for the final code.
 
 ![iOS app and command-line executable offering the same functionality](/assets/blog/modularize-xcode-projects-using-local-swift-packages/image-1.png)
 
@@ -41,14 +52,16 @@ _iOS app and command-line executable offering the same functionality_
 
 ## Creating an SPM command-line tool
 
-Start off launching your Terminal of choice (for me it’s iTerm2). Then go ahead and create a new folder called _Calculator_ and afterward change the working directory into that folder:
+Start off launching your Terminal of choice (for me it’s iTerm2). Then go ahead and create a new folder called
+_Calculator_ and afterward change the working directory into that folder:
 
 ```shell
 $ mkdir Calculator
 $ cd Calculator
 ```
 
-The next step is initializing our Swift package. The Swift Command Line Interface (CLI) allows us to create multiple types of packages. To figure which ones, run swift package init --help for a list:
+The next step is initializing our Swift package. The Swift Command Line Interface (CLI) allows us to create multiple
+types of packages. To figure which ones, run swift package init --help for a list:
 
 ```shell
 $ swift package init --help
@@ -59,7 +72,9 @@ OPTIONS:
     --type   empty|library|executable|system-module|manifest
 ```
 
-Our main focus is on the library and executable. If you are just creating a library package, run `swift package init --type library` . But in our case, we want to start with an executable (leading $ means it is a command):
+Our main focus is on the library and executable. If you are just creating a library package, run
+`swift package init --type library` . But in our case, we want to start with an executable (leading $ means it is a
+command):
 
 ```shell
 $ swift package init --type executable
@@ -98,7 +113,9 @@ To start working, simply open/double-click the `Package.swift` file and Xcode wi
 
 ![Swift Packages can be opened directly in Xcode by double-clicking the Package.swift file](/assets/blog/modularize-xcode-projects-using-local-swift-packages/image-2.png)
 
-As this blog post is not so much of a tutorial about building a calculator in Swift, I am providing you only simple implementation steps in the comments (let me know on [Twitter](http://twitter.com/philprimes) if you want a more detailed tutorial).
+As this blog post is not so much of a tutorial about building a calculator in Swift, I am providing you only simple
+implementation steps in the comments (let me know on [Twitter](http://twitter.com/philprimes) if you want a more
+detailed tutorial).
 
 Place the following code in your `main.swift` file:
 
@@ -160,7 +177,8 @@ let result = calculate(number1: number1, op: op, number2: number2)
 print("Result: \(result)")
 ```
 
-To use your new calculator, go back to the terminal and inside the package folder, use the swift run command to test the implementation:
+To use your new calculator, go back to the terminal and inside the package folder, use the swift run command to test the
+implementation:
 
 ```shell
 $ swift run Calculator 13 + 14
@@ -169,14 +187,16 @@ Result: 27.0
 
 ## Moving logic code into own SPM library
 
-We got the first of our two applications up and running. Before we continue to create the iOS app, let's review the code and figure out, which parts should be shared by all the applications.
+We got the first of our two applications up and running. Before we continue to create the iOS app, let's review the code
+and figure out, which parts should be shared by all the applications.
 
 Two parts of the code are relevant:
 
 - The enum Operator which is our collection of math operators
 - The calculate function is taking two numbers and an operator to perform the actual math.
 
-So let’s start by creating a new library. First off we clean up the default `Package.swift` manifest file by removing all the comments and unused arguments:
+So let’s start by creating a new library. First off we clean up the default `Package.swift` manifest file by removing
+all the comments and unused arguments:
 
 ```swift
 // swift-tools-version:5.3
@@ -270,11 +290,13 @@ let result = calculate(number1: number1, op: op, number2: number2)
 print("Result: \(result)")
 ```
 
-If you try to run your application once again, it will greet you with an error saying it can’t find type `Operator` nor the function `calculate` anymore.
+If you try to run your application once again, it will greet you with an error saying it can’t find type `Operator` nor
+the function `calculate` anymore.
 
 ![When moving classes outside of the scope, errors will occur.](/assets/blog/modularize-xcode-projects-using-local-swift-packages/image-4.png)
 
-This is expected, so now we have to finish creating the library `CalculatorCore` and add it as a dependency to our app target `Calculator`. To do so, all we need is to declare the library in our `Package.swift` :
+This is expected, so now we have to finish creating the library `CalculatorCore` and add it as a dependency to our app
+target `Calculator`. To do so, all we need is to declare the library in our `Package.swift` :
 
 ```swift
 // swift-tools-version:5.3
@@ -293,7 +315,8 @@ let package = Package(
 )
 ```
 
-If you try to run the application once more, you will still see the same errors. The reason behind this behavior is the missing `import CalculatorCore` in the `main.swift`:
+If you try to run the application once more, you will still see the same errors. The reason behind this behavior is the
+missing `import CalculatorCore` in the `main.swift`:
 
 ```swift
 import Foundation
@@ -303,7 +326,8 @@ import CalculatorCore
 ...
 ```
 
-Additionally, the (in my opinion great) isolation capabilities of Swift packages require us to declare both `Operator` and `calculate` as `public` or otherwise, they won’t be available outside the package:
+Additionally, the (in my opinion great) isolation capabilities of Swift packages require us to declare both `Operator`
+and `calculate` as `public` or otherwise, they won’t be available outside the package:
 
 ```swift
 // in Operator.swift:
@@ -316,9 +340,11 @@ Run your application using swift run and it should be working once again.
 
 ## Create the iOS project using the library
 
-Good job so far! You already created a command-line executable and an SPM library. Now we expand it even further and create an iOS app using our SPM library calculation logic.
+Good job so far! You already created a command-line executable and an SPM library. Now we expand it even further and
+create an iOS app using our SPM library calculation logic.
 
-For this tutorial, we will be using a SwiftUI app, as it is the future of iOS/macOS app development, and allows us to create a simple calculator way faster than using traditional UIKit.
+For this tutorial, we will be using a SwiftUI app, as it is the future of iOS/macOS app development, and allows us to
+create a simple calculator way faster than using traditional UIKit.
 
 Open up Xcode and click on **File/New/Project**
 
@@ -334,15 +360,18 @@ Make sure to place the project in your main Calculator folder, and you should en
 
 ![](/assets/blog/modularize-xcode-projects-using-local-swift-packages/image-8.png)
 
-As we don’t need the nested iOS folder, close the Xcode project and move the content up one level. Additionally, we move the package into its own subfolder `Calculator`, so afterwards your folder structure should look like this:
+As we don’t need the nested iOS folder, close the Xcode project and move the content up one level. Additionally, we move
+the package into its own subfolder `Calculator`, so afterwards your folder structure should look like this:
 
 ![All the iOS app code is inside Calculator_iOS](/assets/blog/modularize-xcode-projects-using-local-swift-packages/image-9.png)
 
 ![All the package code is inside CalculatorPackage](/assets/blog/modularize-xcode-projects-using-local-swift-packages/image-10.png)
 
-Now open up the `Calculator_iOS.xcodeproj`, select your simulator of choice and run the initial application to make sure everything is fine and working.
+Now open up the `Calculator_iOS.xcodeproj`, select your simulator of choice and run the initial application to make sure
+everything is fine and working.
 
-As the next step, we go ahead and create our calculator UI using two text fields and an operator selection. Replace your struct ContentView {...} inside the ContentView.swift with the following code and run the application once again:
+As the next step, we go ahead and create our calculator UI using two text fields and an operator selection. Replace your
+struct ContentView {...} inside the ContentView.swift with the following code and run the application once again:
 
 ```swift
 struct ContentView: View {
@@ -384,7 +413,9 @@ Your basic calculator is done as you can enter numbers and select an operator:
 
 ![Our first calculator iOS app UI](/assets/blog/modularize-xcode-projects-using-local-swift-packages/image-11.png)
 
-Next is adding our local Swift package as an iOS application dependency. This step is not documented or known that well, but very easy. All you have to do is drag the folder CalculatorPackage into the Calculator_iOS file browser at the very top:
+Next is adding our local Swift package as an iOS application dependency. This step is not documented or known that well,
+but very easy. All you have to do is drag the folder CalculatorPackage into the Calculator_iOS file browser at the very
+top:
 
 ![Xcode detects folders as Swift packages automatically](/assets/blog/modularize-xcode-projects-using-local-swift-packages/image-12.png)
 
@@ -392,7 +423,9 @@ And afterwards, Xcode will detect the folder as a local package:
 
 ![Swift package references are displayed as folder references](/assets/blog/modularize-xcode-projects-using-local-swift-packages/image-13.png)
 
-Before we can actually add our library to the iOS project, we need to declare it as a product inside the `Package.swift`. As a library product can bundle multiple targets together, we need to add the CalculatorCore as the targets parameter.
+Before we can actually add our library to the iOS project, we need to declare it as a product inside the
+`Package.swift`. As a library product can bundle multiple targets together, we need to add the CalculatorCore as the
+targets parameter.
 
 ```swift
 let package = Package(
@@ -411,13 +444,16 @@ let package = Package(
 )
 ```
 
-As a final step you have to add the CalculatorCore library as a dependency to the iOS app target, by clicking on the **plus +** in the target settings in the **Frameworks, Libraries, and Embedded Content** section and selecting it in the list:
+As a final step you have to add the CalculatorCore library as a dependency to the iOS app target, by clicking on the
+**plus +** in the target settings in the **Frameworks, Libraries, and Embedded Content** section and selecting it in the
+list:
 
 ![Add a package in the dependency management list](/assets/blog/modularize-xcode-projects-using-local-swift-packages/image-14.png)
 
 This is it. Your local Swift Package is now available inside your iOS app 🎉
 
-Inside the ContentView.swift we can add the import CalculatorCore at the top of the file and once again we can use the `Operator` type and `calculate` function inside the computed property result :
+Inside the ContentView.swift we can add the import CalculatorCore at the top of the file and once again we can use the
+`Operator` type and `calculate` function inside the computed property result :
 
 ```swift
 var result: String {
@@ -453,9 +489,11 @@ print("usage: " + name + " number1 [+ | - | / | *] number2")
 ForEach(["+", "-", "*", "/"], id: \.self) { op in ...
 ```
 
-Both of these lines manually list the operators we have implemented, and if we add another one to the enum Operator, they won’t be updated. Even worse we might forget to add it to one of our apps.
+Both of these lines manually list the operators we have implemented, and if we add another one to the enum Operator,
+they won’t be updated. Even worse we might forget to add it to one of our apps.
 
-Let’s fix this, by adding the CaseIterable protocol to the Operator enum, which gives us `Operator.allCases`, a synthesized Array with all available operators.
+Let’s fix this, by adding the CaseIterable protocol to the Operator enum, which gives us `Operator.allCases`, a
+synthesized Array with all available operators.
 
 ```swift
 public enum Operator: String, CaseIterable {
@@ -474,7 +512,8 @@ ForEach(Operator.allCases, id: \.self) { op in
 }
 ```
 
-As ForEach inside the Picker adds the operator as a tag to the Text object, we now have to change the selection property too:
+As ForEach inside the Picker adds the operator as a tag to the Text object, we now have to change the selection property
+too:
 
 ```swift
 ...
@@ -484,7 +523,8 @@ As ForEach inside the Picker adds the operator as a tag to the Text object, we n
 
 This way can also get rid of the force-unwrap inside var result: String {..}
 
-Inside the `main.swift` of our CLI application, you can now dynamically create the operator list in the `printUsage` function:
+Inside the `main.swift` of our CLI application, you can now dynamically create the operator list in the `printUsage`
+function:
 
 ```swift
 func printUsage(message: String) {
@@ -498,14 +538,16 @@ func printUsage(message: String) {
 }
 ```
 
-Great, do you want to add another operator? No worries, just extend the enum Operator by another case and implement it in the calculate() function 🎉
+Great, do you want to add another operator? No worries, just extend the enum Operator by another case and implement it
+in the calculate() function 🎉
 
 ## Create more local libraries to build a dependency graph
 
-In this step, we want to add a debug logger to our CalculatorCore.
-We could just use the print() method, but that wouldn’t be as much fun, right? 😄
+In this step, we want to add a debug logger to our CalculatorCore. We could just use the print() method, but that
+wouldn’t be as much fun, right? 😄
 
-Creating more local packages is straightforward. As before, create a folder inside **Sources** with the package name. In this case, it is going to be `CalculatorLogger` and it contains a single `Logger.swift` file:
+Creating more local packages is straightforward. As before, create a folder inside **Sources** with the package name. In
+this case, it is going to be `CalculatorLogger` and it contains a single `Logger.swift` file:
 
 ```swift
 public class Logger {
@@ -555,21 +597,26 @@ Result: 27.0
 
 ## More to come!
 
-This is it. If you followed along you have now created a multi-platform app using the same core logic 🚀
-Some closing remarks on why this is useful:
+This is it. If you followed along you have now created a multi-platform app using the same core logic 🚀 Some closing
+remarks on why this is useful:
 
 - If we change our application, the packages won’t have to be rebuilt which gives us faster build times.
 - We can work with the packages themselves, especially when adding unit tests to them, without running a full app.
 - Isolation of packages takes care of keeping our code clean using visibility (e.g. public vs. internal)
-- Something we haven’t explored in this post yet is parallel compilation.
-  Imagine you are using more packages as dependencies to our CalculatorCore packages similar to the CalculatorLogger package. As these are not depending on each other, they can be built in parallel, which gives us even faster build times!
+- Something we haven’t explored in this post yet is parallel compilation. Imagine you are using more packages as
+  dependencies to our CalculatorCore packages similar to the CalculatorLogger package. As these are not depending on
+  each other, they can be built in parallel, which gives us even faster build times!
 
-While writing this article I realized it is not possible to cover the more advanced capabilities, such as per-platform UI modules using interfaces to communicate in a [VIPER pattern](https://www.objc.io/issues/13-architecture/viper/) (which is something I am currently using in a large-scale iOS/macOS cross-platform app).
-Therefore I will cover advanced topics, such as how SPM can help you transitioning from UIKit/AppKit to SwiftUI using XIB files into their own packages, in a future article (make sure to follow me to get notified!).
+While writing this article I realized it is not possible to cover the more advanced capabilities, such as per-platform
+UI modules using interfaces to communicate in a [VIPER pattern](https://www.objc.io/issues/13-architecture/viper/)
+(which is something I am currently using in a large-scale iOS/macOS cross-platform app). Therefore I will cover advanced
+topics, such as how SPM can help you transitioning from UIKit/AppKit to SwiftUI using XIB files into their own packages,
+in a future article (make sure to follow me to get notified!).
 
-If you would like to know more, check out my other articles, follow me on [Twitter](https://twitter.com/philprimes) and feel free to drop me a DM.
-Do you have a specific topic you want me to cover? Let me know! 😃
+If you would like to know more, check out my other articles, follow me on [Twitter](https://twitter.com/philprimes) and
+feel free to drop me a DM. Do you have a specific topic you want me to cover? Let me know! 😃
 
 **EDIT 13.04.2021:** Added an example for spin-off app for large-scale projects
 
-**UPDATE 19.04.2021:** I just published the [follow-up article](https://philprime.medium.com/advanced-cross-platform-apps-using-local-swift-packages-and-uikit-appkit-2a478e8b05cd)!
+**UPDATE 19.04.2021:** I just published the
+[follow-up article](https://philprime.medium.com/advanced-cross-platform-apps-using-local-swift-packages-and-uikit-appkit-2a478e8b05cd)!
