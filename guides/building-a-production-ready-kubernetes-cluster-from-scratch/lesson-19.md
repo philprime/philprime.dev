@@ -9,6 +9,9 @@ guide_lesson_id: 19
 guide_lesson_abstract: >
   Test and optimize the performance of your Longhorn storage setup to ensure it meets the needs of your applications
   running in the Kubernetes cluster.
+guide_lesson_conclusion: >
+  With performance testing and optimizations complete, your Longhorn storage setup should now provide efficient and
+  reliable storage for your Kubernetes cluster
 ---
 
 In this lesson, we will test and optimize the performance of your Longhorn storage setup to ensure that it meets the
@@ -16,10 +19,7 @@ needs of your applications running in the Kubernetes cluster. By understanding h
 conditions and applying optimizations, you can ensure data reliability, reduce latency, and improve overall cluster
 efficiency.
 
-This is the nineteenth lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure
-you have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-18) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
 ## Benchmarking Longhorn Performance with fio
 
@@ -465,12 +465,3 @@ Kubernetes clusters, but it may not be as fast as local storage solutions.
 Keep in mind that Longhorn is designed to provide persistend storage across multiple nodes in a Kubernetes cluster, and
 it offers features like snapshots, backups, and data locality that are required to reschedule workloads on different
 nodes.
-
-## Lesson Conclusion
-
-Congratulations! With performance testing and optimizations complete, your Longhorn storage setup should now provide
-efficient and reliable storage for your Kubernetes cluster. In the next section, we will focus on securing your cluster
-by implementing role-based access control (RBAC) and other security measures.
-
-You have completed this lesson and you can now continue with
-[the next section](/building-a-production-ready-kubernetes-cluster-from-scratch/section-7).

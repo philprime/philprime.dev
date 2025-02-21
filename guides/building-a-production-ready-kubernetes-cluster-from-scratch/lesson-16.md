@@ -8,6 +8,9 @@ guide_section_id: 5
 guide_lesson_id: 16
 guide_lesson_abstract: >
   Test and verify the high-availability configuration of your Kubernetes control plane.
+guide_lesson_conclusion: >
+  After successfully testing and verifying the high-availability setup of your control plane, your cluster is now
+  resilient and capable of maintaining operation even during node failures
 ---
 
 In this lesson, we will test and verify the high-availability configuration of your Kubernetes control plane. Ensuring
@@ -15,10 +18,7 @@ that your control plane is resilient to node failures is critical for maintainin
 operation. We will simulate node failures and observe the behavior of the control plane to confirm that the redundancy
 and load balancing setup is functioning correctly.
 
-This is the sixteenth lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure you
-have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-14) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
 ## Verify the Initial High Availability Setup
 
@@ -262,14 +262,6 @@ Counter-Theory: If the high-availability would not work, it would not be possibl
 the other nodes. This would result in an error message like `The connection to the server could not be established` when
 running the `kubectl get nodes` command.
 
-<div class="alert alert-warning">
-  <strong>Warning:</strong> Do not forget to restart the `kubelet` service on the failed node to restore the high-availability setup.
-</div>
-
-## Lesson Conclusion
-
-Congratulations! After successfully testing and verifying the high-availability setup of your control plane, your
-cluster is now resilient and capable of maintaining operation even during node failures.
-
-You have completed this lesson and you can now continue with
-[the next section](/building-a-production-ready-kubernetes-cluster-from-scratch/section-17).
+{% include alert.liquid.html type='warning' title='Warning:' content='
+Do not forget to restart the `kubelet` service on the failed node to restore the high-availability setup.
+' %}

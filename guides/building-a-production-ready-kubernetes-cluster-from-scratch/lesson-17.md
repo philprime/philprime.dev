@@ -9,16 +9,16 @@ guide_lesson_id: 17
 guide_lesson_abstract: >
   Install and configure **Longhorn**, a lightweight and reliable distributed block storage solution for your Kubernetes
   cluster.
+guide_lesson_conclusion: >
+  With Longhorn installed and configured, your Kubernetes cluster now has a robust distributed block storage solution to
+  manage persistent volumes
 ---
 
 In this lesson, we will install and configure **Longhorn**, a lightweight and reliable distributed block storage
 solution for your Kubernetes cluster. Longhorn provides persistent storage for applications running in your cluster,
 enabling you to create, manage, and scale persistent volumes across multiple nodes.
 
-This is the seventeenth lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure
-you have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-16) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
 ## What is Longhorn?
 
@@ -218,25 +218,28 @@ INFO[2025-01-17T18:27:17+01:00] Cleaning up preflight checker
 INFO[2025-01-17T18:27:17+01:00] Completed preflight checker
 ```
 
+#### Checking the Environment (Optional / Deprecated)
+
 In addition to the `longhornctl` preflight check, you can also run deprecated environment checks using the following
 command on every node in your cluster:
 
 ```bash
 # Install dependencies of the environment check script
-$ sudo apt-get install -y jq
+$ sudo apt install -y jq
 
 # Run the script to check the environment
 $ curl -sSfL https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/scripts/environment_check.sh | bash
 ```
 
-<div class="alert alert-warning">
-<strong>Warning:</strong> The script above is deprecated and may not work with newer versions of Longhorn. It is recommended to use the <code>longhornctl</code> preflight check instead.
-</div>
+{% include alert.liquid.html type='warning' title='Warning:' content='
+The script above is deprecated and may not work with newer versions of Longhorn. It is recommended to use the
+<code>longhornctl</code> preflight check instead.
+' %}
 
-<div class="alert alert-warning">
-<strong>Warning:</strong> In general it is not recommended to run scripts directly from the internet. Make sure to review the script content before executing
-it.
-</div>
+{% include alert.liquid.html type='warning' title='Warning:' content='
+In general it is not recommended to run scripts directly from the internet. Make sure to review the script content
+before executing it.
+' %}
 
 ## Installing Longhorn in Your Kubernetes Cluster
 
@@ -414,9 +417,10 @@ that the `Block Device` significantly significantly reduces I/O latency while si
 throughput, due to the power of the Storage Performance Development Kit (SPDK), it also states that the `Block Device`
 option is currently Experimental not recommended for production use.
 
-<div class="alert alert-warning">
-<strong>Warning:</strong> If you feel confident and want to try out the `Block Device` option, make sure to have a backup of your data and be aware that it is not recommended for production use.
-</div>
+{% include alert.liquid.html type='warning' title='Warning:' content='
+If you feel confident and want to try out the <code>Block Device</code> option, make sure to have a backup of your data
+and be aware that it is not recommended for production use.
+' %}
 
 Next we need to specify the disk space reserved for Longhorn. This is useful if you want to use the disk for other
 purposes as well. In this example, we are reserving `0G` of disk space.
@@ -634,12 +638,3 @@ To unexpose the Longhorn UI, you can change the service type back to `ClusterIP`
 ```bash
 $ kubectl patch svc longhorn-frontend -n longhorn-system -p '{"spec": {"type": "ClusterIP"}}'
 ```
-
-## Lesson Conclusion
-
-Congratulations! With Longhorn installed and configured, your Kubernetes cluster now has a robust distributed block
-storage solution to manage persistent volumes. In the next lesson, we will configure Longhorn storage classes to
-optimize how your storage resources are allocated and used.
-
-You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-18).

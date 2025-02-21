@@ -8,16 +8,16 @@ guide_section_id: 6
 guide_lesson_id: 18
 guide_lesson_abstract: >
   Configure Longhorn storage classes to manage your Kubernetes cluster's storage resources efficiently.
+guide_lesson_conclusion: >
+  With your Longhorn storage classes configured, your Kubernetes cluster is now set up to efficiently manage persistent
+  storage resources
 ---
 
 In this lesson, we will configure Longhorn storage classes to manage your Kubernetes cluster's storage resources
 efficiently. Storage classes define how storage is dynamically provisioned for your applications and allow you to
 specify different parameters, such as replication settings, access modes, and performance optimizations.
 
-This is the eighteenth lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure
-you have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-17) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
 ## What is a Storage Class?
 
@@ -271,12 +271,3 @@ To optimize your Longhorn storage class for performance:
   single-node access or `ReadWriteMany` for multi-node access.
 - **Enable data locality** if you want to ensure that the data remains on the node where the volume is attached,
   reducing latency for read and write operations.
-
-## Lesson Conclusion
-
-Congratulations! With your Longhorn storage classes configured, your Kubernetes cluster is now set up to efficiently
-manage persistent storage resources. In the next lesson, we will test and optimize the performance of your Longhorn
-storage setup to ensure it meets your application's requirements.
-
-You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-19).

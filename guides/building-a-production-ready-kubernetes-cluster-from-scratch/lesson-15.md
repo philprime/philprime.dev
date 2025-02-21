@@ -9,16 +9,16 @@ guide_lesson_id: 15
 guide_lesson_abstract: >
   Discuss the importance of load balancing for the control plane in a Kubernetes cluster and guide you through choosing
   and configuring a suitable load balancer.
+guide_lesson_conclusion: >
+  With Keepalived and HAProxy configured, your control plane is now set up for high availability, and traffic to the
+  Kubernetes API server will be load balanced across all control plane nodes.
 ---
 
 In this lesson, we will discuss the importance of load balancing for the control plane in a Kubernetes cluster and guide
 you through choosing and configuring a suitable load balancer. Load balancing is essential to ensure that your control
 plane remains accessible, reliable, and highly available even in the face of node failures or increased traffic.
 
-This is the second lesson in the series on building a production-ready Kubernetes cluster from scratch. Make sure you
-have completed the [previous lesson](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-13) before
-continuing here. The full list of lessons in the series can be found
-[in the overview](/building-a-production-ready-kubernetes-cluster-from-scratch).
+{% include guide-overview-link.liquid.html %}
 
 ## What is a Load Balancer?
 
@@ -422,15 +422,22 @@ $ sudo systemctl restart haproxy
 $ sudo systemctl enable haproxy
 Synchronizing state of haproxy.service with SysV service script with /lib/systemd/systemd-sysv-install.
 Executing: /lib/systemd/systemd-sysv-install enable haproxy
+$ sudo systemctl status haproxy
+● haproxy.service - HAProxy Load Balancer
+     Loaded: loaded (/lib/systemd/system/haproxy.service; enabled; preset: enabled)
+     Active: active (running) since Fri 2025-02-21 21:22:36 CET; 1min 14s ago
+...
 ```
 
-<div class="alert alert-info" role="alert">
-    <strong>Note:</strong> If you decide to add additional nodes later on, which are also part of the control plane, make sure to update the HAProxy configuration file with the new node information.
-</div>
+{% include alert.liquid.html type='note' title='Note:' content='
+If you decide to add additional nodes later on, which are also part of the control plane, make sure to update the
+HAProxy configuration file with the new node information.
+' %}
 
-<div class="alert alert-warning" role="alert">
-  <strong>Warning:</strong> If you decide to add additional nodes later on, which are <strong>not</strong> part of the control plane, make sure to <strong>not</strong> include them in the HAProxy configuration file.
-</div>
+{% include alert.liquid.html type='warning' title='Warning:' content='
+If you decide to add additional nodes later on, which are <strong>not</strong> part of the control plane, make sure to
+<strong>not</strong> include them in the HAProxy configuration file.
+' %}
 
 ## Verify the Load Balancer Setup
 
@@ -494,7 +501,7 @@ ok
 
 ## Configure Kubernetes to Use the Load Balancer
 
-TODO: Is this really the way to go?
+// TODO: Is this really the way to go?
 
 To ensure that Kubernetes uses the virtual IP address for the API server, you need to update the `kubeconfig` file on
 each control plane node. Edit the `kubeconfig` file:
@@ -544,12 +551,3 @@ kubernetes-node-1   Ready    control-plane   33m   v1.31.5
 kubernetes-node-2   Ready    control-plane   26m   v1.31.4
 kubernetes-node-3   Ready    control-plane   27m   v1.31.4
 ```
-
-## Lesson Conclusion
-
-Congratulations! With Keepalived and HAProxy configured, your control plane is now set up for high availability, and
-traffic to the Kubernetes API server will be load balanced across all control plane nodes. In the next lesson, we will
-test and verify the high-availability configuration of your Kubernetes control plane.
-
-You have completed this lesson and you can now continue with
-[the next one](/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-16).
