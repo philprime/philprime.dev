@@ -2,7 +2,8 @@
 
 {% if page.guide_component == 'section' %}
   <p>
-    This is the {{ page.guide_section_id }} section of the guide <strong>{{ guide.title | escape }}</strong>.
+    This is the {{ page.guide_section_id | ordinalize }} section of the guide
+    <strong>{{ guide.title | escape }}</strong>.
     {% if page.guide_section_id > 1 -%}
       Make sure you have completed the
       <a href='/guides/{{ page.guide_id }}/section-{{ page.guide_section_id | minus: 1 }}'>previous section</a> before
@@ -15,7 +16,7 @@
 
 {% if page.guide_component == 'lesson' %}
   <p>
-    This is the {{ page.guide_lesson_id }} lesson of the guide <strong>{{ guide.title | escape }}</strong>.
+    This is the {{ page.guide_lesson_id | ordinalize }} lesson of the guide <strong>{{ guide.title | escape }}</strong>.
     {% if page.guide_lesson_id > 1 -%}
       Make sure you have completed the
       <a href='/guides/{{ page.guide_id }}/lesson-{{ page.guide_lesson_id | minus: 1 }}'>previous lesson</a> before
