@@ -502,7 +502,9 @@ ok
 
 ## Configure Kubernetes to Use the Load Balancer
 
-// TODO: Is this really the way to go?
+{% include alert.liquid.html type='warning' title='Warning:' content='
+This section of the guide might be incomplete and needs to be updated.
+' %}
 
 To ensure that Kubernetes uses the virtual IP address for the API server, you need to update the `kubeconfig` file on
 each control plane node. Edit the `kubeconfig` file:
