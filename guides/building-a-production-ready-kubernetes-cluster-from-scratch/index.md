@@ -8,6 +8,7 @@ guide_id: building-a-production-ready-kubernetes-cluster-from-scratch
 guide_abstract: >
   From hardware assembly to network configuration, this guide will guide you through the process of building a
   production-ready Kubernetes cluster from scratch using Raspberry Pi devices.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/index.md
 ---
 
 Welcome to my new series on building a production-ready Kubernetes cluster from scratch using Raspberry Pi devices. In
