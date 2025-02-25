@@ -1,0 +1,16 @@
+---
+layout: default.liquid
+---
+{% include assign-guide.liquid.html %}
+{% include assign-guide-section.liquid.html %}
+
+<header>
+  <h1>Guide Revisions - {{ guide.title }}</h1>
+  <span>
+    <a href='{{ guide.url }}'>Back to the guide</a>
+  </span>
+</header>
+
+<div style='margin-top: 2rem;'>
+  {{ content }}
+</div>
