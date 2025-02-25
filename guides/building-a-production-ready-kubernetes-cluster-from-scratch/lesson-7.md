@@ -12,6 +12,7 @@ guide_lesson_abstract: >
 guide_lesson_conclusion: >
   With your network configuration complete, your Raspberry Pi devices are now ready to communicate effectively within
   your Kubernetes cluster
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-7.md
 ---
 
 In this lesson, we will set up the network configuration for your Raspberry Pi Kubernetes cluster. Proper network setup

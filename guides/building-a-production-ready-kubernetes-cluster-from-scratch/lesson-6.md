@@ -10,6 +10,7 @@ guide_lesson_abstract: >
   Learn how to install NVMe HATs and configure SSD storage for use with Longhorn and local container image storage.
 guide_lesson_conclusion: >
   With your NVMe SSDs installed and configured, you have successfully prepared your persistent storage solution.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-6.md
 ---
 
 In this lesson, we’ll set up the NVMe SSDs for each Raspberry Pi device to provide persistent storage for your

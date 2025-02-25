@@ -11,6 +11,7 @@ guide_lesson_abstract: >
 guide_lesson_conclusion: >
   With all control plane nodes successfully joined and the high-availability configuration verified, your Kubernetes
   cluster is now more resilient and can withstand node failures.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-13.md
 ---
 
 In this lesson, we will join additional Raspberry Pi devices as control plane nodes to create a high-availability

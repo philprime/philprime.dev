@@ -12,6 +12,7 @@ guide_lesson_abstract: >
 guide_lesson_conclusion: >
   With Keepalived and HAProxy configured, your control plane is now set up for high availability, and traffic to the
   Kubernetes API server will be load balanced across all control plane nodes.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-15.md
 ---
 
 In this lesson, we will discuss the importance of load balancing for the control plane in a Kubernetes cluster and guide

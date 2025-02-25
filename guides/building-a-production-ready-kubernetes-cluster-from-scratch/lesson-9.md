@@ -12,6 +12,7 @@ guide_lesson_abstract: >
 guide_lesson_conclusion: >
   With containerd installed and configured, your Raspberry Pi devices are now ready to run containers as part of the
   part of the Kubernetes cluster.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-9.md
 ---
 
 In this lesson, we will set up **containerd** as the container runtime on each Raspberry Pi device. Containerd is a

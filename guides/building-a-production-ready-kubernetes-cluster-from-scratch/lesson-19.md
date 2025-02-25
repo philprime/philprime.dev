@@ -12,6 +12,7 @@ guide_lesson_abstract: >
 guide_lesson_conclusion: >
   With performance testing and optimizations complete, your Longhorn storage setup should now provide efficient and
   reliable storage for your Kubernetes cluster
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-19.md
 ---
 
 In this lesson, we will test and optimize the performance of your Longhorn storage setup to ensure that it meets the

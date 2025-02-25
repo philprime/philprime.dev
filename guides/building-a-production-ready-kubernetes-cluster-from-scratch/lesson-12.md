@@ -11,6 +11,7 @@ guide_lesson_abstract: >
 guide_lesson_conclusion: >
   With the CNI plugin installed and verified, your Kubernetes cluster is now ready to support communication between all
   pods across nodes
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-12.md
 ---
 
 In this lesson, we will install a Container Network Interface (CNI) plugin to enable communication between the pods

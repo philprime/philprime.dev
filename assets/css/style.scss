@@ -53,3 +53,25 @@
 .alert pre {
   color: white;
 }
+
+.contribute-cta {
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  font-size: 16px;
+  background-color: #161b24;
+  color: white;
+}
+
+.contribute-cta-links {
+  margin-top: 10px;
+}
+
+.contribute-cta a {
+  text-decoration: none;
+  color: #79b8ff;
+}
+
+.contribute-cta a:hover {
+  text-decoration: underline;
+}

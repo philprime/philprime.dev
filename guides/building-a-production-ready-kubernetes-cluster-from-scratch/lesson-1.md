@@ -9,6 +9,7 @@ guide_lesson_id: 1
 guide_lesson_abstract: >
   Get an introduction to the guide structure, objectives, and the skills you will acquire by the end. Understand how
   this guide will help you build a high-availability Kubernetes cluster with Raspberry Pi devices.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-1.md
 ---
 
 {% include assign-guide.liquid.html %}

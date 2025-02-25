@@ -10,6 +10,7 @@ guide_section_abstract: >
   connection for the cluster.
 guide_section_cta: >
   unbox your Raspberry Pi devices and prepare them for the cluster setup.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/section-2.md
 ---
 
 In this section, you will learn how to assemble the Raspberry Pi hardware, set up and configure the operating system,

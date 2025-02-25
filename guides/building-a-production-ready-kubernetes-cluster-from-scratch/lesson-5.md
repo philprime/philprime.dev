@@ -12,6 +12,7 @@ guide_lesson_abstract: >
 guide_lesson_conclusion: >
   With the operating system flashed and the initial configuration complete, you are now ready to set up the NVMe SSDs
   for persistent storage.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-5.md
 ---
 
 In this lesson, you will follow a step-by-step guide to install Raspberry Pi OS on your devices, configure essential

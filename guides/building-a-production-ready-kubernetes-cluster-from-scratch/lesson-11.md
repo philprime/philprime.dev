@@ -11,6 +11,7 @@ guide_lesson_abstract: >
   init and configuring the control plane.
 guide_lesson_conclusion: >
   With the control plane initialized, your first node is now set up to manage your Kubernetes cluster.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-11.md
 ---
 
 In this lesson, we will initialize the first control plane node for your Kubernetes cluster. The control plane is

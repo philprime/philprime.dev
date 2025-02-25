@@ -10,6 +10,7 @@ guide_section_abstract: >
   availability.
 guide_section_cta: >
   learn more about the guide objectives and the skills you will acquire by the end.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/section-1.md
 ---
 
 This section will introduce you to the guide objectives, the hardware and software requirements, and the fundamentals of

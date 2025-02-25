@@ -1,0 +1,16 @@
+{% assign branch = 'main' %}
+{% assign repo = 'https://github.com/philprime/philprime.dev' %}
+<div class='contribute-cta'>
+  <small><strong>Help improve this content</strong></small>
+  <br>
+  <small>
+    This is my personal website, but I'm always open to feedback and corrections. If you spot a typo or have suggestions
+    for improving the content, I'd love to hear from you and incorporate your feedback.
+  </small>
+  <br>
+  <small class='contribute-cta-links'>
+    <a href='{{ repo }}/edit/{{ branch }}/{{ include.file_path }}' target='_blank'>Edit this page</a>
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    <a href='{{ repo }}/issues/new' target='_blank'>Create an issue</a>
+  </small>
+</div>

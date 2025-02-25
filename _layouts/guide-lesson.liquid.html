@@ -27,3 +27,5 @@ layout: default.liquid
     <a href='lesson-{{ page.guide_lesson_id | plus: 1 }}'>the next one</a>.
   </p>
 </div>
+
+{% include contribute-cta.liquid.html file_path=page.repo_file_path %}

@@ -9,6 +9,7 @@ guide_lesson_id: 4
 guide_lesson_abstract: >
   Unbox your Raspberry Pi devices and prepare them for the cluster setup. Learn about the hardware components and their
   roles in the Kubernetes cluster.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-4.md
 ---
 
 In this lesson, you will unbox your Raspberry Pi devices and prepare them for the cluster setup, and learn about the

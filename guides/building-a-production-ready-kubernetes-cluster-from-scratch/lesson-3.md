@@ -9,6 +9,7 @@ guide_lesson_id: 3
 guide_lesson_abstract: >
   Learn the basics of Kubernetes, its core components, and the principles of high availability. Understand how these
   concepts apply to the cluster you’ll build in this guide.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-3.md
 ---
 
 In this lesson, you will learn the basics of Kubernetes, its core components, and the principles of high availability.

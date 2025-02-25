@@ -11,6 +11,7 @@ guide_lesson_abstract: >
   initialization.
 guide_lesson_conclusion: >
   With the Kubernetes tools installed and configured, your Raspberry Pi devices are now ready to initialize the cluster
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-8.md
 ---
 
 In this lesson, you will learn how to install and configure essential Kubernetes tools on your Raspberry Pi devices to

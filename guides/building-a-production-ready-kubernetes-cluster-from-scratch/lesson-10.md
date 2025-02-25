@@ -11,6 +11,7 @@ guide_lesson_abstract: >
   requirements and configurations.
 guide_lesson_conclusion: >
   With the nodes properly configured and prepared, you are ready to initialize the Kubernetes control plane.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-10.md
 ---
 
 In this lesson, we will prepare each Raspberry Pi node for Kubernetes initialization. This involves ensuring that all

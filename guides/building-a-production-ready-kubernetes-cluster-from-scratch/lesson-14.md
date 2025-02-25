@@ -11,6 +11,7 @@ guide_lesson_abstract: >
 guide_lesson_conclusion: >
   After successfully testing and verifying the high-availability setup of your control plane, your cluster is now
   resilient and capable of maintaining operation even during node failures
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-14.md
 ---
 
 In this lesson, we will test and verify the high-availability configuration of your Kubernetes control plane. Ensuring

@@ -12,6 +12,7 @@ guide_lesson_abstract: >
 guide_lesson_conclusion: >
   With Longhorn installed and configured, your Kubernetes cluster now has a robust distributed block storage solution to
   manage persistent volumes
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-17.md
 ---
 
 In this lesson, we will install and configure **Longhorn**, a lightweight and reliable distributed block storage

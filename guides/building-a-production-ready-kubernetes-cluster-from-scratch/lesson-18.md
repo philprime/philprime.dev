@@ -11,6 +11,7 @@ guide_lesson_abstract: >
 guide_lesson_conclusion: >
   With your Longhorn storage classes configured, your Kubernetes cluster is now set up to efficiently manage persistent
   storage resources
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-18.md
 ---
 
 In this lesson, we will configure Longhorn storage classes to manage your Kubernetes cluster's storage resources

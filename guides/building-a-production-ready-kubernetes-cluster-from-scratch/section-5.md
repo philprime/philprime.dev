@@ -10,6 +10,7 @@ guide_section_abstract: >
   verify high availability.
 guide_section_cta: >
   learn how to configure load balancing for the Kubernetes API server.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/section-5.md
 ---
 
 In this section, you will learn how to mplement load balancing for the control plane API, set up redundancy using tools

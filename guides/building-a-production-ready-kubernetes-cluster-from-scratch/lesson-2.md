@@ -9,6 +9,7 @@ guide_lesson_id: 2
 guide_lesson_abstract: >
   Discover the hardware and software requirements for building your Kubernetes cluster. Learn about the specific tools
   and equipment you’ll need to follow along with the guide.
+repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-2.md
 ---
 
 {% include assign-guide.liquid.html %}
