@@ -32,15 +32,13 @@ To set up your Kubernetes cluster, you will need several hardware components:
 - For persistent storage, you will need 500GB NVMe SSDs along with compatible NVMe HATs for each Raspberry Pi. Make sure
   the lengths of the SSDs are supported by the HATs.
 - Each device also requires a 5V/5A USB-C power supply to ensure stable operation.
-- To connect all Raspberry Pi devices, you will need a gigabit wired router like the [TP-LINK ER605](// TODO: ADD
-  AFFILIATE LINK) (or any other networking router) to create a local network for your cluster.
+- To connect all Raspberry Pi devices, you will need a gigabit wired router like the TP-LINK ER605 (or any other
+  networking router) to create a local network for your cluster.
 - You should have CAT5e or higher Ethernet cables available to connect the Raspberry Pi devices to the router.
 
 ![Hardware Overview](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/hardware-overview.jpg)
 
 ### Exact Hardware List
-
-// TODO: add more details on the hardware components
 
 The following is the exact list of hardware components used in this guide:
 

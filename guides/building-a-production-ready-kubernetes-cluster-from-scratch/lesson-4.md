@@ -21,13 +21,12 @@ hardware components and their roles in the Kubernetes cluster.
 
 To get started, make sure you have the following components:
 
-- You will need at least three [Raspberry Pi 5](// TODO: ADD AFFILIATE LINK) devices, ideally with 8GB of RAM for better
-  performance.
+- You will need at least three Raspberry Pi 5 devices, ideally with 8GB of RAM for better performance.
 - Each Raspberry Pi requires a 64GB (or higher) microSD card, with high-endurance cards recommended for reliability.
 - For persistent storage, you will need at least 500GB NVMe SSDs along with compatible NVMe HATs for each Raspberry Pi.
-- Each device also requires a [5V/5A USB-C power supply](// TODO: ADD AFFILIATE LINK) to ensure stable operation.
-- To connect all Raspberry Pi devices, you will need a gigabit wired router like the [TP-LINK ER605](// TODO: ADD
-  AFFILIATE LINK) (or any other networking router) to create a local network for your cluster.
+- Each device also requires a 5V/5A USB-C power supply to ensure stable operation.
+- To connect all Raspberry Pi devices, you will need a gigabit wired router like the TP-LINK ER605 (or any other
+  networking router) to create a local network for your cluster.
 - You should have CAT5e or higher Ethernet cables available to connect the Raspberry Pi devices to the router.
 
 ## Unboxing the Raspberry Pi Devices
