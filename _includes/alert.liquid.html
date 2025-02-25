@@ -1,0 +1,6 @@
+<div class='alert alert-{{ include.type }}'>
+  <strong>{{ include.title }}</strong> {{ include.content }}
+  {% if include.img_src %}
+    <img src='{{ include.img_src }}' alt='{{ include.img_alt }}' style='margin-top: 8px;'>
+  {% endif %}
+</div>

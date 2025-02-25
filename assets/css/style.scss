@@ -1,0 +1,55 @@
+---
+# Only the main Sass file needs front matter (the dashes are enough)
+---
+
+@use 'base';
+
+.alert {
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+
+.alert-note {
+  background-color: #e7f3fe;
+  border-left: 4px solid #2196f3;
+  color: #2175d9;
+}
+
+.alert-note a {
+  color: black;
+}
+
+.alert-tip {
+  background-color: #e7fce7;
+  border-left: 4px solid #4caf50;
+  color: #3e8e41;
+}
+
+.alert-important {
+  background-color: #fef7e6;
+  border-left: 4px solid #ff9800;
+  color: #f57c00;
+}
+
+.alert-warning {
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+  color: #856404;
+}
+
+.alert-caution {
+  background-color: #fdecea;
+  border-left: 4px solid #f44336;
+  color: #d32f2f;
+}
+
+// Fix the text color of the code in the alerts as the code background color is dark
+.alert code {
+  color: white;
+}
+
+.alert pre {
+  color: white;
+}
