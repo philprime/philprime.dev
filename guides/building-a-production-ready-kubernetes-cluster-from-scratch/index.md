@@ -11,10 +11,19 @@ guide_abstract: >
 repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/index.md
 ---
 
-Welcome to my new series on building a production-ready Kubernetes cluster from scratch using Raspberry Pi devices. In
-this series, you can follow along to build your own dedicated Kubernetes cluster at home, from hardware assembly to
-cluster setup and management. The learnings can then be applied to real-world scenarios, and scaled up to larger
-clusters as needed.
+Welcome to my new guide on building a production-ready Kubernetes cluster from scratch using Raspberry Pi devices. In
+this series, you can follow along my journey building my own dedicated Kubernetes cluster at home, from hardware assembly to
+cluster setup and management. 
+
+A small scale cluster allows you to find learnings in a cost-efficient setup, which can then be applied to real-world scenarios and scale up to larger
+clusters as needed. 
+While large-scale cluster will introduce additional complexity and scenarios not covered in this guide (for now), we are trying to be "production-ready" by meticulously
+going through all aspects of security, availability and reliability.
+
+This is by no means intended to be complete as I am not intending to write a manual here (you can always dig deeper into the relevant documentations).
+Instead this guide reflects all the step taken by me during the setup of my cluster, written in a way so you can follow along, including my thoughts and findings outside the official documentations.
+
+I truly hope this guide is helpful for you and can provide valuable insights for those planning a similar project.
 
 {% include alert.liquid.html type='note' title='Please read this!' content='
 
