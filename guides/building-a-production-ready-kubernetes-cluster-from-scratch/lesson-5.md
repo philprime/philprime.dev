@@ -40,27 +40,27 @@ for headless setup and a hostname for each Raspberry Pi.
   you haven’t already).
 - Open the Raspberry Pi Imager and select the **Raspberry Pi OS (other)** option.
 - Choose the **Raspberry Pi OS Lite (64-bit)** version (or 32-bit for older models) for a minimal installation.
-  ![OS Selection](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-1.png)
+  ![OS Selection](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-1.png)
 - Select the microSD card you want to flash the OS to (ensure you have the correct card selected), and click on
   **Next**.
-  ![Selected settings](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-2.png)
+  ![Selected settings](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-2.png)
 - When prompted to **use OS customization**, click on **Edit Settings**.
-  ![Customization Prompt](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-3.png)
+  ![Customization Prompt](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-3.png)
 - In the OS customisation settings window, configure the following settings in **General**:
   - **Hostname**: Set a unique hostname for each Raspberry Pi device `kubernetes-node-X` (replacing `X` with the number
     of the current node).
   - **Username**: Set the username to `pi` and configure a unique password. Ideally you configure a different password
     for each node, but for simplicity you can use the same password for all node for now.
   - **Timezone**: Set the timezone to your local timezone.
-    ![General Settings](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-4.png)
+    ![General Settings](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-4.png)
 - In the OS customisation settings window, switch to the tab **Services** and enable **SSH** to allow remote access to
   the Raspberry Pi devices.
   - Generate a new SSH key pair using `ssh-keygen` or use an existing one to secure the SSH connection. If you are
     creating a new key pair and write it to `~/.ssh/k8s_cluster_id_ed25519`.
-    ![SSH Settings](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-5.png)
+    ![SSH Settings](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-5.png)
   - Open the public key `~/.ssh/k8s_cluster_id_ed25519.pub` and copy its content into the textfield. Click on **Save**
     to confirm the changes.
-    ![SSH Settings](/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-6.png)
+    ![SSH Settings](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-imager-6.png)
 - Back on the main screen, when prompted with "Would you like to apply OS customizations settings?", click on **Yes**.
 - A warning will be shown, explaining that all data on the microSD card will be erased. Click on **Yes** to confirm and
   start the flashing process.
@@ -71,7 +71,7 @@ for headless setup and a hostname for each Raspberry Pi.
 Add a label to your Raspberry Pi to identify the device by its hostname.
 This will help you distinguish between the devices when connecting to them remotely.
 '
-img_src="/assets/blog/2024-09-15-building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-with-labels.jpg"
+img_src="/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi-with-labels.jpg"
 img_alt="Raspberry Pi with labels" %}
 
 ## Pre-Configure Static IP Addresses
