@@ -352,7 +352,7 @@ longhorn-frontend   NodePort   10.106.184.77   <none>        80:32756/TCP   19m
 In this example, the NodePort assigned to the Longhorn UI is `32756`. You can access the Longhorn UI in a web browser
 using any node's IP address and this port, e.g., `http://10.1.1.1:32756`.
 
-![Longhorn Dashboard](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-1.png)
+![Longhorn Dashboard](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-1.webp)
 
 Looking at the dashboard above, you can see that longhorn has been successfully deployed and a total of 95.8 Gigabyte of
 unused storage is available for use. 51.1 Gigabyte of data is reserved, as it will be used for the replication of the
@@ -364,7 +364,7 @@ which is path that is mounted on the microSD card of the Raspberry Pi.
 
 You can explore it in detail by clicking on the `Node` tab at the top, where you can then view the storage per node.
 
-![Longhorn Nodes](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-2.png)
+![Longhorn Nodes](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-2.webp)
 
 We can avoid this behavior by adding the NVMe disks and then disabling scheduling for `/var/lib/longhorn`. This is
 useful so we can keep the internal storage for the system and use the NVMe disks for the Kubernetes Cluster.
@@ -401,12 +401,12 @@ Next, we need to add the NVMe disk to Longhorn. This can be done using the Longh
 Switch to the tab `Node` at the top to view your three nodes. Scroll to the right side of the table and click on
 `Edit node and disks` in the `Operations` dropdown.
 
-![Longhorn Nodes Dropdown](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-3.png)
+![Longhorn Nodes Dropdown](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-3.webp)
 
 In the dialog that opens, you can see the default disk path `/var/lib/longhorn` and the disk space available. To add the
 NVMe disk, click on the `Add Disk` at the bottom of the dialog.
 
-![Longhorn Dashboard](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-4.png)
+![Longhorn Dashboard](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-4.webp)
 
 When adding the disk you need to specify a name, e.g. `storage-1`, the path of the disk, i.e. `/mnt/nvme/storage-1`.
 
@@ -430,17 +430,17 @@ Also do not forget to enable the disk for scheduling, otherwise Longhorn will no
 
 To confirm the changes, click on the `Save` button.
 
-![Longhorn Add Disk](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-5.png)
+![Longhorn Add Disk](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-5.webp)
 
 When confirming the changes, the dialog will disappear and by clicking on `Expand All` you can see all disks of the
 node. Initially the disk will be detected with a size of `0G`, as Longhorn needs to scan the disk first.
 
-![Longhorn Node Disks](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-6.png)
+![Longhorn Node Disks](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-6.webp)
 
 While waiting for the disk to be scanned, repeat the steps for the other nodes as well. Once the disk is scanned on
 every node you will see the disk space of roughly `457.38 Gi` available for use.
 
-![Longhorn Node Disks](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-7.png)
+![Longhorn Node Disks](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-7.webp)
 
 Now that the NVMe disk is added to Longhorn, we can remove the default disk on `/var/lib/longhorn` to avoid using the
 internal storage for the system.
@@ -449,12 +449,12 @@ To do this, click on the `Edit node and disks` again, click on `Disable` schedul
 the trash icon to remove the disk, and confirm the changes by clicking `Save`. Repeat the steps for the other nodes as
 well.
 
-![Longhorn Node Disks](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-8.png)
+![Longhorn Node Disks](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-8.webp)
 
 After removing the default disk, click on `Dashboard` at the top to return to the main dashboard. You can now see that
 the disk space has changed to `1.34 Ti` being available for use.
 
-![Longhorn Dashboard](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-9.png)
+![Longhorn Dashboard](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-9.webp)
 
 TODO: change to reserve 100GB because we use NVMe for other purposes as well.
 
@@ -624,7 +624,7 @@ spec:
 
 You can also view the changes in the Longhorn UI by refreshing the page:
 
-![Longhorn Node Disks](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-10.png)
+![Longhorn Node Disks](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/longhorn-10.webp)
 
 To revert the changes, you can set the `storageReserved` back to `0`:
 

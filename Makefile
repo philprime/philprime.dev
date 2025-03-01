@@ -12,4 +12,4 @@ serve: install
 optimize: optimize-images
 
 optimize-images:
-	find _site -type f -name "*.jpg" -o -name "*.png" -o -name "*.gif" | xargs -I {} jpegoptim --strip-all {}
+	./bin/optimize-image.bash

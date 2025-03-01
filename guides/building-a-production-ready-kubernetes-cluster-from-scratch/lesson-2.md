@@ -36,7 +36,7 @@ To set up your Kubernetes cluster, you will need several hardware components:
   networking router) to create a local network for your cluster.
 - You should have CAT5e or higher Ethernet cables available to connect the Raspberry Pi devices to the router.
 
-![Hardware Overview](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/hardware-overview.jpg)
+![Hardware Overview](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/hardware-overview.webp)
 
 ### Exact Hardware List
 
@@ -50,14 +50,14 @@ The following is the exact list of hardware components used in this guide:
 - Gigiabit Ethernet port
 - 5V/5A USB-C power supply recommended, 5V/3A minimum requirement
 
-![Raspberry Pi 5](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi.jpg)
+![Raspberry Pi 5](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/raspberry-pi.webp)
 
 **Power Supply:**
 
 - Official Raspberry Pi USB-C Power Supply 27W
 - Provides 5.1V, 5.0A DC output
 
-![Power Supply](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/power-supply.jpg)
+![Power Supply](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/power-supply.webp)
 
 **MicroSD Card:**
 
@@ -65,7 +65,7 @@ The following is the exact list of hardware components used in this guide:
 - Model: HSTF
 - Manufacturer: Shenzhen Haishitongda Technology Co., Ltd.
 
-![MicroSD Card](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/microsd-card.jpg)
+![MicroSD Card](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/microsd-card.webp)
 
 **Raspberry PI NVMe HAT:**
 
@@ -73,14 +73,14 @@ The following is the exact list of hardware components used in this guide:
 - Supports M.2 NVMe SSDs
 - Supports 2280, 2260, 2242, and 2230 form factors
 
-![NVMe HAT](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/nvme-hat.jpg)
+![NVMe HAT](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/nvme-hat.webp)
 
 **NVMe SSD:**
 
 - Kingston SNV3S/500G
 - 500GB PCIe 4.0 NVMe M.2
 
-![NVMe SSD](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/nvme-ssd.jpg)
+![NVMe SSD](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/nvme-ssd.webp)
 
 **Router:**
 
@@ -88,14 +88,14 @@ The following is the exact list of hardware components used in this guide:
 - Gigabit Wired Router
 - 4x Gigabit LAN Ports / 1x Gigabit WAN Port
 
-![Router](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/router.jpg)
+![Router](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/router.webp)
 
 **Ethernet Cable:**
 
 - CAT6 Ethernet Cable
 - Length: 0.15m
 
-![Ethernet Cable](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/ethernet-cables.jpg)
+![Ethernet Cable](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/ethernet-cables.webp)
 
 ## Software Requirements
 
