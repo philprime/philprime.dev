@@ -36,7 +36,6 @@ social_links:
 
 plugins:
   - jekyll-seo-tag
-  - jekyll-analytics
   - jekyll-feed
   - jekyll-gist
 
@@ -46,8 +45,3 @@ highlighter: rouge
 
 kramdown:
   input: GFM
-
-jekyll_analytics:
-  Matomo:
-    url: analytics.techprimate.com
-    siteId: '1'
