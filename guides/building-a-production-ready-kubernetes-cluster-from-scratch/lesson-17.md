@@ -169,7 +169,6 @@ $ sudo modprobe iscsi_tcp
 To make these changes persistent, create a configuration file:
 
 ```bash
-$ sudo touch /etc/modules-load.d/longhorn.conf
 $ sudo tee /etc/modules-load.d/longhorn.conf <<EOF
 dm_crypt
 iscsi_tcp

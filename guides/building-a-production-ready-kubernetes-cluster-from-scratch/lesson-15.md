@@ -89,7 +89,7 @@ address of each control plane node. This is necessary to avoid conflicts when th
 load balancer. Edit the Kubernetes API server configuration file:
 
 ```bash
-$ sudo vi /etc/kubernetes/manifests/kube-apiserver.yaml
+$ sudo vim /etc/kubernetes/manifests/kube-apiserver.yaml
 ```
 
 Locate the `--advertise-address` and `--bind-address` to set both to the local nodes IP address. If the flags do not
@@ -175,7 +175,7 @@ Configure the Keepalived service on each control plane node to manage the virtua
 configuration file:
 
 ```bash
-$ sudo nano /etc/keepalived/keepalived.conf
+$ sudo vim /etc/keepalived/keepalived.conf
 ```
 
 Let's look at the options `we need to configure in the Keepalived configuration:
@@ -381,7 +381,7 @@ Configure HAProxy to load balance traffic to the Kubernetes API server on each c
 configuration file:
 
 ```bash
-$ sudo vi /etc/haproxy/haproxy.cfg
+$ sudo vim /etc/haproxy/haproxy.cfg
 ```
 
 In this configuration file we need to define two sections: the `frontend` section, which listens for incoming requests

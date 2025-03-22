@@ -80,7 +80,7 @@ Now we configure the router to assign static IP addresses to the Raspberry Pi:
 
 - Open the router configuration page by typing the router's IP address into your web browser. The IP address is usually
   printed on the router itself or in the user manual, but can also be found the network details of your computer. In our
-  case it is `https://192.16.8.0.1`.
+  case it is `https://192.168.0.1`.
 - Log in to the router using the default username and password. You might get prompted to change the password. Do so if
   necessary.
   ![Router Login](/assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/router-setup-1.webp)
