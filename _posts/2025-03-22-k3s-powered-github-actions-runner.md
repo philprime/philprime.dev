@@ -767,7 +767,7 @@ kube-system                   metrics-server-7bf7d58749-fr7k9                   
 Furthermore, you should see the runner scale set in the GitHub Actions settings of your repository, e.g.
 https://github.com/organizations/kula-app/settings/actions/runners:
 
-![GitHub Actions Runner Scale Set](./assets/XXXX-XX-XX-k3s-powered-github-actions-runner/github-actions-runner-scale-set-default.png)
+![GitHub Actions Runner Scale Set](./assets/2025-03-22-k3s-powered-github-actions-runner/github-actions-runner-scale-set-default.png)
 
 ## Running a workflow on the runner
 
@@ -799,7 +799,7 @@ jobs:
 
 After pushing the changes to the repository, you should see the workflow being executed on the runner scale set:
 
-![GitHub Actions Runner Scale Set](./assets/XXXX-XX-XX-k3s-powered-github-actions-runner/github-actions-runner-scale-set-max.png)
+![GitHub Actions Runner Scale Set](./assets/2025-03-22-k3s-powered-github-actions-runner/github-actions-runner-scale-set-max.png)
 
 As we start 10 jobs in parallel, we should see the ARC controller to spin up the maximum number of 5 runners. In
 addition to the runner, the workflow is also running in a separate pod, as we can see in the following output:
