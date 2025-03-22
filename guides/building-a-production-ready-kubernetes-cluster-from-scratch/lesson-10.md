@@ -285,16 +285,16 @@ To allow incoming and outgoing traffic to the Kubernetes API server from the nod
 
 ```bash
 # Allow incoming and outgoing intra-node traffic to the Kubernetes API server
-$ ufw allow from 10.1.1.0/24 to any port 6443 proto tcp
-$ ufw allow out to 10.1.1.0/24 port 6443 proto tcp
+$ ufw allow from 10.1.1.0/24 to any port 6443 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Kubernetes API server'
+$ ufw allow out to 10.1.1.0/24 port 6443 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Kubernetes API server'
 ```
 
 Next we want to allow our etcd replicas to communicate with each other:
 
 ```bash
 # Allow incoming and outgoing intra-node traffic to the etcd server
-$ ufw allow from 10.1.1.0/24 to any port 2379:2380 proto tcp
-$ ufw allow out to 10.1.1.0/24 port 2379:2380 proto tcp
+$ ufw allow from 10.1.1.0/24 to any port 2379:2380 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the etcd server'
+$ ufw allow out to 10.1.1.0/24 port 2379:2380 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the etcd server'
 ```
 
 Next we want to allow the Kubelet API Server (port `10250`), the Scheduler (port `10251`), and the Controller Manager
@@ -304,16 +304,16 @@ open for intra-node communication and the Scheduler and Controller Manager ports
 
 ```bash
 # Allow Kubelet (10250) for Intra-Node Communication:
-$ ufw allow from 10.1.1.0/24 to any port 10250 proto tcp
-$ ufw allow out to 10.1.1.0/24 port 10250 proto tcp
+$ ufw allow from 10.1.1.0/24 to any port 10250 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Kubelet API Server'
+$ ufw allow out to 10.1.1.0/24 port 10250 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Kubelet API Server'
 
 # Restrict Scheduler (10251) to local communication:
-$ ufw allow from 127.0.0.1 to any port 10251 proto tcp
-$ ufw allow out to 127.0.0.1 port 10251 proto tcp
+$ ufw allow from 127.0.0.1 to any port 10251 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Scheduler'
+$ ufw allow out to 127.0.0.1 port 10251 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Scheduler'
 
 # Restrict Controller Manager (10252) to local communication:
-$ ufw allow from 127.0.0.1 to any port 10252 proto tcp
-$ ufw allow out to 127.0.0.1 port 10252 proto tcp
+$ ufw allow from 127.0.0.1 to any port 10252 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Controller Manager'
+$ ufw allow out to 127.0.0.1 port 10252 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Controller Manager'
 ```
 
 Apply the changes:
@@ -389,25 +389,25 @@ New profiles: skip
 
 To                         Action      From
 --                         ------      ----
-22/tcp                     ALLOW IN    Anywhere
-6443/tcp                   ALLOW IN    10.1.1.0/24      # Added in this lesson
-2379:2380/tcp              ALLOW IN    10.1.1.0/24      # Added in this lesson
-10250/tcp                  ALLOW IN    10.1.1.0/24      # Added in this lesson
-10251/tcp                  ALLOW IN    127.0.0.1        # Added in this lesson
-10252/tcp                  ALLOW IN    127.0.0.1        # Added in this lesson
-22/tcp (v6)                ALLOW IN    Anywhere (v6)
+22/tcp                     ALLOW IN    Anywhere                   # Allow SSH access
+6443/tcp                   ALLOW IN    10.1.1.0/24                # Allow incoming and outgoing intra-node traffic to the Kubernetes API server
+2379:2380/tcp              ALLOW IN    10.1.1.0/24                # Allow incoming and outgoing intra-node traffic to the etcd server
+10250/tcp                  ALLOW IN    10.1.1.0/24                # Allow incoming and outgoing intra-node traffic to the Kubelet API Server
+10251/tcp                  ALLOW IN    127.0.0.1                  # Allow incoming and outgoing intra-node traffic to the Scheduler
+10252/tcp                  ALLOW IN    127.0.0.1                  # Allow incoming and outgoing intra-node traffic to the Controller Manager
+22/tcp (v6)                ALLOW IN    Anywhere (v6)              # Allow SSH access
 
-53                         ALLOW OUT   Anywhere
-123/udp                    ALLOW OUT   Anywhere
-80/tcp                     ALLOW OUT   Anywhere
-443                        ALLOW OUT   Anywhere
-10.1.1.0/24 6443/tcp       ALLOW OUT   Anywhere         # Added in this lesson
-10.1.1.0/24 2379:2380/tcp  ALLOW OUT   Anywhere         # Added in this lesson
-10.1.1.0/24 10250/tcp      ALLOW OUT   Anywhere         # Added in this lesson
-127.0.0.1 10251/tcp        ALLOW OUT   Anywhere         # Added in this lesson
-127.0.0.1 10252/tcp        ALLOW OUT   Anywhere         # Added in this lesson
-53 (v6)                    ALLOW OUT   Anywhere (v6)
-123/udp (v6)               ALLOW OUT   Anywhere (v6)
-80/tcp (v6)                ALLOW OUT   Anywhere (v6)
-443 (v6)                   ALLOW OUT   Anywhere (v6)
+53                         ALLOW OUT   Anywhere                   # Allow outgoing DNS traffic
+123/udp                    ALLOW OUT   Anywhere                   # Allow outgoing NTP traffic
+80/tcp                     ALLOW OUT   Anywhere                   # Allow outgoing HTTP traffic
+443                        ALLOW OUT   Anywhere                   # Allow outgoing HTTPS traffic
+10.1.1.0/24 6443/tcp       ALLOW OUT   Anywhere                   # Allow incoming and outgoing intra-node traffic to the Kubernetes API server
+10.1.1.0/24 2379:2380/tcp  ALLOW OUT   Anywhere                   # Allow incoming and outgoing intra-node traffic to the etcd server
+10.1.1.0/24 10250/tcp      ALLOW OUT   Anywhere                   # Allow incoming and outgoing intra-node traffic to the Kubelet API Server
+127.0.0.1 10251/tcp        ALLOW OUT   Anywhere                   # Allow incoming and outgoing intra-node traffic to the Scheduler
+127.0.0.1 10252/tcp        ALLOW OUT   Anywhere                   # Allow incoming and outgoing intra-node traffic to the Controller Manager
+53 (v6)                    ALLOW OUT   Anywhere (v6)              # Allow outgoing DNS traffic
+123/udp (v6)               ALLOW OUT   Anywhere (v6)              # Allow outgoing NTP traffic
+80/tcp (v6)                ALLOW OUT   Anywhere (v6)              # Allow outgoing HTTP traffic
+443 (v6)                   ALLOW OUT   Anywhere (v6)              # Allow outgoing HTTPS traffic
 ```
