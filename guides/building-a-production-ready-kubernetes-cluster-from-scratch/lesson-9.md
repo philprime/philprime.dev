@@ -1,17 +1,16 @@
 ---
 layout: guide-lesson.liquid
-title: Setting Up Docker or Container Runtime
+title: Setting Up Container Runtime
 
 guide_component: lesson
 guide_id: building-a-production-ready-kubernetes-cluster-from-scratch
 guide_section_id: 3
 guide_lesson_id: 9
 guide_lesson_abstract: >
-  Set up Docker or another container runtime to run containers on your Raspberry Pi devices as part of the Kubernetes
-  cluster.
+  Set up container runtime to run containers on your Raspberry Pi devices as part of the Kubernetes cluster.
 guide_lesson_conclusion: >
   With containerd installed and configured, your Raspberry Pi devices are now ready to run containers as part of the
-  part of the Kubernetes cluster.
+  Kubernetes cluster.
 repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-9.md
 ---
 
@@ -26,6 +25,14 @@ All commands used in this lesson require <code>sudo</code> privileges.
 Either prepend <code>sudo</code> to each command or switch to the root user using <code>sudo -i</code>.
 ' %}
 
+## Preparing the NVMe Directory
+
+First, create the directory where containerd will be installed:
+
+```bash
+$ mkdir -p /mnt/nvme/containerd
+```
+
 ## Installing containerd on Each Raspberry Pi
 
 To begin, make sure you are connected to each Raspberry Pi via SSH. Perform the following steps on each device:
@@ -37,15 +44,21 @@ $ apt update
 $ apt install -y apt-transport-https curl gnupg2 software-properties-common
 ```
 
-Next you can install containerd using the following commands:
+Next, install containerd:
 
 ```bash
 $ apt install -y containerd
 ```
 
-## Preparing the containerd Configuration
+## Configuring containerd
 
-Once containerd is installed, it needs to be configured properly to work with Kubernetes.
+Once containerd is installed, we need to configure it properly to work with Kubernetes and use the NVMe drive.
+
+First, stop the containerd service:
+
+```bash
+$ systemctl stop containerd
+```
 
 Create a default configuration file for containerd:
 
@@ -54,31 +67,27 @@ $ mkdir -p /etc/containerd
 $ containerd config default | tee /etc/containerd/config.toml
 ```
 
-## Configuring containerd to Use the NVMe Drive
+## Configuring containerd Storage and Runtime
 
-Configure containerd to use the path `/mnt/nvme/containerd` as the root dir, so that containerd can store its data on
-the NVMe drive:
-
-```bash
-$ mkdir -p /mnt/nvme/containerd
-```
-
-Open the configuration file with a text editor like `vi` or `nano` to modify the `root` setting:
+Now we'll modify the configuration to use the NVMe drive for storage for any persistent data and configure the system
+cgroup driver. Open the configuration file with a text editor like `vim` or `nano`:
 
 ```bash
-$ vi /etc/containerd/config.toml
+$ vim /etc/containerd/config.toml
 ```
 
-Find the line that specifies the `root` setting (typically under the
-`[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]` section). This section is the configuration
-related to the `runc` runtime, which is the default runtime used by containerd:
+At the top of the file, find the line that specifies the `root` setting which is the directory where containerd will
+store its data:
 
 ```toml
-[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-  root = "/mnt/nvme/containerd"
+root = "/mnt/nvme/containerd"
 ```
 
-Save the changes and exit the editor (in `vi`, press `Esc` followed by `:wq` and `Enter`).
+Change the value to the path of the NVMe drive:
+
+```toml
+root = "/mnt/nvme/containerd"
+```
 
 ## Configuring containerd for Kubernetes
 
@@ -94,28 +103,18 @@ In the same section as the `root` setting, we need to configure the `SystemdCgro
 
 Save the changes and exit the editor (in `vi`, press `Esc` followed by `:wq` and `Enter`).
 
-## Adding symbolic link to the containerd directory
-
-Even though we have configured containerd to use the NVMe drive, we need to add a symbolic link to the containerd
-directory to allow containerd to store its data on the NVMe drive. This is because some Kubernetes components expect the
-containerd data to be stored at the default location.
-
-Create a symbolic link to the containerd directory:
-
-```bash
-$ ln -s /mnt/nvme/containerd /var/lib/containerd
-```
+## Starting containerd Service
 
 Restart containerd to apply the configuration changes and enable it to start on boot:
 
 ```bash
-$ systemctl restart containerd
 $ systemctl enable containerd
+$ systemctl restart containerd
 ```
 
 ## Verifying containerd Installation
 
-To confirm that containerd is installed and configured correctly, checkout the status of the containerd service:
+To confirm that containerd is installed and configured correctly, check the status of the containerd service:
 
 ```bash
 $ systemctl status containerd
@@ -141,4 +140,14 @@ Jan 12 20:16:00 kubernetes-node-1 systemd[1]: Started containerd.service - conta
 Jan 12 20:16:00 kubernetes-node-1 containerd[4629]: time="2025-01-12T20:16:00.485584240+01:00" level=info msg="containerd successfully booted in 0.038755s"
 ```
 
-As you can see, the output shows that the containerd service is active and running.
+To verify that containerd is using the NVMe drive for storage, check the log output of the containerd service:
+
+```bash
+$ journalctl -u containerd
+...
+Mar 16 16:40:53 kubernetes-node-1 containerd[20982]: time="2025-03-16T16:40:53.491421451+01:00" level=info msg="Connect containerd service"
+Mar 16 16:40:53 kubernetes-node-1 containerd[20982]: time="2025-03-16T16:40:53.491479507+01:00" level=info msg="Get image filesystem path \"/mnt/nvme/containerd/io.containerd.snapshotter.v1.overlayfs\""
+...
+```
+
+The output should show that the containerd service is active and running, now using the NVMe drive for storage.
