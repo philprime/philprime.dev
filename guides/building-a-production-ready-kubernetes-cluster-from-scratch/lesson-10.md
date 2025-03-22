@@ -43,7 +43,7 @@ To make this change permanent, edit the `/etc/fstab` file and remove the swap en
 `dphys-swapfile`, you will see the following line in the file:
 
 ```bash
-$ vi /etc/fstab
+$ vim /etc/fstab
 
 # a swapfile is not a swap partition, no line here
 #   use  dphys-swapfile swap[on|off]  for that
@@ -153,15 +153,16 @@ net.bridge.bridge-nf-call-ip6tables = 1
 Kubernetes requires the memory cgroup memory controller to be enabled on the Raspberry Pi nodes.
 
 ```bash
+# The fourth column should have a value of `1`
 $ cat /proc/cgroups | grep -e memory
-memory	0	55	1
+memory	0 42	0
 ```
 
 If the `memory` cgroup is not enabled, you will need to enable it by appending `cgroup_memory=1 cgroup_enable=memory` to
-the boot command line in the `/boot/cmdline.txt` file using `nano` or `vi`:
+the boot command line in the `/boot/cmdline.txt` file using `nano` or `vim`:
 
 ```bash
-$ vi /boot/cmdline.txt
+$ vim /boot/cmdline.txt
 ```
 
 {% include alert.liquid.html type='warning' title='WARNING:' content='
@@ -319,6 +320,7 @@ Apply the changes:
 
 ```bash
 $ ufw reload
+Firewall reloaded
 ```
 
 ## Verifying Node Preparation

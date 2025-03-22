@@ -157,11 +157,6 @@ Jan 17 16:14:53 kubernetes-node-1 systemd[1]: Started kubelet.service - kubelet:
 Jan 17 16:14:53 kubernetes-node-1 kubelet[17651]: E0117 16:14:53.701110   17651 run.go:72] "command failed" err="failed to load kubelet config file, path: /var/lib/kubelet/config.yaml, error: failed to load Kubelet config file /var/lib/kubelet/config.yaml, error failed to read kubelet config file \"/var/lib/kubelet/config.yaml\", error: open /var/lib/kubelet/co>
 Jan 17 16:14:53 kubernetes-node-1 systemd[1]: kubelet.service: Main process exited, code=exited, status=1/FAILURE
 Jan 17 16:14:53 kubernetes-node-1 systemd[1]: kubelet.service: Failed with result 'exit-code'.
-Jan 17 16:15:03 kubernetes-node-1 systemd[1]: kubelet.service: Scheduled restart job, restart counter is at 1.
-Jan 17 16:15:03 kubernetes-node-1 systemd[1]: Stopped kubelet.service - kubelet: The Kubernetes Node Agent.
-Jan 17 16:15:03 kubernetes-node-1 systemd[1]: Started kubelet.service - kubelet: The Kubernetes Node Agent.
-Jan 17 16:15:03 kubernetes-node-1 kubelet[17660]: E0117 16:15:03.937337   17660 run.go:72] "command failed" err="failed to load kubelet config file, path: /var/lib/kubelet/config.yaml, error: failed to load Kubelet config file /var/lib/kubelet/config.yaml, error failed to read kubelet config file \"/var/lib/kubelet/config.yaml\", error: open /var/lib/kubelet/co>
-Jan 17 16:15:03 kubernetes-node-1 systemd[1]: kubelet.service: Main process exited, code=exited, status=1/FAILURE
 ```
 
 As you can see the service is not running correctly, because we have not yet set up a Kubernetes cluster. We will do
