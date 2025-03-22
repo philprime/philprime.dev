@@ -72,7 +72,23 @@ In case your node failed to join the etcd cluster, the following error might be 
 ```
 
 To recover from this, you can remove the Kubernetes node from the cluster using `kubeadm reset` and remove the etcd
-member by running a shell in one of running etcd pods:
+member by running a shell in one of running etcd pods.
+
+First install `etcdctl`:
+
+```bash
+$ export ETCD_VER=v3.5.19
+$ export DOWNLOAD_URL="https://github.com/etcd-io/etcd/releases/download"
+$ export ARCH=arm64
+$ rm -f /tmp/etcd-${ETCD_VER}-linux-${ARCH}.tar.gz
+$ rm -rf /tmp/etcd-download-test && mkdir -p /tmp/etcd-download-test
+$ curl -L ${DOWNLOAD_URL}/${ETCD_VER}/etcd-${ETCD_VER}-linux-${ARCH}.tar.gz -o /tmp/etcd-${ETCD_VER}-linux-${ARCH}.tar.gz
+$ tar xzvf /tmp/etcd-${ETCD_VER}-linux-${ARCH}.tar.gz -C /tmp/etcd-download-test --strip-components=1
+$ rm -f /tmp/etcd-${ETCD_VER}-linux-${ARCH}.tar.gz
+$ install /tmp/etcd-download-test/etcdctl /usr/local/bin/etcdctl
+```
+
+Then run the following command to list the etcd members:
 
 ```bash
 $ ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
