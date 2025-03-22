@@ -72,7 +72,7 @@ $ ufw default deny incoming
 $ ufw default deny outgoing
 
 # Allow SSH access
-$ ufw allow ssh
+$ ufw allow ssh comment 'Allow SSH access'
 ```
 
 Finally, enable the firewall to apply the rules:
@@ -105,21 +105,21 @@ your Raspberry Pi devices to resolve domain names and synchronize time with exte
 
 ```bash
 # Allow  outcoming traffic for the DNS service (port 53)
-$ ufw allow out domain
+$ ufw allow out domain comment 'Allow outgoing DNS traffic'
 Rule added
 Rule added (v6)
 
 # Allow outcoming traffic for the NTP service (port 123)
-$ ufw allow out ntp
+$ ufw allow out ntp comment 'Allow outgoing NTP traffic'
 Rule added
 Rule added (v6)
 
 # Allow outgoing HTTP and HTTPS traffic required to fetch external resources
-$ ufw allow out http
+$ ufw allow out http comment 'Allow outgoing HTTP traffic'
 Rule added
 Rule added (v6)
 
-$ ufw allow out https
+$ ufw allow out https comment 'Allow outgoing HTTPS traffic'
 Rule added
 Rule added (v6)
 ```
@@ -142,7 +142,7 @@ $ ufw reload
 $ ufw status verbose
 Status: active
 Logging: on (low)
-Default: deny (incoming), deny (outgoing), deny (routed)
+Default: deny (incoming), deny (outgoing), disabled (routed)
 New profiles: skip
 
 To                         Action      From
@@ -150,14 +150,14 @@ To                         Action      From
 22/tcp                     ALLOW IN    Anywhere
 22/tcp (v6)                ALLOW IN    Anywhere (v6)
 
-53                         ALLOW OUT   Anywhere
-80                         ALLOW OUT   Anywhere
-123/udp                    ALLOW OUT   Anywhere
-443                        ALLOW OUT   Anywhere
-53 (v6)                    ALLOW OUT   Anywhere (v6)
-80 (v6)                    ALLOW OUT   Anywhere (v6)
-123/udp (v6)               ALLOW OUT   Anywhere (v6)
-443 (v6)                   ALLOW OUT   Anywhere (v6)
+53                         ALLOW OUT   Anywhere                   # Allow outgoing DNS traffic
+123/udp                    ALLOW OUT   Anywhere                   # Allow outgoing NTP traffic
+80/tcp                     ALLOW OUT   Anywhere                   # Allow outgoing HTTP traffic
+443                        ALLOW OUT   Anywhere                   # Allow outgoing HTTPS traffic
+53 (v6)                    ALLOW OUT   Anywhere (v6)              # Allow outgoing DNS traffic
+123/udp (v6)               ALLOW OUT   Anywhere (v6)              # Allow outgoing NTP traffic
+80/tcp (v6)                ALLOW OUT   Anywhere (v6)              # Allow outgoing HTTP traffic
+443 (v6)                   ALLOW OUT   Anywhere (v6)              # Allow outgoing HTTPS traffic
 ```
 
 To verify the outgoing ICMP traffic and DNS resolution, you can test the `ping` command to an external IP address. For

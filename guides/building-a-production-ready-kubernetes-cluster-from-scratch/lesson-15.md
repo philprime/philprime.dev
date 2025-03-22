@@ -278,10 +278,10 @@ which is currently blocked in our firewall settings (managed by `ufw`, as config
 
 ```bash
 # Allow incoming VRRP multicast traffic
-$ sudo ufw allow in to 224.0.0.18
+$ sudo ufw allow in to 224.0.0.18 comment 'Allow incoming VRRP multicast traffic'
 
 # Allow outgoing VRRP multicast traffic
-$ sudo ufw allow out to 224.0.0.18
+$ sudo ufw allow out to 224.0.0.18 comment 'Allow outgoing VRRP multicast traffic'
 ```
 
 Enable and start the Keepalived service on each control plane node:
