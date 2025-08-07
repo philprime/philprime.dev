@@ -6,7 +6,7 @@ categories: blog
 tags: iOS Performance Sentry Session-Replay Mobile
 ---
 
-Proud to share that my first post on the [Sentry blog](https://blog.sentry.io/) is now live! It covers my work on investigating and improving Session Replay performance on iOS, with a focus on making it less disruptive — especially on older devices.
+Proud to share that my first post on the [Sentry Blog](https://blog.sentry.io/boosting-session-replay-performance-on-ios-with-view-renderer-v2/) is now live! It covers my work on investigating and improving Session Replay performance on iOS, with a focus on making it less disruptive — especially on older devices.
 
 ## The Challenge
 
