@@ -268,9 +268,9 @@ $dm-brand-color-dark: color.adjust($dm-brand-color, $lightness: -35%) !default;
 
 $dm-site-title-color: $dm-brand-color-light !default;
 
-$dm-text-color: #bbbbbb !default;
+$dm-text-color: #e6e6e6 !default;
 $dm-background-color: #181818 !default;
-$dm-code-background-color: #212121 !default;
+$dm-code-background-color: #1a1a1a !default;
 
 $dm-link-base-color: #79b8ff !default;
 $dm-link-visited-color: $dm-link-base-color !default;
@@ -296,34 +296,34 @@ $dm-table-border-color: $dm-border-color-01 !default;
 @mixin dm-highlight {
   .highlight {
     .c {
-      color: #545454;
+      color: #8a8a8a;
       font-style: italic;
     } // Comment
     .err {
-      color: #f07178;
-      background-color: #e3d2d2;
+      color: #ff6b6b;
+      background-color: #2d1e1e;
     } // Error
     .k {
-      color: #89ddff;
+      color: #7dd3fc;
       font-weight: bold;
     } // Keyword
     .o {
       font-weight: bold;
     } // Operator
     .cm {
-      color: #545454;
+      color: #8a8a8a;
       font-style: italic;
     } // Comment.Multiline
     .cp {
-      color: #545454;
+      color: #8a8a8a;
       font-weight: bold;
     } // Comment.Preproc
     .c1 {
-      color: #545454;
+      color: #8a8a8a;
       font-style: italic;
     } // Comment.Single
     .cs {
-      color: #545454;
+      color: #8a8a8a;
       font-weight: bold;
       font-style: italic;
     } // Comment.Special
@@ -384,10 +384,10 @@ $dm-table-border-color: $dm-border-color-01 !default;
       font-weight: bold;
     } // Keyword.Type
     .m {
-      color: #f78c6c;
+      color: #fbbf24;
     } // Literal.Number
     .s {
-      color: #c3e88d;
+      color: #a3e635;
     } // Literal.String
     .na {
       color: #008080;
