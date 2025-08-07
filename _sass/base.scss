@@ -182,9 +182,9 @@ li {
     margin-bottom: 0;
   }
 
-  // Tighter spacing for nested lists in guides
+  // Tighter spacing for paragraphs directly inside list items
   > p {
-    margin-bottom: $spacing-unit * 0.25;
+    margin-bottom: $spacing-unit * 0.5;
   }
 }
 
