@@ -35,3 +35,6 @@ gem "jekyll-gist"
 
 # Sitemap Generation
 gem "jekyll-sitemap"
+
+# Favicon Generation
+gem "jekyll-favicon", "~> 1.1.0"
