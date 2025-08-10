@@ -411,7 +411,7 @@ For the actual fragment parsing logic you can choose from multiple approaches (s
 approach we are using a character-based lexer.
 
 The fragment lexer differs from the previous ones, as it iterates the content by each character and also offers
-additional methods to _peak_ at further characters (does not increase the iterator counter) and _rewind_ to move the
+additional methods to _peek_ at further characters (does not increase the iterator counter) and _rewind_ to move the
 iterator backwards.
 
 ```swift
@@ -431,7 +431,7 @@ class FragmentLexer: IteratorProtocol {
         return content[content.index(content.startIndex, offsetBy: offset)]
     }
 
-    func peakPrevious(count: Int = 1) -> Character? {
+    func peekPrevious(count: Int = 1) -> Character? {
         offset -= count
         let character = currentCharacter
         offset += count
@@ -444,7 +444,7 @@ class FragmentLexer: IteratorProtocol {
         return character
     }
 
-    func peakNext() -> Character? {
+    func peekNext() -> Character? {
         let character = next()
         rewindCharacter()
         return character
@@ -599,7 +599,7 @@ class FragmentParser {
         // Start iterating every character
         while let character = lexer.next() {
             // Check if the character is an asterisk
-            if character == "*" && lexer.peakNext() == "*" {
+            if character == "*" && lexer.peekNext() == "*" {
                 // Move the cursor once forward to skip the second asterisk
                 _ = lexer.next()
                 // Array to track the characters inside the bold inline segment
@@ -611,7 +611,7 @@ class FragmentParser {
                 // Iterate remaining characters until the bold segment finishes or the block runs out of charactesr
                 while let nestedChar = lexer.next() {
                     rewindCount += 1
-                    if nestedChar == "*" && lexer.peakNext() == "*" {
+                    if nestedChar == "*" && lexer.peekNext() == "*" {
                         // skip second asteriks
                         _ = lexer.next()
                         // exit the loop, as the bold segment is done
@@ -646,7 +646,7 @@ class FragmentParser {
 ```
 
 The code is commented so it should be self-explanatory. In this example you can also see why our FragmentLexer has
-additional peak and rewind methods.
+additional peek and rewind methods.
 
 When you run the test case once again, they still fails with the following result:
 
