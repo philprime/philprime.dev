@@ -32,3 +32,6 @@ gem "jekyll-seo-tag", "~> 2.1"
 
 # GitHub Gist Embedding
 gem "jekyll-gist"
+
+# Sitemap Generation
+gem "jekyll-sitemap"

@@ -38,6 +38,7 @@ plugins:
   - jekyll-seo-tag
   - jekyll-feed
   - jekyll-gist
+  - jekyll-sitemap
 
 # Code highlighting
 markdown: kramdown
@@ -56,3 +57,10 @@ exclude:
   - Gemfile
   - Gemfile.lock
   - vendor/
+
+# Configure defaults for specific files
+defaults:
+  - scope:
+      path: 'cv.pdf'
+    values:
+      sitemap: false
