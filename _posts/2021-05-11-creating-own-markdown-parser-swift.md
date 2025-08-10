@@ -13,7 +13,7 @@ excerpt:
 keywords:
   'Swift markdown parser, AST parsing, iOS development, Swift programming, compiler design, text parsing, markdown to
   swift, iOS tutorial'
-image: /assets/blog/creating-own-markdown-parser-swift/1_S5uBWbywD4XLTwR16-cGoQ.jpeg
+image: /assets/blog/creating-own-markdown-parser-swift/1_oV75cDIooAre7oB0o4u64g.png
 author: Philip Niedertscheider
 ---
 
