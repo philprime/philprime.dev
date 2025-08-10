@@ -3,7 +3,18 @@ layout: post.liquid
 title: 'Modularize Xcode Projects using local Swift Packages'
 date: 2021-04-12 17:00:00 +0200
 categories: blog
-tags: iOS Swift SPM
+tags: iOS Swift SPM Xcode modularization Swift-Package-Manager architecture
+description:
+  'Learn how to modularize your Xcode projects using local Swift Package Manager (SPM) packages. Improve code
+  organization, compilation times, and team collaboration with practical examples.'
+excerpt:
+  'Discover how to use Swift Package Manager to modularize your Xcode projects. This guide covers setting up local SPM
+  packages, improving code organization, and speeding up builds.'
+keywords:
+  'Swift Package Manager, SPM, Xcode modularization, iOS architecture, Swift packages, code organization, iOS
+  development, Xcode build optimization'
+image: /assets/blog/modularize-xcode-projects-using-local-swift-packages/image-14.png
+author: Philip Niedertscheider
 ---
 
 Swift Package Manager… SPM… It is everywhere, many use it and it is most likely the future of working with Swift

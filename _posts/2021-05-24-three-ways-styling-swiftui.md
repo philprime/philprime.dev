@@ -3,6 +3,18 @@ layout: post.liquid
 title: '3 ways of styling SwiftUI views'
 date: 2021-05-24 17:00:00 +0200
 categories: blog
+tags: SwiftUI iOS styling UI-design Swift development tutorial clean-code
+description:
+  'Master SwiftUI view styling with 3 powerful techniques. Learn reusable, customizable approaches for building
+  beautiful user interfaces with clean, maintainable code.'
+excerpt:
+  'Explore three effective approaches to styling SwiftUI views. Learn how to create reusable, customizable, and clean
+  styling solutions for your iOS apps.'
+keywords:
+  'SwiftUI styling, iOS UI design, SwiftUI views, iOS development, user interface design, SwiftUI tutorial, iOS app
+  design, clean code'
+image: /assets/blog/three-ways-styling-swiftui/1_4Kk_v9ER65tuYvoK0aCeIw.png
+author: Philip Niedertscheider
 ---
 
 Styling a view is the most important part of building beautiful user interfaces. When it comes to the actual code

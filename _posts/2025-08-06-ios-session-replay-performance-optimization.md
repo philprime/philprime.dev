@@ -3,7 +3,18 @@ layout: post.liquid
 title: 'Boosting Session Replay performance on iOS with View Renderer V2'
 date: 2025-08-06 11:00:00 +0200
 categories: blog
-tags: iOS Performance Sentry Session-Replay Mobile
+tags: iOS Performance Sentry Session-Replay Mobile optimization debugging
+description:
+  'Learn how we improved iOS Session Replay performance at Sentry with View Renderer V2, reducing overhead and making
+  debugging less disruptive on older devices.'
+excerpt:
+  'My first post on the Sentry Blog covers investigating and improving Session Replay performance on iOS, focusing on
+  making debugging less disruptive for mobile apps.'
+keywords:
+  'iOS performance, session replay, mobile debugging, iOS optimization, View Renderer, Sentry, mobile development,
+  performance monitoring'
+image: /assets/images/sentry-session-replay-og.png
+author: Philip Niedertscheider
 ---
 
 Proud to share that my first post on the [Sentry Blog](https://blog.sentry.io/boosting-session-replay-performance-on-ios-with-view-renderer-v2/) is now live! It covers my work on investigating and improving Session Replay performance on iOS, with a focus on making it less disruptive — especially on older devices.

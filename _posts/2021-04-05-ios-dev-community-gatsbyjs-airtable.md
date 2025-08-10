@@ -3,7 +3,18 @@ layout: post.liquid
 title: 'Mobile App Developer Community built with GatsbyJS & Airtable'
 date: 2021-04-05 17:00:00 +0200
 categories: blog
-tags: web
+tags: web GatsbyJS Airtable React community Vienna mobile-development static-site-generator
+description:
+  'Learn how to build a mobile app developer community website using GatsbyJS and Airtable. This tutorial covers
+  creating a static site generator with dynamic data sources and no-code database solutions.'
+excerpt:
+  'Discover how I built Vienna-app.dev, a mobile developer community platform using GatsbyJS and Airtable. Learn about
+  combining static site generation with no-code databases for rapid development.'
+keywords:
+  'GatsbyJS, Airtable, mobile app community, static site generator, React, no-code database, web development, developer
+  community'
+image: /assets/blog/ios-dev-community-gatsbyjs-airtable/image-2.png
+author: Philip Niedertscheider
 ---
 
 Vienna is a beautiful city with high living standards and a modern mindset. It’s time to not only enjoy its diversity

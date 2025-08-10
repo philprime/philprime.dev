@@ -1,9 +1,20 @@
 ---
 layout: post.liquid
-title: iOS Push Notifications, but without user authentication!
+title: 'iOS Push Notifications without user authentication'
 date: 2021-03-29 17:00:00 +0200
 categories: blog
-tags: iOS
+tags: iOS push-notifications APNs webhooks API Node.js CI-CD mobile-development
+description:
+  'Learn how to implement iOS push notifications without user authentication using webhooks and Apple Push Service. This
+  tutorial covers mapping webhook URLs to device IDs for CI/CD notifications.'
+excerpt:
+  'Discover how to set up iOS push notifications without requiring user authentication. Learn about
+  webhook-to-push-notification mapping, Apple Push Service integration, and automated CI/CD build notifications.'
+keywords:
+  'iOS push notifications, APNs, webhooks, no authentication, CI/CD notifications, mobile development, Apple Push
+  Service, Bitrise integration'
+image: /assets/blog/ios-push-notifications-without-user-auth/image-1.jpeg
+author: Philip Niedertscheider
 ---
 
 Push Notifications allow developers to send small messages directly to a user's device, without actively polling for

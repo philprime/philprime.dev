@@ -3,6 +3,17 @@ layout: post.liquid
 title: 'Building SwiftUI apps in Markdown'
 date: 2021-05-17 17:00:00 +0200
 categories: blog
+tags: SwiftUI iOS Swift Markdown parser AST UIKit development tutorial
+description:
+  'Learn how to transform Markdown documents into native SwiftUI views using custom parsing and the Resolver/Strategy
+  pattern. Build dynamic iOS apps with Markdown content.'
+excerpt:
+  'Discover how to parse Markdown into SwiftUI views dynamically. This tutorial covers AST parsing, the Resolver
+  pattern, and building interactive iOS apps from Markdown documents.'
+keywords:
+  'SwiftUI, Markdown parser, iOS development, Swift AST, UIKit, mobile app, live preview, SwiftUI views, iOS tutorial'
+image: /assets/blog/building-swiftui-apps-in-markdown/1_aC12NB2cxLzk1dEKhU-Urw.gif
+author: Philip Niedertscheider
 ---
 
 When your iOS app uses Markdown documents, why can’t we just transform them into natives view? What if instead of

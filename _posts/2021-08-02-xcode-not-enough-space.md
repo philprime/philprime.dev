@@ -3,6 +3,18 @@ layout: post.liquid
 title: 'Installing Xcode with "not enough disk space available"'
 date: 2021-08-02 15:59:40 +0200
 categories: blog
+tags: Xcode iOS development macOS APFS storage troubleshooting installation
+description:
+  'Fix Xcode installation errors on macOS when getting "not enough disk space" despite having sufficient storage. Learn
+  about APFS containers and the solution.'
+excerpt:
+  'Encountering "not enough disk space" when installing Xcode despite having enough storage? Learn why this happens with
+  APFS containers and discover the simple fix that works.'
+keywords:
+  'Xcode installation, macOS storage, APFS containers, disk space error, iOS development, Xcode troubleshooting, macOS
+  file system'
+image: /assets/blog/xcode-not-enough-space/xcodes-error-prompt.png
+author: Philip Niedertscheider
 ---
 
 Phrases like “Xcode Beta 1X.Y.Z is out now" or “Did you try the new features of the latest Xcode update yet?" fill an

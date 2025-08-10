@@ -3,6 +3,18 @@ layout: post.liquid
 title: '5 Swift Extensions to write Smarter Code'
 date: 2021-05-03 17:00:00 +0200
 categories: blog
+tags: Swift iOS programming extensions code-quality best-practices development
+description:
+  'Discover 5 powerful Swift extensions that improve code maintainability and readability. Learn practical techniques to
+  extend Swift with smart functionality for cleaner iOS development.'
+excerpt:
+  'Learn 5 essential Swift extensions that make your code smarter, more maintainable, and easier to read. Practical
+  examples for iOS and macOS development.'
+keywords:
+  'Swift extensions, iOS development, Swift programming, code quality, iOS best practices, Swift tips, mobile
+  development, clean code'
+image: /assets/blog/five-swift-extension-smarter-code/1__g7jJ3q9BbvydAUiBGyZsA.png
+author: Philip Niedertscheider
 ---
 
 A good developer should write great code with high maintainability and extensibility. Even better developers extend the
