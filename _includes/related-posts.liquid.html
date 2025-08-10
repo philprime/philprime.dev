@@ -1,0 +1,139 @@
+{% comment %} Related Posts Component This component displays related posts based on shared tags. It requires the
+current page to be passed as 'page' variable. {% endcomment %} {% assign related_posts = site.posts | where_exp: "post",
+"post.url != page.url" %} {% assign matching_posts = "" | split: "" %} {% comment %} Find posts with matching tags {%
+endcomment %} {% for post in related_posts %} {% assign matches = 0 %} {% for tag in page.tags %} {% if post.tags
+contains tag %} {% assign matches = matches | plus: 1 %} {% endif %} {% endfor %} {% if matches > 0 %} {% assign
+matching_posts = matching_posts | push: post %} {% endif %} {% endfor %} {% comment %} Sort by number of matching tags
+(approximate) {% endcomment %} {% assign sorted_posts = matching_posts | sort: 'date' | reverse %} {% if
+sorted_posts.size > 0 %}
+<section class="related-posts">
+  <h3>Related Articles</h3>
+  <div class="related-posts-grid">
+    {% for post in sorted_posts limit: 3 %}
+    <article class="related-post">
+      {% if post.image %}
+      <div class="related-post-image">
+        <img src="{{ post.image | relative_url }}" alt="{{ post.title }}" loading="lazy" />
+      </div>
+      {% endif %}
+      <div class="related-post-content">
+        <h4><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h4>
+        {% if post.excerpt %}
+        <p class="related-post-excerpt">{{ post.excerpt | strip_html | truncatewords: 20 }}</p>
+        {% endif %}
+        <div class="related-post-meta">
+          <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: site.date_format }}</time>
+          {% if post.tags.size > 0 %}
+          <span class="related-post-tags">
+            {% for tag in post.tags limit: 3 %}
+            <span class="tag">{{ tag }}</span>
+            {% endfor %}
+          </span>
+          {% endif %}
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<style>
+  .related-posts {
+    margin: 3rem 0;
+    padding: 2rem 0;
+    border-top: 1px solid #e1e5e9;
+  }
+
+  .related-posts h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .related-posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .related-post {
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .related-post:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .related-post-image {
+    width: 100%;
+    height: 150px;
+    overflow: hidden;
+  }
+
+  .related-post-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .related-post-content {
+    padding: 1rem;
+  }
+
+  .related-post-content h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    line-height: 1.3;
+  }
+
+  .related-post-content h4 a {
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .related-post-content h4 a:hover {
+    color: #0066cc;
+  }
+
+  .related-post-excerpt {
+    font-size: 0.9rem;
+    color: #cccccc;
+    margin: 0.5rem 0;
+    line-height: 1.4;
+  }
+
+  .related-post-meta {
+    font-size: 0.8rem;
+    color: #aaaaaa;
+    margin-top: 0.5rem;
+  }
+
+  .related-post-tags {
+    margin-left: 0.5rem;
+  }
+
+  .tag {
+    background: #444444;
+    color: #ffffff;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    margin-right: 0.3rem;
+    font-size: 0.7rem;
+  }
+
+  @media (max-width: 768px) {
+    .related-posts-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .related-post-image {
+      height: 120px;
+    }
+  }
+</style>
+{% endif %}
