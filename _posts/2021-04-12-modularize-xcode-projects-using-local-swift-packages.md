@@ -624,6 +624,19 @@ UI modules using interfaces to communicate in a [VIPER pattern](https://www.objc
 topics, such as how SPM can help you transitioning from UIKit/AppKit to SwiftUI using XIB files into their own packages,
 in a future article (make sure to follow me to get notified!).
 
+## Swift Development Series
+
+Ready to dive deeper into advanced Swift development? Check out these related articles:
+
+- **[Advanced cross-platform apps using local Swift packages and
+  UIKit/AppKit]({% post_url 2021-04-19-advanced-cross-platform-apps-uikit-appkit %})** - Build sophisticated
+  cross-platform iOS/macOS apps with shared logic
+- **[5 Swift Extensions to write Smarter Code]({% post_url 2021-05-03-five-swift-extension-smarter-code %})** - Improve
+  your Swift development skills with essential extensions
+- **[Why You Should Strongly-Type Your Localizations with
+  Swiftgen]({% post_url 2021-05-31-strongly-type-localizations-swiftgen %})** - Another code generation tool that
+  complements modular architectures
+
 If you would like to know more, check out my other articles, follow me on [Twitter](https://twitter.com/philprimes) and
 feel free to drop me a DM. Do you have a specific topic you want me to cover? Let me know! 😃
 

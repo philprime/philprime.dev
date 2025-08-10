@@ -36,8 +36,13 @@ which also includes a work-in-progress library `CDSwiftUIMapper.`
 
 ## Parsing Markdown into a AST Node Tree
 
-It’s highly recommended that you read my previous article [_"Creating your own Markdown Parser from Scratch in
+It's highly recommended that you read my previous article [_"Creating your own Markdown Parser from Scratch in
 Swift"_]({% post_url 2021-05-11-creating-own-markdown-parser-swift %}) as we will reuse concepts from there.
+
+> **Related Reading:** This tutorial builds upon concepts from my Markdown parser guide. You might also be interested in
+> learning about [5 Swift Extensions to write Smarter Code]({% post_url 2021-05-03-five-swift-extension-smarter-code %})
+> and [3 ways of styling SwiftUI views]({% post_url 2021-05-24-three-ways-styling-swiftui %}) for additional SwiftUI
+> development insights.
 
 Anyway here is a short recap of the explained concepts:
 

@@ -32,6 +32,12 @@ Packages]({% post_url 2021-04-12-modularize-xcode-projects-using-local-swift-pac
 mentioned there. In case you are already an advanced iOS/macOS/SPM user, go ahead, but if you are fairly new to the
 topic, I highly recommend you read my other article first._
 
+> **Swift Development Series:** This tutorial is part of my comprehensive Swift Package Manager series. After mastering
+> these concepts, you might want to explore [5 Swift Extensions to write Smarter > > >
+> Code]({% post_url 2021-05-03-five-swift-extension-smarter-code %}) and [Why You Should Strongly-Type Your > >
+> Localizations with Swiftgen]({% post_url 2021-05-31-strongly-type-localizations-swiftgen %}) for additional iOS
+> development best practices.
+
 ## Backstory on UI building in Swift & Xcode
 
 At the time of writing, four main options of building user interfaces exist:

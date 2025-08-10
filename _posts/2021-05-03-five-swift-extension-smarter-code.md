@@ -26,6 +26,12 @@ recreated from its backstory/original intent.
 In case you TL;DR and only want to see the code, scroll to each **The Smart Solutions** headline for the copy-paste
 ready code, or checkout the link in the conclusion.
 
+> **Swift Development Series:** This tutorial is part of my comprehensive Swift development series. After mastering
+> these concepts, you might want to explore [Creating your own Markdown Parser from Scratch in >
+> Swift]({% post_url 2021-05-11-creating-own-markdown-parser-swift %}) and [Why You Should Strongly-Type Your
+> Localizations with Swiftgen]({% post_url 2021-05-31-strongly-type-localizations-swiftgen %}) for additional iOS
+> development best practices.
+
 ## 1. Safe Array access with custom subscripts
 
 Every developer has at least once experienced an _“out-of-bounds”_ exception. These occur when you try to access an

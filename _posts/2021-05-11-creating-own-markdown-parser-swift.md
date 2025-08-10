@@ -714,5 +714,17 @@ is eventually getting production ready. We decided to build it as an Open Source
 Next to actually writing a small working parser, you also got more insight into the document format itself. Now you
 should be able to pick it up from there and continue working on the parser.
 
+## Swift Development Series
+
+If you enjoyed this article, you might also find these helpful:
+
+- **[Building SwiftUI apps in Markdown]({% post_url 2021-05-17-building-swiftui-apps-in-markdown %})** - Learn how to
+  use your Markdown parser to create SwiftUI views dynamically
+- **[5 Swift Extensions to write Smarter Code]({% post_url 2021-05-03-five-swift-extension-smarter-code %})** - Improve
+  your Swift code quality with these essential extensions
+- **[Modularize Xcode Projects using local Swift
+  Packages]({% post_url 2021-04-12-modularize-xcode-projects-using-local-swift-packages %})** - Learn about Swift
+  Package Manager for better code organization
+
 If you would like to know more, checkout my other articles, follow me on [Twitter](https://twitter.com/philprimes) and
 feel free to drop me a DM. You have a specific topic you want me to cover? Let me know! 😃
