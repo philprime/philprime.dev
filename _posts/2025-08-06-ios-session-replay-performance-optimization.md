@@ -13,27 +13,38 @@ excerpt:
 keywords:
   'iOS performance, session replay, mobile debugging, iOS optimization, View Renderer, Sentry, mobile development,
   performance monitoring'
-image: /assets/images/sentry-session-replay-og.png
+image: /assets/images/2025-08-06-ios-session-replay-performance-optimization/header.jpg
 author: Philip Niedertscheider
 ---
 
-Proud to share that my first post on the [Sentry Blog](https://blog.sentry.io/boosting-session-replay-performance-on-ios-with-view-renderer-v2/) is now live! It covers my work on investigating and improving Session Replay performance on iOS, with a focus on making it less disruptive — especially on older devices.
+Proud to share that my first post on the
+[Sentry Blog](https://blog.sentry.io/boosting-session-replay-performance-on-ios-with-view-renderer-v2/) is now live! It
+covers my work on investigating and improving Session Replay performance on iOS, with a focus on making it less
+disruptive — especially on older devices.
+
+![Header Image](/assets/blog/2025-08-06-ios-session-replay-performance-optimization/header.jpg)
 
 ## The Challenge
 
-When Session Replay for Mobile went GA at Sentry, we saw great adoption, but users started reporting serious performance issues. iOS developers were telling us that Session Replay made their apps practically unusable on older devices — not exactly the experience we were aiming for!
+When Session Replay for Mobile went GA at Sentry, we saw great adoption, but users started reporting serious performance
+issues. iOS developers were telling us that Session Replay made their apps practically unusable on older devices — not
+exactly the experience we were aiming for!
 
-As someone who cares deeply about iOS performance, I knew I had to dig into this problem. My investigation quickly revealed the culprit: main thread hangs occurring **every single second**.
+As someone who cares deeply about iOS performance, I knew I had to dig into this problem. My investigation quickly
+revealed the culprit: main thread hangs occurring **every single second**.
 
 ## The Problem
 
-The issue was our screenshot capture process. Each frame was taking ~155ms to render, causing 9-10 dropped frames per second — enough to make any app feel sluggish and frustrating to use.
+The issue was our screenshot capture process. Each frame was taking ~155ms to render, causing 9-10 dropped frames per
+second — enough to make any app feel sluggish and frustrating to use.
 
-After extensive profiling and analysis, I pinpointed the bottleneck: Apple's `UIGraphicsImageRenderer` was simply too slow.
+After extensive profiling and analysis, I pinpointed the bottleneck: Apple's `UIGraphicsImageRenderer` was simply too
+slow.
 
 ## The Solution
 
-Using my experience building the PDF generator framework [TPPDF](https://github.com/techprimate/TPPDF), I developed a custom `SentryGraphicsImageRenderer` that completely transformed the performance:
+Using my experience building the PDF generator framework [TPPDF](https://github.com/techprimate/TPPDF), I developed a
+custom `SentryGraphicsImageRenderer` that completely transformed the performance:
 
 - **~80% reduction** in main thread blocking time (from ~155ms down to ~25ms per frame)
 - Frame drops decreased dramatically from 9-10 to just ~2 frames per second
@@ -41,4 +52,6 @@ Using my experience building the PDF generator framework [TPPDF](https://github.
 
 I'm proud of this work because it directly impacts thousands of iOS developers and millions of their users.
 
-**You can read the full story on the [Sentry Blog](https://blog.sentry.io/boosting-session-replay-performance-on-ios-with-view-renderer-v2/)** with technical implementation details, benchmark results, and other insights into mobile performance optimization.
+**You can read the full story on the
+[Sentry Blog](https://blog.sentry.io/boosting-session-replay-performance-on-ios-with-view-renderer-v2/)** with technical
+implementation details, benchmark results, and other insights into mobile performance optimization.
