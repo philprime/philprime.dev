@@ -45,3 +45,14 @@ highlighter: rouge
 
 kramdown:
   input: GFM
+
+# Exclude unnecessary files from the build output
+exclude:
+  - Makefile
+  - README.md
+  - renovate.json
+  - raw_assets/
+  - bin/
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
