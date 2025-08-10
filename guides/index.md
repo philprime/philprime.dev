@@ -33,8 +33,6 @@ If you have ideas for guides or want to know more about a specific topic, feel f
 
 ### List of Guides
 
-{% for page in site.pages %}
-{% if page.guide_component == 'guide' %}
-- [{{ page.title }}]({{ page.url }})
-{% endif %}
-{% endfor %}
+{% for page in site.pages %} {% if page.guide_component == 'guide' %}
+
+- [{{ page.title }}]({{ page.url }}) {% endif %} {% endfor %}
