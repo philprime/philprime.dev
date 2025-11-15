@@ -18,6 +18,12 @@ layout: base.liquid
       >
       {%- if forloop.last == false %}, {% endif -%} {% endfor %} {%- endif -%}
     </p>
+
+    {%- if page.image -%}
+    <div class="post-header-image">
+      <img src="{{ page.image | relative_url }}" alt="{{ page.title | escape }}" itemprop="image" />
+    </div>
+    {%- endif -%}
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">{{ content }}</div>

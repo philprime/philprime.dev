@@ -23,8 +23,6 @@ but to actively explore the potential of becoming the next great startup city.
 The following story will start off less technical, and instead more historical/personal. Skip to _“My first time with
 GatsbyJS”_ if you only want to hear about the implementation 😊
 
-![Combining GatsbyJS & Airtable makes it easy to build a web app](/assets/blog/ios-dev-community-gatsbyjs-airtable/image-1.jpeg)
-
 _Combining GatsbyJS & Airtable makes it easy to build a web app_
 
 Almost 4 years ago, in 2017, I moved from a small city to Austria’s Capitol, Vienna, to study Software Engineering at

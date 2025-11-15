@@ -24,9 +24,6 @@ complexity…
 
 …but with [Postie](https://github.com/kula-app/Postie/) you can elevate your capabilities even more!
 
-![The Next-Level Swift HTTP API Package](/assets/blog/swift-http-api-postie/postie-header.jpg)_The Next-Level Swift HTTP
-API Package_
-
 ### Existing solutions are heavy-weight
 
 So what’s the problem with our current state-of-the-art?

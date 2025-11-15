@@ -26,8 +26,6 @@ game for your everyday distraction, created by us at [techprimate.com](https://t
 After our initial release, when it came to new features, we decided to combine our puzzle game with the App Clip
 experience.
 
-![](/assets/blog/using-appclips-in-ios-games/image-1.jpeg)
-
 Just a short summary of what App Clips are:
 
 > App Clips are a great way for users to quickly access and experience what your app has to offer. An App Clip is a

@@ -21,8 +21,6 @@ writing Swift UI code, we build a custom viewer app, which can even be run from 
 
 Just look at what you can do with it:
 
-![Demo showing live Markdown to SwiftUI teasing this article](/assets/blog/building-swiftui-apps-in-markdown/1_aC12NB2cxLzk1dEKhU-Urw.gif)
-
 In this story we are going to cover the following topics:
 
 1. Parsing Markdown into an AST
@@ -56,15 +54,14 @@ Anyway here is a short recap of the explained concepts:
 Usually an example is easier to understand, so please take a look at the following one:
 
 ```markdown
-My _awesome_ article
-====================
+# My _awesome_ article
 
 This is a simple markdown document with **bold** and _cursive_ text.
 
 Also here is a simple bullet list:
 
-*   My first list item
-*   Another list item
+- My first list item
+- Another list item
 ```
 
 The actual raw document looks like the following:

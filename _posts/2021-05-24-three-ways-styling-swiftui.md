@@ -29,10 +29,6 @@ This article will show you these 3 ways of styling a `SwiftUI.View`:
 As a general rule of thumb, any approach is viable. In the end, it comes down to your general code-style guidelines and
 personal preferences.
 
-![The property wrapper you will find in chapter 3 “Styles in Environment”](/assets/blog/three-ways-styling-swiftui/1_4Kk_v9ER65tuYvoK0aCeIw.png)
-
-_The property wrapper you will find in chapter 3 “Styles in Environment”_
-
 ## 1. Initializer-based configuration
 
 This is one is straight forward and can be visualized with an example rather quickly:

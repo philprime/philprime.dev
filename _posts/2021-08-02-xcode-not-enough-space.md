@@ -25,9 +25,6 @@ But then, the devastating moment, destroying all happiness at once:
 
 > “Xcode.xip can’t be expanded because the current volume doesn’t have enough free space."
 
-![Error prompt](/assets/blog/xcode-not-enough-space/xcodes-error-prompt.png)_Error prompt from the **Xcodes App**
-([github.com/RobotsAndPencils/XcodesApp](https://github.com/RobotsAndPencils/XcodesApp))_
-
 The initial reaction: “Huh. Wait a minute? I do have enough space, don’t I?". Then you check your disk usage statistics,
 and yes, looks like there should be enough free space.
 

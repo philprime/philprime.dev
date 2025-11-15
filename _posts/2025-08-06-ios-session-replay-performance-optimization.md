@@ -22,8 +22,6 @@ Proud to share that my first post on the
 covers my work on investigating and improving Session Replay performance on iOS, with a focus on making it less
 disruptive — especially on older devices.
 
-![Header Image](/assets/blog/2025-08-06-ios-session-replay-performance-optimization/header.jpg)
-
 ## The Challenge
 
 When Session Replay for Mobile went GA at Sentry, we saw great adoption, but users started reporting serious performance

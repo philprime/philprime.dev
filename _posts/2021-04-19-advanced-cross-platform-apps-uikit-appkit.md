@@ -25,18 +25,13 @@ eventually you get to the point of refactoring the code into modules.
 This tutorial shows you, how to harness the impressive power of the Swift Package Manager (SPM) to create a clean,
 extensible and especially shared UI structure for your large-scale apps.
 
-![Combining Swift files with XIB interface builder files into packages](/assets/blog/advanced-cross-platform-apps-uikit-appkit/header.png)
-
 **Note:** _This is a follow-up tutorial to_ [Modularize Xcode Project using local Swift
 Packages]({% post_url 2021-04-12-modularize-xcode-projects-using-local-swift-packages %}) _and builds up on the topics
 mentioned there. In case you are already an advanced iOS/macOS/SPM user, go ahead, but if you are fairly new to the
 topic, I highly recommend you read my other article first._
 
 > **Swift Development Series:** This tutorial is part of my comprehensive Swift Package Manager series. After mastering
-> these concepts, you might want to explore [5 Swift Extensions to write Smarter > > >
-> Code]({% post_url 2021-05-03-five-swift-extension-smarter-code %}) and [Why You Should Strongly-Type Your > >
-> Localizations with Swiftgen]({% post_url 2021-05-31-strongly-type-localizations-swiftgen %}) for additional iOS
-> development best practices.
+> these concepts, you might want to explore [5 Swift Extensions to write Smarter Code]({% post_url 2021-05-03-five-swift-extension-smarter-code %}) and [Why You Should Strongly-Type Your Localizations with Swiftgen]({% post_url 2021-05-31-strongly-type-localizations-swiftgen %}) for additional iOS development best practices.
 
 ## Backstory on UI building in Swift & Xcode
 
@@ -85,7 +80,7 @@ components, so it will suffice.
 
 As the first step, create an **empty Xcode project** as our starting point and name it **Clock**:
 
-![](/assets/blog/1_6L0tYZXaidggJYnkTf0gvA.png)
+![](/assets/blog/advanced-cross-platform-apps-uikit-appkit/1_6L0tYZXaidggJYnkTf0gvA.png)
 
 ![Creating an empty Xcode project named Clock](/assets/blog/advanced-cross-platform-apps-uikit-appkit/1_nNutLukkYpZh92rIIqdUPg.png)
 

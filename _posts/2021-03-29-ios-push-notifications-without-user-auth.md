@@ -21,8 +21,6 @@ Push Notifications allow developers to send small messages directly to a user's 
 changes inside the app. Now when it comes to external notifications, sometimes it might not even be possible to contact
 an iOS device, as they are not reachable from the internet.
 
-![iPhone showing two examples of Push Notifications](/assets/blog/ios-push-notifications-without-user-auth/image-1.jpeg)
-
 _iPhone showing two examples of Push Notifications_
 
 While working on my latest CI/CD app [kiwi](https://techprimate.com/kiwi), one of the most requested features is
