@@ -67,7 +67,6 @@ social_links:
 plugins:
   - jekyll-seo-tag
   - jekyll-feed
-  - jekyll-gist
   - jekyll-sitemap
   - jekyll-favicon
 
