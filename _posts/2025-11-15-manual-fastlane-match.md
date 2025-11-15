@@ -32,74 +32,74 @@ Here's a quick guide on how to access fastlane match certificates manually:
 
 3. Load the depdendencies `match` and `fastlane_core` in the interactive shell:
 
-  ```ruby
-  require 'fastlane_core'
-  require 'match'
-  ```
+   ```ruby
+   require 'fastlane_core'
+   require 'match'
+   ```
 
 4. Configure variables to access your match repository. These include the repository URL, branch, and the `MATCH_PASSWORD` environment variable for decrypting the certificates:
 
-  ```ruby
-  git_url = "git@github.com:yourusername/your-match-repo.git" # Your match repository URL
-  git_branch = "main" # or your specific branch
-  ENV['MATCH_PASSWORD'] = "your_match_password" # Your match password
-  ```
+   ```ruby
+   git_url = "git@github.com:yourusername/your-match-repo.git" # Your match repository URL
+   git_branch = "main" # or your specific branch
+   ENV['MATCH_PASSWORD'] = "your_match_password" # Your match password
+   ```
 
-  We define the match password by setting it as a environment variable so that the decryption logic can pick it up.
+   We define the match password by setting it as a environment variable so that the decryption logic can pick it up.
 
 5. Create a `Match::Storage` instance of the type `git` to interact with the match repository:
 
-  ```ruby
-  # Create the storage for git (you can also use 'google_cloud', 's3', or 'azure' based on your setup)
-  [1] pry(main)> storage = Match::Storage.from_params({
-    storage_mode: 'git',
-    git_url: git_url,
-    git_branch: git_branch
-  })
-  => #<Match::Storage::GitStorage:0x0000000125d7e940
-   @branch="main",
-   @clone_branch_directly=nil,
-   @git_basic_authorization=nil,
-   @git_bearer_authorization=nil,
-   @git_full_name=nil,
-   @git_private_key=nil,
-   @git_url="git@github.com:yourusername/your-match-repo.git",
-   @git_user_email=nil,
-   @platform="",
-   @shallow_clone=nil,
-   @skip_docs=nil,
-   @type="">
+   ```ruby
+   # Create the storage for git (you can also use 'google_cloud', 's3', or 'azure' based on your setup)
+   [1] pry(main)> storage = Match::Storage.from_params({
+     storage_mode: 'git',
+     git_url: git_url,
+     git_branch: git_branch
+   })
+   => #<Match::Storage::GitStorage:0x0000000125d7e940
+    @branch="main",
+    @clone_branch_directly=nil,
+    @git_basic_authorization=nil,
+    @git_bearer_authorization=nil,
+    @git_full_name=nil,
+    @git_private_key=nil,
+    @git_url="git@github.com:yourusername/your-match-repo.git",
+    @git_user_email=nil,
+    @platform="",
+    @shallow_clone=nil,
+    @skip_docs=nil,
+    @type="">
 
-  # Clone the repository to a temporary directory
-  [2] pry(main)> storage.download
-  [14:38:59]: Cloning remote git repo...
-  [14:39:01]: Checking out branch main...
-  => ["git checkout main"]
+   # Clone the repository to a temporary directory
+   [2] pry(main)> storage.download
+   [14:38:59]: Cloning remote git repo...
+   [14:39:01]: Checking out branch main...
+   => ["git checkout main"]
 
-  # Access the working directory where the certificates and profiles are stored
-  [3] pry(main)> storage.working_directory
-  => "/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91"
-  ```
+   # Access the working directory where the certificates and profiles are stored
+   [3] pry(main)> storage.working_directory
+   => "/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91"
+   ```
 
 6. Create a `Match::Encryption` instance to handle decryption of the certificates and profiles:
 
-  ```ruby
-  # Create the encryption handler for git storage
-  [4] pry(main)> encryption = Match::Encryption.for_storage_mode("git", {
-    :working_directory=>storage.working_directory
-  })
-  => #<Match::Encryption::OpenSSL:0x0000000125cb4938
-   @force_legacy_encryption=nil,
-   @keychain_name=nil,
-   @working_directory="/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91">
+   ```ruby
+   # Create the encryption handler for git storage
+   [4] pry(main)> encryption = Match::Encryption.for_storage_mode("git", {
+     :working_directory=>storage.working_directory
+   })
+   => #<Match::Encryption::OpenSSL:0x0000000125cb4938
+    @force_legacy_encryption=nil,
+    @keychain_name=nil,
+    @working_directory="/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91">
 
-  # Decrypt the files in the working directory
-  [5] pry(main)> encryption.decrypt_files
-  [14:45:44]: 🔓  Successfully decrypted certificates repo
-  => ["/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91/certs/distribution/S7V6FQBH47.cer",
-  "/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91/certs/distribution/S7V6FQBH47.p12",
-  "/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91/profiles/appstore/AppStore_dev.philprime.app.mobileprovision"]
-  ```
+   # Decrypt the files in the working directory
+   [5] pry(main)> encryption.decrypt_files
+   [14:45:44]: 🔓  Successfully decrypted certificates repo
+   => ["/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91/certs/distribution/S7V6FQBH47.cer",
+   "/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91/certs/distribution/S7V6FQBH47.p12",
+   "/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91/profiles/appstore/AppStore_dev.philprime.app.mobileprovision"]
+   ```
 
 7. Now you can access the decrypted certificates by opening the working directory.
 

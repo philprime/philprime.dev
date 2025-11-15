@@ -13,7 +13,7 @@ excerpt:
 keywords:
   'iOS performance, session replay, mobile debugging, iOS optimization, View Renderer, Sentry, mobile development,
   performance monitoring'
-image: /assets/images/2025-08-06-ios-session-replay-performance-optimization/header.jpg
+image: /assets/blog/2025-08-06-ios-session-replay-performance-optimization/header.jpg
 author: Philip Niedertscheider
 ---
 
