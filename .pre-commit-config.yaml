@@ -1,0 +1,64 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: check-vcs-permalinks
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: detect-private-key
+      - id: double-quote-string-fixer
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=auto]
+      - id: pretty-format-json
+        args: [--autofix, --indent=2]
+      - id: trailing-whitespace
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.33.2
+    hooks:
+      - id: check-github-actions
+      - id: check-github-workflows
+        args: [--verbose]
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+  - repo: local
+    hooks:
+      - id: format-json
+        name: Format JSON
+        description: "Format JSON"
+        files: ^.*\.json$
+        types_or: [json]
+        entry: dprint
+        language: system
+        args:
+          - "fmt"
+      - id: format-markdown
+        name: Format Markdown
+        description: "Format Markdown"
+        files: ^.*\.md$
+        types_or: [markdown]
+        entry: dprint
+        language: system
+        args:
+          - "fmt"
+      - id: format-yaml
+        name: Format YAML
+        description: "Format YAML"
+        files: ^.*\.(yaml|yml)$
+        types_or: [yaml]
+        entry: dprint
+        language: system
+        args:
+          - "fmt"

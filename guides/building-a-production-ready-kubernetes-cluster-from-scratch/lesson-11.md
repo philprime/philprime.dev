@@ -43,24 +43,24 @@ apiVersion: kubeadm.k8s.io/v1beta3
 kind: InitConfiguration
 nodeRegistration:
   kubeletExtraArgs:
-    root-dir: '/mnt/nvme/kubelet'
+    root-dir: "/mnt/nvme/kubelet"
 ---
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: ClusterConfiguration
-controlPlaneEndpoint: '10.1.1.1'
+controlPlaneEndpoint: "10.1.1.1"
 networking:
-  podSubnet: '10.244.0.0/16'
+  podSubnet: "10.244.0.0/16"
 apiServer:
   certSANs:
-    - '127.0.0.1'
-    - '10.1.233.1'
-    - '10.1.1.1'
-    - '10.1.1.2'
-    - '10.1.1.3'
-    - 'kubernetes-node-1'
-    - 'kubernetes-node-2'
-    - 'kubernetes-node-3'
-    - '10.0.0.10'
+    - "127.0.0.1"
+    - "10.1.233.1"
+    - "10.1.1.1"
+    - "10.1.1.2"
+    - "10.1.1.3"
+    - "kubernetes-node-1"
+    - "kubernetes-node-2"
+    - "kubernetes-node-3"
+    - "10.0.0.10"
 ---
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: UploadCertsConfiguration

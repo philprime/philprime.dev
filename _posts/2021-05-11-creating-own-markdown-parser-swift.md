@@ -1,18 +1,18 @@
 ---
 layout: post.liquid
-title: 'Creating your own Markdown Parser from Scratch in Swift'
+title: "Creating your own Markdown Parser from Scratch in Swift"
 date: 2021-05-11 17:00:00 +0200
 categories: blog
 tags: Swift Markdown parser iOS programming tutorial AST compiler
 description:
-  'Build a complete Markdown parser from scratch in Swift. Learn AST concepts, parsing techniques, and how to convert
-  Markdown text into structured data for iOS apps.'
+  "Build a complete Markdown parser from scratch in Swift. Learn AST concepts, parsing techniques, and how to convert
+  Markdown text into structured data for iOS apps."
 excerpt:
-  'Step-by-step guide to creating a Markdown parser in Swift from scratch. Covers parsing fundamentals, AST
-  construction, and practical implementation for iOS development.'
+  "Step-by-step guide to creating a Markdown parser in Swift from scratch. Covers parsing fundamentals, AST
+  construction, and practical implementation for iOS development."
 keywords:
-  'Swift markdown parser, AST parsing, iOS development, Swift programming, compiler design, text parsing, markdown to
-  swift, iOS tutorial'
+  "Swift markdown parser, AST parsing, iOS development, Swift programming, compiler design, text parsing, markdown to
+  swift, iOS tutorial"
 image: /assets/blog/creating-own-markdown-parser-swift/1_oV75cDIooAre7oB0o4u64g.png
 author: Philip Niedertscheider
 ---
@@ -583,7 +583,6 @@ mechanism. If you want to know now more, [CoolDown](https://github.com/techprima
 Alright, this is the final `FragmentParser` for the scope of this tutorial:
 
 ```swift
-
 class FragmentParser {
 
     let fragment: String

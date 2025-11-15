@@ -10,15 +10,15 @@ guide_abstract: >
   production-ready Kubernetes cluster from scratch using Raspberry Pi devices.
 repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/index.md
 description:
-  'Complete guide to building a production-ready Kubernetes cluster from scratch using Raspberry Pi. Covers hardware
-  setup, high-availability configuration, security, monitoring, and cluster management.'
+  "Complete guide to building a production-ready Kubernetes cluster from scratch using Raspberry Pi. Covers hardware
+  setup, high-availability configuration, security, monitoring, and cluster management."
 excerpt:
-  'Learn to build a production-ready Kubernetes cluster from scratch with Raspberry Pi devices. Comprehensive tutorial
+  "Learn to build a production-ready Kubernetes cluster from scratch with Raspberry Pi devices. Comprehensive tutorial
   covering hardware assembly, network configuration, security best practices, and cluster management for home labs and
-  edge computing.'
+  edge computing."
 keywords:
-  'Kubernetes cluster, Raspberry Pi cluster, home lab, DevOps tutorial, container orchestration, high availability,
-  cluster setup, production Kubernetes, edge computing, DIY cluster'
+  "Kubernetes cluster, Raspberry Pi cluster, home lab, DevOps tutorial, container orchestration, high availability,
+  cluster setup, production Kubernetes, edge computing, DIY cluster"
 tags: Kubernetes Raspberry-Pi DevOps home-lab cluster tutorial production edge-computing
 image: /assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/hardware-overview.webp
 author: Philip Niedertscheider
@@ -41,7 +41,7 @@ I truly hope this guide is helpful for you and can provide valuable insights for
 
 {% include alert.liquid.html type='note' title='Please read this!' content='
 
-  <p>I originally planned to offer this guide as a paid online course, but as a strong believer in free open source resources, I made it available for free instead.</p>
+<p>I originally planned to offer this guide as a paid online course, but as a strong believer in free open source resources, I made it available for free instead.</p>
   <p>Please, if my guides helped you, I would be very grateful if you could support my work by becoming a <a href="https://github.com/sponsors/philprime" style="color: #000;">GitHub Sponsor</a> and by sharing the guides in your network. 🙏</p>
   <p>Eventually I might offer additional guides as paid online courses, but for now, I want to focus on providing free guides.</p>
   <p>Thank you! ❤️</p>

@@ -1,18 +1,18 @@
 ---
 layout: post.liquid
-title: 'Mobile App Developer Community built with GatsbyJS & Airtable'
+title: "Mobile App Developer Community built with GatsbyJS & Airtable"
 date: 2021-04-05 17:00:00 +0200
 categories: blog
 tags: web GatsbyJS Airtable React community Vienna mobile-development static-site-generator
 description:
-  'Learn how to build a mobile app developer community website using GatsbyJS and Airtable. This tutorial covers
-  creating a static site generator with dynamic data sources and no-code database solutions.'
+  "Learn how to build a mobile app developer community website using GatsbyJS and Airtable. This tutorial covers
+  creating a static site generator with dynamic data sources and no-code database solutions."
 excerpt:
-  'Discover how I built Vienna-app.dev, a mobile developer community platform using GatsbyJS and Airtable. Learn about
-  combining static site generation with no-code databases for rapid development.'
+  "Discover how I built Vienna-app.dev, a mobile developer community platform using GatsbyJS and Airtable. Learn about
+  combining static site generation with no-code databases for rapid development."
 keywords:
-  'GatsbyJS, Airtable, mobile app community, static site generator, React, no-code database, web development, developer
-  community'
+  "GatsbyJS, Airtable, mobile app community, static site generator, React, no-code database, web development, developer
+  community"
 image: /assets/blog/ios-dev-community-gatsbyjs-airtable/image-2.png
 author: Philip Niedertscheider
 ---
@@ -199,7 +199,7 @@ I won’t go into detail about [multi-stage builds](https://docs.docker.com/deve
 you want a full tutorial, let me know on [Twitter](http://twitter.com/philprime)). The final Dockerfile looks like this
 one:
 
-![Dockerfile for building multi-stage GatsbyJS website using NGINX](/assets/blog/ios-dev-community-gatsbyjs-airtable/image-3.png)_Dockerfile
+![Dockerfile for building multi-stage GatsbyJS website using NGINX](/assets/blog/ios-dev-community-gatsbyjs-airtable/image-3.png) _Dockerfile
 for building multi-stage GatsbyJS website using NGINX_
 
 Now I can [build](https://docs.docker.com/engine/reference/commandline/build/),

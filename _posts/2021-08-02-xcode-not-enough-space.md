@@ -11,8 +11,8 @@ excerpt:
   'Encountering "not enough disk space" when installing Xcode despite having enough storage? Learn why this happens with
   APFS containers and discover the simple fix that works.'
 keywords:
-  'Xcode installation, macOS storage, APFS containers, disk space error, iOS development, Xcode troubleshooting, macOS
-  file system'
+  "Xcode installation, macOS storage, APFS containers, disk space error, iOS development, Xcode troubleshooting, macOS
+  file system"
 image: /assets/blog/xcode-not-enough-space/xcodes-error-prompt.png
 author: Philip Niedertscheider
 ---
@@ -63,7 +63,7 @@ Great, downloading worked out fine, I got the archive on my MacBook, so let’s 
 The archive has about 11 GB of file size. That is quite a lot of data, especially for an archive which is the
 _compressed_ version of `Xcode.app`. So how much space do we really need for the full app, on our disk?
 
-![Expanded Xcode Size](/assets/blog/xcode-not-enough-space/xcode-xip-size-expanded.png)_To be honest, I have no idea how
+![Expanded Xcode Size](/assets/blog/xcode-not-enough-space/xcode-xip-size-expanded.png) _To be honest, I have no idea how
 29.51 GB are 16.68 GB on disk_
 
 We need a whopping **30 GB** of space on our disk. This is a challenge, especially for developers with small drives.
@@ -132,7 +132,7 @@ the root of our problems, while installing Xcode.
 As you can see in the screenshot earlier, about 40 GB of space is available, but if you open up the Disk Utility.app
 shipped with macOS, it states something different:
 
-![Disk Utility is a macOS application to inspect and format storage devices.](/assets/blog/xcode-not-enough-space/disk-utility.png)_Disk
+![Disk Utility is a macOS application to inspect and format storage devices.](/assets/blog/xcode-not-enough-space/disk-utility.png) _Disk
 Utility is a macOS application to inspect and format storage devices._
 
 Even tough the storage information from “_About This Mac_" showed me the _real_ 40 GB of available space, the container

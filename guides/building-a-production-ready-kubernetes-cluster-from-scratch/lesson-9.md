@@ -98,7 +98,7 @@ In the same section as the `root` setting, we need to configure the `SystemdCgro
 
 ```toml
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-  SystemdCgroup = true
+SystemdCgroup = true
 ```
 
 Save the changes and exit the editor (in `vi`, press `Esc` followed by `:wq` and `Enter`).
