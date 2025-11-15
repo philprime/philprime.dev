@@ -27,22 +27,22 @@ Here's a quick guide on how to access fastlane match certificates manually:
 2. Open a terminal and start a new interactive Ruby session using `bundle exec pry`, so you have access to the fastlane dependencies:
 
    ```bash
-   bundle exec pry
+   $ bundle exec pry
    ```
 
 3. Load the dependencies `match` and `fastlane_core` in the interactive shell:
 
    ```ruby
-   require 'fastlane_core'
-   require 'match'
+   [1] pry(main)> require 'fastlane_core'
+   [2] pry(main)> require 'match'
    ```
 
 4. Configure variables to access your match repository. These include the repository URL, branch, and the `MATCH_PASSWORD` environment variable for decrypting the certificates:
 
    ```ruby
-   git_url = "git@github.com:yourusername/your-match-repo.git" # Your match repository URL
-   git_branch = "main" # or your specific branch
-   ENV['MATCH_PASSWORD'] = "your_match_password" # Your match password
+   [3] pry(main)> git_url = "git@github.com:yourusername/your-match-repo.git" # Your match repository URL
+   [4] pry(main)> git_branch = "main" # or your specific branch
+   [5] pry(main)> ENV['MATCH_PASSWORD'] = "your_match_password" # Your match password
    ```
 
    We define the match password by setting it as an environment variable so that the decryption logic can pick it up.
@@ -51,7 +51,7 @@ Here's a quick guide on how to access fastlane match certificates manually:
 
    ```ruby
    # Create the storage for git (you can also use 'google_cloud', 's3', or 'azure' based on your setup)
-   [1] pry(main)> storage = Match::Storage.from_params({
+   [6] pry(main)> storage = Match::Storage.from_params({
      storage_mode: 'git',
      git_url: git_url,
      git_branch: git_branch
@@ -71,13 +71,13 @@ Here's a quick guide on how to access fastlane match certificates manually:
     @type="">
 
    # Clone the repository to a temporary directory
-   [2] pry(main)> storage.download
+   [7] pry(main)> storage.download
    [14:38:59]: Cloning remote git repo...
    [14:39:01]: Checking out branch main...
    => ["git checkout main"]
 
    # Access the working directory where the certificates and profiles are stored
-   [3] pry(main)> storage.working_directory
+   [8] pry(main)> storage.working_directory
    => "/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91"
    ```
 
@@ -85,7 +85,7 @@ Here's a quick guide on how to access fastlane match certificates manually:
 
    ```ruby
    # Create the encryption handler for git storage
-   [4] pry(main)> encryption = Match::Encryption.for_storage_mode("git", {
+   [9] pry(main)> encryption = Match::Encryption.for_storage_mode("git", {
      :working_directory=>storage.working_directory
    })
    => #<Match::Encryption::OpenSSL:0x0000000125cb4938
@@ -94,7 +94,7 @@ Here's a quick guide on how to access fastlane match certificates manually:
     @working_directory="/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91">
 
    # Decrypt the files in the working directory
-   [5] pry(main)> encryption.decrypt_files
+   [10] pry(main)> encryption.decrypt_files
    [14:45:44]: 🔓  Successfully decrypted certificates repo
    => ["/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91/certs/distribution/S7V6FQBH47.cer",
    "/var/folders/41/rdlp7tmj2x1_vwmp0b_gy9yh0000gn/T/d20251115-3103-av9s91/certs/distribution/S7V6FQBH47.p12",
@@ -108,7 +108,7 @@ Here's a quick guide on how to access fastlane match certificates manually:
 If you are managing certificates in multiple branches (e.g., for different teams or environments), you can list all branches in the match repository using the following code:
 
 ```ruby
-[6] pry(main)> Dir.chdir(storage.working_directory) do
+[11] pry(main)> Dir.chdir(storage.working_directory) do
     FastlaneCore::CommandExecutor.execute(
       command: "git --no-pager branch --list --no-color -r",
       print_all: true,
