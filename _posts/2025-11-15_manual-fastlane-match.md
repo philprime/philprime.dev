@@ -103,7 +103,7 @@ Here's a quick guide on how to access fastlane match certificates manually:
 
 7. Now you can access the decrypted certificates by opening the working directory.
 
-## Bonus 1: List all branches in the match repository
+## Bonus: List all branches in the match repository
 
 If you are managing certificates in multiple branches (e.g., for different teams or environments), you can list all branches in the match repository using the following code:
 
@@ -127,11 +127,3 @@ If you are managing certificates in multiple branches (e.g., for different teams
  "bar",
  "foobar"]
 ```
-
-## Bonus 2: Encrypt and save changes back to the match repository
-
-If you make changes to the certificates or profiles and want to encrypt and save them back to the match repository, you can use the following code:
-
-```ruby
-[7] pry(main)> encryption.encrypt_files
-[15:15:12]: 🔒  Successfully encrypted certificates repo
