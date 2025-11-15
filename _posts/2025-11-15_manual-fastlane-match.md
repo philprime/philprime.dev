@@ -4,15 +4,10 @@ title: 'Accessing fastlane match certificates manually'
 date: 2025-11-15 14:30:00 +0200
 categories: blog
 tags: iOS fastlane match CI/CD code-signing automation
-description:
-  ''
-excerpt:
-  'My first post on the Sentry Blog covers investigating and improving Session Replay performance on iOS, focusing on
-  making debugging less disruptive for mobile apps.'
-keywords:
-  'iOS performance, session replay, mobile debugging, iOS optimization, View Renderer, Sentry, mobile development,
-  performance monitoring'
-image: /assets/images/2025-08-06-ios-session-replay-performance-optimization/header.jpg
+description: 'A practical guide to manually accessing and managing iOS code-signing certificates stored in fastlane match repositories using Ruby and the fastlane APIs.'
+excerpt: 'Learn how to manually access fastlane match certificates and provisioning profiles outside of automated workflows, useful for debugging and integrating with other tools.'
+keywords: 'iOS, fastlane, match, code signing, certificates, provisioning profiles, CI/CD, automation, Ruby, pry'
+image: /assets/blog/2025-11-15-manual-fastlane-match/header.webp
 author: Philip Niedertscheider
 ---
 

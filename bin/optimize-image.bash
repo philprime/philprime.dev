@@ -18,7 +18,7 @@ cd "${0%/*}"
 
 # -- Begin Script --
 
-FILES=$(find ../raw_assets -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.gif" \))
+FILES=$(find ../raw_assets -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.gif" -o -name "*.webp" \))
 
 for file in $FILES; do
   expanded_path=$(realpath "$file")
