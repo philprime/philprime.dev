@@ -48,8 +48,8 @@ spec:
           image: networkstatic/iperf3
           ports:
             - containerPort: 5201
-          command: ['iperf3']
-          args: ['-s'] # Run in server mode
+          command: ["iperf3"]
+          args: ["-s"] # Run in server mode
 ```
 
 Apply the DaemonSet configuration to deploy the `iperf3` server pods:

@@ -1,18 +1,18 @@
 ---
 layout: post.liquid
-title: 'Why You Should Strongly-Type Your Localizations with Swiftgen'
+title: "Why You Should Strongly-Type Your Localizations with Swiftgen"
 date: 2021-05-31 17:00:00 +0200
 categories: blog
 tags: Swift iOS localization Swiftgen i18n internationalization code-generation development
 description:
-  'Learn how to strongly-type your iOS app localizations using Swiftgen. Eliminate string-based localization errors and
-  improve code safety with automated code generation.'
+  "Learn how to strongly-type your iOS app localizations using Swiftgen. Eliminate string-based localization errors and
+  improve code safety with automated code generation."
 excerpt:
-  'Discover how to use Swiftgen to create strongly-typed localizations for your iOS apps. This tutorial shows you how to
-  eliminate string-based errors and improve code safety through automated localization code generation.'
+  "Discover how to use Swiftgen to create strongly-typed localizations for your iOS apps. This tutorial shows you how to
+  eliminate string-based errors and improve code safety through automated localization code generation."
 keywords:
-  'iOS localization, Swiftgen, internationalization, i18n, Swift code generation, mobile app localization, iOS
-  development, type safety'
+  "iOS localization, Swiftgen, internationalization, i18n, Swift code generation, mobile app localization, iOS
+  development, type safety"
 image: /assets/blog/strongly-type-localizations-swiftgen/1_q2wNM8qkiLUEEffoGNSzQw.png
 author: Philip Niedertscheider
 ---
@@ -357,7 +357,7 @@ private final class BundleToken {
 If you take a close look at the L10n enum, you might realize: “this looks similar to the constants enum we created
 earlier!” and you are correct.
 
-After adding this file to our project, we can now delete the` enum Strings {...}` introduced earlier, and use the
+After adding this file to our project, we can now delete the`enum Strings {...}` introduced earlier, and use the
 generated `L10n` instead:
 
 ```swift

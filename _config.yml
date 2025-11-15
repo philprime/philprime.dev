@@ -1,81 +1,60 @@
-title: philprime.dev
-
-description: >
-  Philip Niedertscheider's technical blog featuring iOS/Swift development tutorials, Kubernetes guides, open source
-  projects, and mobile app development insights. Senior Software Engineer at Sentry.io sharing practical development
-  knowledge.
-
-show_excerpts: true
-future: true
-
-baseurl: ''
-url: 'https://philprime.dev'
-twitter_username: philprimes
-github_username: philprime
-
-# SEO Configuration
-logo: /assets/images/logo.png
-lang: en_US
-
-# Favicon Configuration
-favicon:
-  source: /raw_assets/images/favicon.png
-  background: transparent
-  dir: assets/favicons
-
-# Social Media Configuration
-twitter:
-  username: philprimes
-  card: summary_large_image
-
-facebook:
-  app_id: # Add if you have a Facebook app
-  publisher: # Add if you have a Facebook page
-  admins: # Add if you have Facebook admins
-
 # Author information for structured data
+
 author:
   name: Philip Niedertscheider
   email: hello@philprime.dev
   twitter: philprimes
   github: philprime
   linkedin: philipniedertscheider
-  bio: 'Senior Software Engineer at Sentry.io, iOS/Swift expert, DevOps enthusiast, and open-source advocate'
+  bio: "Senior Software Engineer at Sentry.io, iOS/Swift expert, DevOps enthusiast, and open-source advocate"
   avatar: /assets/images/philip-avatar.jpg
-  location: 'Vienna, Austria'
+  location: "Vienna, Austria"
 
-timezone: Europe/Vienna
+baseurl: ""
+url: "https://philprime.dev"
+twitter_username: philprimes
+github_username: philprime
 
-date_format: '%b %-d, %Y'
+date_format: "%b %-d, %Y"
 social_links:
   - title: GitHub
-    url: 'https://github.com/philprime'
+    url: "https://github.com/philprime"
     icon: github
   - title: X
-    url: 'https://twitter.com/philprimes'
+    url: "https://twitter.com/philprimes"
     icon: x-twitter
   - title: LinkedIn
-    url: 'https://linkedin.com/in/philipniedertscheider'
+    url: "https://linkedin.com/in/philipniedertscheider"
     icon: linkedin
   - title: BlueSky
-    url: 'https://bsky.app/profile/philprime.dev'
+    url: "https://bsky.app/profile/philprime.dev"
     icon: bluesky
   - title: Stack Overflow
-    url: 'https://stackoverflow.com/users/3515302/philip-niedertscheider'
+    url: "https://stackoverflow.com/users/3515302/philip-niedertscheider"
     icon: stack-overflow
 
-plugins:
-  - jekyll-seo-tag
-  - jekyll-feed
-  - jekyll-sitemap
-  - jekyll-favicon
+# Configure defaults for specific files
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+      author: "Philip Niedertscheider"
+      image: /assets/images/default-og-image.png
+  - scope:
+      path: ""
+    values:
+      image: /assets/images/default-og-image.png
+  - scope:
+      path: "cv.pdf"
+    values:
+      sitemap: false
 
-# Code highlighting
-markdown: kramdown
-highlighter: rouge
-
-kramdown:
-  input: GFM
+description: >
+  Philip Niedertscheider's technical blog featuring iOS/Swift development tutorials, Kubernetes guides, open source
+  projects, and mobile app development insights. Senior Software Engineer at Sentry.io sharing practical development
+  knowledge.
 
 # Exclude unnecessary files from the build output
 exclude:
@@ -88,20 +67,42 @@ exclude:
   - Gemfile.lock
   - vendor/
 
-# Configure defaults for specific files
-defaults:
-  - scope:
-      path: ''
-      type: 'posts'
-    values:
-      layout: 'post'
-      author: 'Philip Niedertscheider'
-      image: /assets/images/default-og-image.png
-  - scope:
-      path: ''
-    values:
-      image: /assets/images/default-og-image.png
-  - scope:
-      path: 'cv.pdf'
-    values:
-      sitemap: false
+facebook:
+  app_id: # Add if you have a Facebook app
+  publisher: # Add if you have a Facebook page
+  admins: # Add if you have Facebook admins
+
+# Favicon Configuration
+favicon:
+  source: /raw_assets/images/favicon.png
+  background: transparent
+  dir: assets/favicons
+
+kramdown:
+  input: GFM
+
+# SEO Configuration
+logo: /assets/images/logo.png
+lang: en_US
+
+# Code highlighting
+markdown: kramdown
+highlighter: rouge
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-favicon
+
+show_excerpts: true
+future: true
+
+timezone: Europe/Vienna
+
+title: philprime.dev
+
+# Social Media Configuration
+twitter:
+  username: philprimes
+  card: summary_large_image

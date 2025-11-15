@@ -68,7 +68,7 @@ The following is the exact list of hardware components used in this guide:
 
 {% include alert.liquid.html type='warning' title='WARNING:' content='
 
-  <p>In previous versions of this guide, I recommended using a 64GB microSD card from a no-name brand. However, I recently had disk corruption with the cards and decided to switch to a SanDisk Extreme microSDXC UHS-I Card with Adapter.</p>
+<p>In previous versions of this guide, I recommended using a 64GB microSD card from a no-name brand. However, I recently had disk corruption with the cards and decided to switch to a SanDisk Extreme microSDXC UHS-I Card with Adapter.</p>
   <p>I highly recommend using a reputable brand for your microSD cards to avoid any potential issues.</p>
   <p>In a future extension of this guide, we will cover installing the OS on the NVMe SSDs instead of the microSD cards.</p>
 ' %}

@@ -1,17 +1,17 @@
 ---
 layout: post.liquid
-title: 'Building SwiftUI apps in Markdown'
+title: "Building SwiftUI apps in Markdown"
 date: 2021-05-17 17:00:00 +0200
 categories: blog
 tags: SwiftUI iOS Swift Markdown parser AST UIKit development tutorial
 description:
-  'Learn how to transform Markdown documents into native SwiftUI views using custom parsing and the Resolver/Strategy
-  pattern. Build dynamic iOS apps with Markdown content.'
+  "Learn how to transform Markdown documents into native SwiftUI views using custom parsing and the Resolver/Strategy
+  pattern. Build dynamic iOS apps with Markdown content."
 excerpt:
-  'Discover how to parse Markdown into SwiftUI views dynamically. This tutorial covers AST parsing, the Resolver
-  pattern, and building interactive iOS apps from Markdown documents.'
+  "Discover how to parse Markdown into SwiftUI views dynamically. This tutorial covers AST parsing, the Resolver
+  pattern, and building interactive iOS apps from Markdown documents."
 keywords:
-  'SwiftUI, Markdown parser, iOS development, Swift AST, UIKit, mobile app, live preview, SwiftUI views, iOS tutorial'
+  "SwiftUI, Markdown parser, iOS development, Swift AST, UIKit, mobile app, live preview, SwiftUI views, iOS tutorial"
 image: /assets/blog/building-swiftui-apps-in-markdown/1_aC12NB2cxLzk1dEKhU-Urw.gif
 author: Philip Niedertscheider
 ---
@@ -138,7 +138,7 @@ VStack {
 As you can see, each node is mapped to a view structure:
 
 - `.list` becomes a `VStack` view
-- `.bullet` becomes a `HStack` view, with a `Text("-") `as the first element
+- `.bullet` becomes a `HStack` view, with a `Text("-")`as the first element
 - `.text` becomes a `Text` view
 
 It is necessary to add a mapping function for every single node type, and manage it in an efficient way. The easiest way
@@ -281,7 +281,6 @@ As a final step (to get to the original GIF at the beginning) add we add a new v
 input parameter text into nodes and after mapping wraps them in a ScrollView:
 
 ```swift
-
 import SwiftUI
 import CoolDownParser
 import CoolDownSwiftUIMapper

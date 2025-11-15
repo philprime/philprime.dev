@@ -4,14 +4,14 @@ title: Guides
 permalink: /guides/
 is_top_level: true
 description:
-  'Comprehensive technical guides and tutorials covering Kubernetes, iOS development, DevOps, and software engineering.
-  Step-by-step tutorials for practical learning.'
+  "Comprehensive technical guides and tutorials covering Kubernetes, iOS development, DevOps, and software engineering.
+  Step-by-step tutorials for practical learning."
 excerpt:
-  'Free comprehensive technical guides covering Kubernetes cluster setup, iOS/Swift development, DevOps practices, and
-  software engineering. Structured tutorials for hands-on learning.'
+  "Free comprehensive technical guides covering Kubernetes cluster setup, iOS/Swift development, DevOps practices, and
+  software engineering. Structured tutorials for hands-on learning."
 keywords:
-  'technical guides, Kubernetes tutorial, iOS development guide, DevOps tutorial, software engineering, step-by-step
-  tutorial, free online course'
+  "technical guides, Kubernetes tutorial, iOS development guide, DevOps tutorial, software engineering, step-by-step
+  tutorial, free online course"
 image: /assets/images/guides-overview.png
 ---
 

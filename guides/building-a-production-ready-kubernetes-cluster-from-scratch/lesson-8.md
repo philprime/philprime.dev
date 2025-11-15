@@ -50,66 +50,66 @@ The Kubernetes tools are essential for managing your cluster and interacting wit
 tools on your Raspberry Pi devices, follow these steps (or the
 [documentation](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)):
 
-1.  Install dependencies required for the Kubernetes apt repository:
+1. Install dependencies required for the Kubernetes apt repository:
 
-    ```bash
-    $ apt install -y apt-transport-https ca-certificates curl gnupg
-    ```
+   ```bash
+   $ apt install -y apt-transport-https ca-certificates curl gnupg
+   ```
 
-2.  Download the public signing key for the Kubernetes package repositories. The same signing key is used for all
-    repositories so you can disregard the version in the URL:
+2. Download the public signing key for the Kubernetes package repositories. The same signing key is used for all
+   repositories so you can disregard the version in the URL:
 
-    ```bash
-    $ mkdir -p -m 755 /etc/apt/keyrings
-    $ curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+   ```bash
+   $ mkdir -p -m 755 /etc/apt/keyrings
+   $ curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
-    # allow unprivileged APT programs to read this keyring
-    $ chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-    ```
+   # allow unprivileged APT programs to read this keyring
+   $ chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+   ```
 
-3.  Add the appropriate Kubernetes apt repository. We will install version 1.31, which is not the latest version at the
-    time of this writing, allow us to upgrade it later on:
+3. Add the appropriate Kubernetes apt repository. We will install version 1.31, which is not the latest version at the
+   time of this writing, allow us to upgrade it later on:
 
-    ```bash
-    $ echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' >> /etc/apt/sources.list.d/kubernetes.list
-    $ chmod 644 /etc/apt/sources.list.d/kubernetes.list
-    ```
+   ```bash
+   $ echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' >> /etc/apt/sources.list.d/kubernetes.list
+   $ chmod 644 /etc/apt/sources.list.d/kubernetes.list
+   ```
 
-4.  Update apt package index, then install `kubeadm`, `kubectl`, and `kubelet`:
+4. Update apt package index, then install `kubeadm`, `kubectl`, and `kubelet`:
 
-    ```bash
-    $ apt update
-    Hit:1 http://deb.debian.org/debian bookworm InRelease
-    Hit:2 http://deb.debian.org/debian-security bookworm-security InRelease
-    Hit:3 http://deb.debian.org/debian bookworm-updates InRelease
-    Hit:4 http://archive.raspberrypi.com/debian bookworm InRelease
-    Get:5 https://prod-cdn.packages.k8s.io/repositories/isv:/kubernetes:/core:/stable:/v1.31/deb  InRelease [1,186 B]
-    Get:6 https://prod-cdn.packages.k8s.io/repositories/isv:/kubernetes:/core:/stable:/v1.31/deb  Packages [9,749 B]
-    Fetched 10.9 kB in 1s (21.1 kB/s)
-    Reading package lists... Done
-    Building dependency tree... Done
-    Reading state information... Done
-    All packages are up to date.
+   ```bash
+   $ apt update
+   Hit:1 http://deb.debian.org/debian bookworm InRelease
+   Hit:2 http://deb.debian.org/debian-security bookworm-security InRelease
+   Hit:3 http://deb.debian.org/debian bookworm-updates InRelease
+   Hit:4 http://archive.raspberrypi.com/debian bookworm InRelease
+   Get:5 https://prod-cdn.packages.k8s.io/repositories/isv:/kubernetes:/core:/stable:/v1.31/deb  InRelease [1,186 B]
+   Get:6 https://prod-cdn.packages.k8s.io/repositories/isv:/kubernetes:/core:/stable:/v1.31/deb  Packages [9,749 B]
+   Fetched 10.9 kB in 1s (21.1 kB/s)
+   Reading package lists... Done
+   Building dependency tree... Done
+   Reading state information... Done
+   All packages are up to date.
 
-    $ apt install -y kubelet kubeadm kubectl
-    Reading package lists... Done
-    Building dependency tree... Done
-    Reading state information... Done
-    The following additional packages will be installed:
-      conntrack cri-tools kubernetes-cni
-    The following NEW packages will be installed:
-      conntrack cri-tools kubeadm kubectl kubelet kubernetes-cni
-    ...
-    ```
+   $ apt install -y kubelet kubeadm kubectl
+   Reading package lists... Done
+   Building dependency tree... Done
+   Reading state information... Done
+   The following additional packages will be installed:
+     conntrack cri-tools kubernetes-cni
+   The following NEW packages will be installed:
+     conntrack cri-tools kubeadm kubectl kubelet kubernetes-cni
+   ...
+   ```
 
-5.  Holding these packages ensures they will not be automatically updated, which helps maintain cluster stability.
+5. Holding these packages ensures they will not be automatically updated, which helps maintain cluster stability.
 
-    ```bash
-    $ apt-mark hold kubelet kubeadm kubectl
-    kubelet set on hold.
-    kubeadm set on hold.
-    kubectl set on hold.
-    ```
+   ```bash
+   $ apt-mark hold kubelet kubeadm kubectl
+   kubelet set on hold.
+   kubeadm set on hold.
+   kubectl set on hold.
+   ```
 
 ## Verifying the Installation
 

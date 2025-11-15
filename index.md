@@ -1,12 +1,12 @@
 ---
 layout: home.liquid
-title: 'Phil Niedertscheider - Software Engineering Enthusiast'
+title: "Phil Niedertscheider - Software Engineering Enthusiast"
 description:
-  'Senior Software Engineer at Sentry.io sharing iOS/Swift tutorials, Kubernetes guides, open-source projects, and
-  mobile development insights. Expert in iOS, Swift, DevOps, and developer tools.'
+  "Senior Software Engineer at Sentry.io sharing iOS/Swift tutorials, Kubernetes guides, open-source projects, and
+  mobile development insights. Expert in iOS, Swift, DevOps, and developer tools."
 keywords:
-  'iOS development, Swift programming, Kubernetes, DevOps, mobile app development, open source, software engineering,
-  tutorial'
+  "iOS development, Swift programming, Kubernetes, DevOps, mobile app development, open source, software engineering,
+  tutorial"
 image: /assets/images/default-og-image.png
 ---
 

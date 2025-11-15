@@ -21,6 +21,7 @@ bundle exec jekyll serve
 ```
 
 ## Other
+
 ### Attribution
 
 This project theme is based on the

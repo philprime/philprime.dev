@@ -1,18 +1,18 @@
 ---
 layout: post.liquid
-title: '3 ways of styling SwiftUI views'
+title: "3 ways of styling SwiftUI views"
 date: 2021-05-24 17:00:00 +0200
 categories: blog
 tags: SwiftUI iOS styling UI-design Swift development tutorial clean-code
 description:
-  'Master SwiftUI view styling with 3 powerful techniques. Learn reusable, customizable approaches for building
-  beautiful user interfaces with clean, maintainable code.'
+  "Master SwiftUI view styling with 3 powerful techniques. Learn reusable, customizable approaches for building
+  beautiful user interfaces with clean, maintainable code."
 excerpt:
-  'Explore three effective approaches to styling SwiftUI views. Learn how to create reusable, customizable, and clean
-  styling solutions for your iOS apps.'
+  "Explore three effective approaches to styling SwiftUI views. Learn how to create reusable, customizable, and clean
+  styling solutions for your iOS apps."
 keywords:
-  'SwiftUI styling, iOS UI design, SwiftUI views, iOS development, user interface design, SwiftUI tutorial, iOS app
-  design, clean code'
+  "SwiftUI styling, iOS UI design, SwiftUI views, iOS development, user interface design, SwiftUI tutorial, iOS app
+  design, clean code"
 image: /assets/blog/three-ways-styling-swiftui/1_4Kk_v9ER65tuYvoK0aCeIw.png
 author: Philip Niedertscheider
 ---
@@ -249,7 +249,6 @@ cases (for example in an Xcode preview) 😕
 Our solution is opting in for instance configuration once again:
 
 ```swift
-
 struct Style {
 
     struct Text {
@@ -350,7 +349,7 @@ It took three passes just to get the “global” style object into the nested F
 want this much unnecessary code (especially because you also strive for clean code, don’t you?).
 
 Okay so what else could we think off? Well, how about a mix between the static and the instance solution? All we need is
-a static object where we can set the style from Foo and read it from FooBar … sounds like some shared *environment*💡
+a static object where we can set the style from Foo and read it from FooBar … sounds like some shared _environment_💡
 
 SwiftUI introduced the property wrapper [@Environment](https://developer.apple.com/documentation/swiftui/environment)
 which allows us to read a value from the shared environment of our view🥳

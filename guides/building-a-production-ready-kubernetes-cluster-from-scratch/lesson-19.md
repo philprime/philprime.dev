@@ -54,7 +54,7 @@ spec:
       volumeMounts:
         - name: test-volume
           mountPath: /mnt/test
-      command: ['sleep', '3600']
+      command: ["sleep", "3600"]
   volumes:
     - name: test-volume
       persistentVolumeClaim:
@@ -183,7 +183,7 @@ spec:
       volumeMounts:
         - name: test-volume
           mountPath: /mnt/test
-      command: ['sleep', '3600']
+      command: ["sleep", "3600"]
   volumes:
     - name: test-volume
       persistentVolumeClaim:
