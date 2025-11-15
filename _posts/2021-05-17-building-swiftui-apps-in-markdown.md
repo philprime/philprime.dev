@@ -55,9 +55,19 @@ Anyway here is a short recap of the explained concepts:
 
 Usually an example is easier to understand, so please take a look at the following one:
 
-{% gist e34b4cf5182224e594a8db368b176961 %}
+```markdown
+My _awesome_ article
+====================
 
-The styling is done by GitHub Gists. The actual raw document looks like the following:
+This is a simple markdown document with **bold** and _cursive_ text.
+
+Also here is a simple bullet list:
+
+*   My first list item
+*   Another list item
+```
+
+The actual raw document looks like the following:
 
 ```md
 # My _awesome_ article
