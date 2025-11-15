@@ -30,7 +30,7 @@ Here's a quick guide on how to access fastlane match certificates manually:
    bundle exec pry
    ```
 
-3. Load the depdendencies `match` and `fastlane_core` in the interactive shell:
+3. Load the dependencies `match` and `fastlane_core` in the interactive shell:
 
    ```ruby
    require 'fastlane_core'
@@ -45,7 +45,7 @@ Here's a quick guide on how to access fastlane match certificates manually:
    ENV['MATCH_PASSWORD'] = "your_match_password" # Your match password
    ```
 
-   We define the match password by setting it as a environment variable so that the decryption logic can pick it up.
+   We define the match password by setting it as an environment variable so that the decryption logic can pick it up.
 
 5. Create a `Match::Storage` instance of the type `git` to interact with the match repository:
 
