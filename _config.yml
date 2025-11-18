@@ -47,7 +47,7 @@ defaults:
     values:
       image: /assets/images/default-og-image.png
   - scope:
-      path: "cv.pdf"
+      path: "assets/files/cv.pdf"
     values:
       sitemap: false
 
