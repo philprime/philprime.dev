@@ -1,0 +1,58 @@
+{% comment %} Person Schema for Philip Niedertscheider Establishes author authority and expertise {% endcomment %}
+
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "{{ site.author.name }}",
+    "url": "{{ site.url }}",
+    "image": "{{ site.url }}{{ site.author.avatar }}",
+    "description": "{{ site.author.bio }}",
+    "email": "{{ site.author.email }}",
+    "jobTitle": "Senior Software Engineer",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "Sentry.io",
+      "url": "https://sentry.io"
+    },
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "{{ site.author.location }}"
+    },
+    "sameAs": [
+      "https://github.com/{{ site.author.github }}",
+      "https://twitter.com/{{ site.author.twitter }}",
+      "https://linkedin.com/in/{{ site.author.linkedin }}",
+      "https://bsky.app/profile/philprime.dev",
+      "https://stackoverflow.com/users/3515302/philip-niedertscheider"
+    ],
+    "knowsAbout": [
+      "iOS Development",
+      "Swift Programming",
+      "Kubernetes",
+      "DevOps",
+      "Mobile App Development",
+      "Open Source Software",
+      "Software Engineering",
+      "Performance Optimization"
+    ],
+    "alumniOf": {
+      "@type": "EducationalOrganization",
+      "name": "TU Wien Innovation Incubation Center"
+    },
+    "founder": [
+      {
+        "@type": "Organization",
+        "name": "kula.app",
+        "url": "https://kula.app",
+        "description": "A startup dedicated to making mobile app development accessible to everyone, without requiring code"
+      },
+      {
+        "@type": "Organization",
+        "name": "techprimate",
+        "url": "https://techprimate.com",
+        "description": "A mobile app development agency in Austria"
+      }
+    ]
+  }
+</script>

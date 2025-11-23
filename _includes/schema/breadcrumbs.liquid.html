@@ -1,0 +1,67 @@
+{% comment %} Breadcrumb Schema for Navigation Helps search engines understand site structure {% endcomment %} {% assign
+url_parts = page.url | split: '/' %} {% assign breadcrumb_url = '' %}
+
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "{{ site.url }}"
+      }{% if page.url != '/' %},{% endif %}
+      {% if page.layout == 'post.liquid' %}
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Blog",
+        "item": "{{ site.url }}/blog/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "{{ page.title }}",
+        "item": "{{ site.url }}{{ page.url }}"
+      }
+      {% elsif page.url contains '/guides/' %}
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Guides",
+        "item": "{{ site.url }}/guides/"
+      }{% if page.url != '/guides/' %},
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "{{ page.title }}",
+        "item": "{{ site.url }}{{ page.url }}"
+      }{% endif %}
+      {% elsif page.url != '/' %}
+      {% assign position = 2 %}
+      {% for part in url_parts %}
+        {% if part != '' and part != 'index.html' %}
+          {% assign breadcrumb_url = breadcrumb_url | append: '/' | append: part %}
+          {% if forloop.last %}
+      {
+        "@type": "ListItem",
+        "position": {{ position }},
+        "name": "{{ page.title | default: part | capitalize }}",
+        "item": "{{ site.url }}{{ breadcrumb_url }}"
+      }
+          {% else %}
+      {
+        "@type": "ListItem",
+        "position": {{ position }},
+        "name": "{{ part | capitalize }}",
+        "item": "{{ site.url }}{{ breadcrumb_url }}"
+      },
+          {% endif %}
+          {% assign position = position | plus: 1 %}
+        {% endif %}
+      {% endfor %}
+      {% endif %}
+    ]
+  }
+</script>

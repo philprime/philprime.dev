@@ -1,15 +1,18 @@
 <head>
-  <meta charset='utf-8'>
-  <meta http-equiv='X-UA-Compatible' content='IE=edge'>
-  <meta name='viewport' content='width=device-width, initial-scale=1'>
-  {%- seo -%}
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {%- seo -%} {%- favicon -%}
+
+  <!-- Structured Data (JSON-LD) -->
+  {%- include schema/person.liquid.html -%} {%- include schema/website.liquid.html -%} {%- include
+  schema/article.liquid.html -%} {%- include schema/breadcrumbs.liquid.html -%} {%- include schema/guide.liquid.html -%}
   <link
-    rel='stylesheet'
-    href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css'
-    integrity='sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=='
-    crossorigin='anonymous'
-    referrerpolicy='no-referrer'
-  >
-  <link rel='stylesheet' href='{{ '/assets/css/style.css' | relative_url }}'>
-  {%- feed_meta -%}
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css"
+    integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+  <link rel='stylesheet' href='{{ '/assets/css/style.css' | relative_url }}'> {%- feed_meta -%}
 </head>

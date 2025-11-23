@@ -19,6 +19,10 @@ gem "http_parser.rb", "~> 0.6.0", :platforms => [:jruby]
 # Missing dependency used by the jekyll base binary
 gem "webrick"
 
+# Ruby 3.5 compatibility - prevent deprecation warnings
+gem "logger"
+gem "benchmark"
+
 # Code Highlighting
 gem "kramdown-parser-gfm"
 gem "kramdown"
@@ -30,5 +34,8 @@ gem "jekyll-feed", "~> 0.12"
 # SEO
 gem "jekyll-seo-tag", "~> 2.1"
 
-# GitHub Gist Embedding
-gem "jekyll-gist"
+# Sitemap Generation
+gem "jekyll-sitemap"
+
+# Favicon Generation
+gem "jekyll-favicon", "~> 1.1.0"

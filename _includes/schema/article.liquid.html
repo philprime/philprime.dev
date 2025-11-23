@@ -1,0 +1,62 @@
+{% comment %} Article Schema for Blog Posts Enables rich snippets with author, date, reading time, etc. {% endcomment %}
+{% if page.layout == 'post.liquid' %} {% assign words = content | number_of_words %} {% assign reading_time = words |
+divided_by: 200 %} {% if reading_time < 1 %}{% assign reading_time = 1 %}{% endif %}
+
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "{{ page.title | escape }}",
+    "description": "{{ page.description | default: page.excerpt | strip_html | truncate: 160 | escape }}",
+    "image": "{{ site.url }}{{ page.image | default: site.defaults[0].values.image }}",
+    "author": {
+      "@type": "Person",
+      "name": "{{ page.author | default: site.author.name }}",
+      "url": "{{ site.url }}",
+      "image": "{{ site.url }}{{ site.author.avatar }}",
+      "sameAs": [
+        "https://github.com/{{ site.author.github }}",
+        "https://twitter.com/{{ site.author.twitter }}",
+        "https://linkedin.com/in/{{ site.author.linkedin }}"
+      ]
+    },
+    "publisher": {
+      "@type": "Person",
+      "name": "{{ site.author.name }}",
+      "url": "{{ site.url }}",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "{{ site.url }}{{ site.logo }}"
+      }
+    },
+    "datePublished": "{{ page.date | date_to_xmlschema }}",
+    "dateModified": "{{ page.modified_date | default: page.date | date_to_xmlschema }}",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "{{ site.url }}{{ page.url }}"
+    },
+    "url": "{{ site.url }}{{ page.url }}",
+    "wordCount": {{ words }},
+    "timeRequired": "PT{{ reading_time }}M",
+    "inLanguage": "{{ page.lang | default: site.lang | default: 'en-US' }}",
+    {% if page.keywords %}
+    "keywords": "{{ page.keywords }}",
+    {% endif %}
+    {% if page.tags.size > 0 %}
+    "about": [
+      {% for tag in page.tags %}
+      {
+        "@type": "Thing",
+        "name": "{{ tag }}"
+      }{% unless forloop.last %},{% endunless %}
+      {% endfor %}
+    ],
+    {% endif %}
+    "isPartOf": {
+      "@type": "Blog",
+      "name": "{{ site.title }}",
+      "url": "{{ site.url }}"
+    }
+  }
+</script>
+{% endif %}

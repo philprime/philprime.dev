@@ -1,14 +1,23 @@
 ---
 layout: post.liquid
-title: 'Three simple ways to support Open Source Software'
+title: "Three simple ways to support Open Source Software"
 date: 2024-05-06 11:00:00 +0200
 categories: blog
-tags: iOS Open Source
+tags: iOS Open Source FOSS community contribution sponsorship
+description:
+  "Discover practical ways to support Open Source Software including creating projects, contributing to existing ones,
+  and encouraging team participation. Learn why FOSS matters for developers."
+excerpt:
+  "Free Open Source Software enables us to grow together. Learn three simple yet impactful ways you can support the open
+  source community and help drive innovation forward."
+keywords:
+  "open source software, FOSS, software contribution, GitHub sponsorship, developer community, open source contribution,
+  software development"
+image: /assets/blog/2024-05-06-three-ways-to-support-open-source/header.jpg
+author: Philip Niedertscheider
 ---
 
 Free Open Source Software (FOSS) enables us to grow together, and you can also help - so allow me to tell you how!
-
-![Header Image](/assets/blog/2024-05-06-three-ways-to-support-open-source/header.jpg)
 
 # My history with FOSS
 

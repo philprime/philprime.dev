@@ -3,6 +3,18 @@ layout: post.liquid
 title: 'Upgrading Swift HTTP APIs to the Next Level using Postie'
 date: 2021-07-05 17:00:00 +0200
 categories: blog
+tags: Swift HTTP API networking Postie iOS development OpenAPI URLSession
+description:
+  'Learn how to elevate your Swift HTTP API development with Postie, a next-level networking framework that provides
+  type-safe, structured API definitions and automatic request/response handling.'
+excerpt:
+  'Discover Postie, a revolutionary Swift HTTP networking framework that brings type safety and structure to API
+  development. Learn how to define strongly-typed APIs with property wrappers and eliminate common networking errors.'
+keywords:
+  'Swift networking, HTTP API, Postie framework, iOS networking, URLSession, OpenAPI, Swift Package Manager, type-safe
+  networking, mobile development'
+image: /assets/blog/swift-http-api-postie/postie-header.jpg
+author: Philip Niedertscheider
 ---
 
 Defining HTTP APIs in Swift is still not perfect (yet?). Most iOS and macOS apps are using them to communicate with
@@ -11,9 +23,6 @@ depending on different edge cases etc… and you might think that nowadays, many
 complexity…
 
 …but with [Postie](https://github.com/kula-app/Postie/) you can elevate your capabilities even more!
-
-![The Next-Level Swift HTTP API Package](/assets/blog/swift-http-api-postie/postie-header.jpg)_The Next-Level Swift HTTP
-API Package_
 
 ### Existing solutions are heavy-weight
 

@@ -1,8 +1,20 @@
 ---
 layout: post.liquid
-title: '5 Swift Extensions to write Smarter Code'
+title: "5 Swift Extensions to write Smarter Code"
 date: 2021-05-03 17:00:00 +0200
 categories: blog
+tags: Swift iOS programming extensions code-quality best-practices development
+description:
+  "Discover 5 powerful Swift extensions that improve code maintainability and readability. Learn practical techniques to
+  extend Swift with smart functionality for cleaner iOS development."
+excerpt:
+  "Learn 5 essential Swift extensions that make your code smarter, more maintainable, and easier to read. Practical
+  examples for iOS and macOS development."
+keywords:
+  "Swift extensions, iOS development, Swift programming, code quality, iOS best practices, Swift tips, mobile
+  development, clean code"
+image: /assets/blog/five-swift-extension-smarter-code/1__g7jJ3q9BbvydAUiBGyZsA.png
+author: Philip Niedertscheider
 ---
 
 A good developer should write great code with high maintainability and extensibility. Even better developers extend the
@@ -13,6 +25,12 @@ recreated from its backstory/original intent.
 
 In case you TL;DR and only want to see the code, scroll to each **The Smart Solutions** headline for the copy-paste
 ready code, or checkout the link in the conclusion.
+
+> **Swift Development Series:** This tutorial is part of my comprehensive Swift development series. After mastering
+> these concepts, you might want to explore [Creating your own Markdown Parser from Scratch in >
+> Swift]({% post_url 2021-05-11-creating-own-markdown-parser-swift %}) and [Why You Should Strongly-Type Your
+> Localizations with Swiftgen]({% post_url 2021-05-31-strongly-type-localizations-swiftgen %}) for additional iOS
+> development best practices.
 
 ## 1. Safe Array access with custom subscripts
 

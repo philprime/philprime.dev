@@ -9,24 +9,39 @@ guide_abstract: >
   From hardware assembly to network configuration, this guide will guide you through the process of building a
   production-ready Kubernetes cluster from scratch using Raspberry Pi devices.
 repo_file_path: guides/building-a-production-ready-kubernetes-cluster-from-scratch/index.md
+description:
+  "Complete guide to building a production-ready Kubernetes cluster from scratch using Raspberry Pi. Covers hardware
+  setup, high-availability configuration, security, monitoring, and cluster management."
+excerpt:
+  "Learn to build a production-ready Kubernetes cluster from scratch with Raspberry Pi devices. Comprehensive tutorial
+  covering hardware assembly, network configuration, security best practices, and cluster management for home labs and
+  edge computing."
+keywords:
+  "Kubernetes cluster, Raspberry Pi cluster, home lab, DevOps tutorial, container orchestration, high availability,
+  cluster setup, production Kubernetes, edge computing, DIY cluster"
+tags: Kubernetes Raspberry-Pi DevOps home-lab cluster tutorial production edge-computing
+image: /assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/hardware-overview.webp
+author: Philip Niedertscheider
 ---
 
 Welcome to my new guide on building a production-ready Kubernetes cluster from scratch using Raspberry Pi devices. In
-this series, you can follow along my journey building my own dedicated Kubernetes cluster at home, from hardware assembly to
-cluster setup and management. 
+this series, you can follow along my journey building my own dedicated Kubernetes cluster at home, from hardware
+assembly to cluster setup and management.
 
-A small scale cluster allows you to find learnings in a cost-efficient setup, which can then be applied to real-world scenarios and scale up to larger
-clusters as needed. 
-While large-scale cluster will introduce additional complexity and scenarios not covered in this guide (for now), we are trying to be "production-ready" by meticulously
-going through all aspects of security, availability and reliability.
+A small scale cluster allows you to find learnings in a cost-efficient setup, which can then be applied to real-world
+scenarios and scale up to larger clusters as needed. While large-scale cluster will introduce additional complexity and
+scenarios not covered in this guide (for now), we are trying to be "production-ready" by meticulously going through all
+aspects of security, availability and reliability.
 
-This is by no means intended to be complete as I am not intending to write a manual here (you can always dig deeper into the relevant documentations).
-Instead this guide reflects all the step taken by me during the setup of my cluster, written in a way so you can follow along, including my thoughts and findings outside the official documentations.
+This is by no means intended to be complete as I am not intending to write a manual here (you can always dig deeper into
+the relevant documentations). Instead this guide reflects all the step taken by me during the setup of my cluster,
+written in a way so you can follow along, including my thoughts and findings outside the official documentations.
 
 I truly hope this guide is helpful for you and can provide valuable insights for those planning a similar project.
 
 {% include alert.liquid.html type='note' title='Please read this!' content='
-  <p>I originally planned to offer this guide as a paid online course, but as a strong believer in free open source resources, I made it available for free instead.</p>
+
+<p>I originally planned to offer this guide as a paid online course, but as a strong believer in free open source resources, I made it available for free instead.</p>
   <p>Please, if my guides helped you, I would be very grateful if you could support my work by becoming a <a href="https://github.com/sponsors/philprime" style="color: #000;">GitHub Sponsor</a> and by sharing the guides in your network. 🙏</p>
   <p>Eventually I might offer additional guides as paid online courses, but for now, I want to focus on providing free guides.</p>
   <p>Thank you! ❤️</p>

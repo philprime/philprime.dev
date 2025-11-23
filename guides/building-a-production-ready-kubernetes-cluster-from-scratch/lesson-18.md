@@ -117,8 +117,8 @@ metadata:
   name: longhorn-example
 provisioner: driver.longhorn.io
 parameters:
-  numberOfReplicas: '2'
-  staleReplicaTimeout: '30'
+  numberOfReplicas: "2"
+  staleReplicaTimeout: "30"
 ```
 
 Apply the storage class to your Kubernetes cluster using `kubectl`:

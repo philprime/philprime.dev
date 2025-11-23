@@ -1,8 +1,21 @@
 ---
 layout: post.liquid
-title: 'Advanced cross-platform apps using local Swift packages and UIKit/AppKit'
+title: "Advanced cross-platform apps using local Swift packages and UIKit/AppKit"
 date: 2021-04-19 17:00:00 +0200
 categories: blog
+tags: Swift UIKit AppKit cross-platform SPM Swift-Package-Manager iOS macOS XIB architecture
+description:
+  "Learn to build advanced cross-platform iOS/macOS apps using local Swift Package Manager packages with UIKit and
+  AppKit. Master modular architecture with shared UI logic and platform-specific interfaces."
+excerpt:
+  "Discover how to create sophisticated cross-platform iOS and macOS applications using Swift Package Manager with UIKit
+  and AppKit. This advanced tutorial covers modular architecture, shared UI logic, and platform-specific interface
+  building."
+keywords:
+  "cross-platform apps, UIKit AppKit, Swift Package Manager, iOS macOS development, modular architecture, XIB interface
+  builder, iOS development, macOS development"
+image: /assets/blog/advanced-cross-platform-apps-uikit-appkit/header.png
+author: Philip Niedertscheider
 ---
 
 Before the release and hype of SwiftUI we had to use plain UIKit for iOS and AppKit for the macOS interfaces... even if
@@ -12,12 +25,13 @@ eventually you get to the point of refactoring the code into modules.
 This tutorial shows you, how to harness the impressive power of the Swift Package Manager (SPM) to create a clean,
 extensible and especially shared UI structure for your large-scale apps.
 
-![Combining Swift files with XIB interface builder files into packages](/assets/blog/advanced-cross-platform-apps-uikit-appkit/header.png)
-
 **Note:** _This is a follow-up tutorial to_ [Modularize Xcode Project using local Swift
 Packages]({% post_url 2021-04-12-modularize-xcode-projects-using-local-swift-packages %}) _and builds up on the topics
 mentioned there. In case you are already an advanced iOS/macOS/SPM user, go ahead, but if you are fairly new to the
 topic, I highly recommend you read my other article first._
+
+> **Swift Development Series:** This tutorial is part of my comprehensive Swift Package Manager series. After mastering
+> these concepts, you might want to explore [5 Swift Extensions to write Smarter Code]({% post_url 2021-05-03-five-swift-extension-smarter-code %}) and [Why You Should Strongly-Type Your Localizations with Swiftgen]({% post_url 2021-05-31-strongly-type-localizations-swiftgen %}) for additional iOS development best practices.
 
 ## Backstory on UI building in Swift & Xcode
 
@@ -66,7 +80,7 @@ components, so it will suffice.
 
 As the first step, create an **empty Xcode project** as our starting point and name it **Clock**:
 
-![](/assets/blog/1_6L0tYZXaidggJYnkTf0gvA.png)
+![](/assets/blog/advanced-cross-platform-apps-uikit-appkit/1_6L0tYZXaidggJYnkTf0gvA.png)
 
 ![Creating an empty Xcode project named Clock](/assets/blog/advanced-cross-platform-apps-uikit-appkit/1_nNutLukkYpZh92rIIqdUPg.png)
 
@@ -138,32 +152,32 @@ Since Swift 5.3 it is possible to add resources to a Swift package. Apple create
 [pretty detailed documentation](https://developer.apple.com/documentation/swift_packages/bundling_resources_with_a_swift_package)
 on how to handle them, but for the sake of the tutorial I will give you the quick summary:
 
-1.  Create a folder Resources inside `Sources/ClockUI`
+1. Create a folder Resources inside `Sources/ClockUI`
 
-    ![Folder structure after adding the resources folder](/assets/blog/advanced-cross-platform-apps-uikit-appkit/1_KCmgeU23OwgszWy5SRaC7w.png)
+   ![Folder structure after adding the resources folder](/assets/blog/advanced-cross-platform-apps-uikit-appkit/1_KCmgeU23OwgszWy5SRaC7w.png)
 
-    _Folder structure after adding the resources folder_
+   _Folder structure after adding the resources folder_
 
-2.  Create an iOS View `ClockViewController_iOS.xib`
+2. Create an iOS View `ClockViewController_iOS.xib`
 
-    ![Select the template ‘View’ in the iOS category](/assets/blog/advanced-cross-platform-apps-uikit-appkit/1_RKaaIEWTSgSxzC-gJDxwEQ.png)
+   ![Select the template ‘View’ in the iOS category](/assets/blog/advanced-cross-platform-apps-uikit-appkit/1_RKaaIEWTSgSxzC-gJDxwEQ.png)
 
-3.  Create a macOS View `ClockViewController_macOS.xib`
+3. Create a macOS View `ClockViewController_macOS.xib`
 
-    ![Select the template ‘View’ in the macOS category](/assets/blog/advanced-cross-platform-apps-uikit-appkit/1_GejsjhB6xbM6wEv0GAHroQ.png)
+   ![Select the template ‘View’ in the macOS category](/assets/blog/advanced-cross-platform-apps-uikit-appkit/1_GejsjhB6xbM6wEv0GAHroQ.png)
 
-4.  Add both files as resources to the package manifest in the _targets_ section:
+4. Add both files as resources to the package manifest in the _targets_ section:
 
-    ```swift
-    ...
-    targets: [
-        .target(name: "ClockUI", resources: [
-            .process("Resources/ClockViewController_iOS.xib"),
-            .process("Resources/ClockViewController_macOS.xib"),
-        ])
-    ]
-    ...
-    ```
+   ```swift
+   ...
+   targets: [
+       .target(name: "ClockUI", resources: [
+           .process("Resources/ClockViewController_iOS.xib"),
+           .process("Resources/ClockViewController_macOS.xib"),
+       ])
+   ]
+   ...
+   ```
 
 As you can see here, we use `process(path: String)` to compile the XIB files at build time into NIB files, which are
 then used at runtime for loading the UI.
@@ -339,29 +353,29 @@ Once again, don’t forget to connect the view outlet, or it fails to instantiat
 > controller Swift class and then it should show up in the Xcode Interface Builder. After linking, you can simply delete
 > line and it should still work fine, as NSViewController already owns a property with that name.
 
-1.  Connect the macOS XIB with the class
-2.  Add the `ClockUI_macOS` framework to the `Clock_macOS` app target
-3.  Add import `ClockUI_macOS` in `Clock_macOS/ViewController.swift`
-4.  Copy the `loadFromNib` from the iOS package into the macOS package
-5.  Add the view controller to the view hierarchy:
+1. Connect the macOS XIB with the class
+2. Add the `ClockUI_macOS` framework to the `Clock_macOS` app target
+3. Add import `ClockUI_macOS` in `Clock_macOS/ViewController.swift`
+4. Copy the `loadFromNib` from the iOS package into the macOS package
+5. Add the view controller to the view hierarchy:
 
-    ```swift
-    import Cocoa
-    import ClockUI_macOS
+   ```swift
+   import Cocoa
+   import ClockUI_macOS
 
-    class ViewController: NSViewController {
+   class ViewController: NSViewController {
 
-        override func viewDidAppear() {
-            super.viewDidAppear()
+       override func viewDidAppear() {
+           super.viewDidAppear()
 
-            let clockVC = ClockViewController.loadFromNib()
-            self.addChild(clockVC)
-            clockVC.view.autoresizingMask = [.width, .height]
-            self.view.addSubview(clockVC.view)
-        }
+           let clockVC = ClockViewController.loadFromNib()
+           self.addChild(clockVC)
+           clockVC.view.autoresizingMask = [.width, .height]
+           self.view.addSubview(clockVC.view)
+       }
 
-    }
-    ```
+   }
+   ```
 
 Great job! You have now a running iOS and macOS application, using interface resources from Swift packages 🚀
 

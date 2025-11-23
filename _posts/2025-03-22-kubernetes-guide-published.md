@@ -1,9 +1,20 @@
 ---
 layout: post.liquid
-title: 'New Guide: Building a production-ready Kubernetes cluster from scratch'
+title: "New Guide: Building a production-ready Kubernetes cluster from scratch"
 date: 2025-03-22 11:00:00 +0200
 categories: blog
-tags: Kubernetes Raspberry Pi DevOps
+tags: Kubernetes Raspberry Pi DevOps home-lab cluster tutorial guide
+description:
+  "Learn to build a production-ready Kubernetes cluster from scratch using Raspberry Pi devices. Complete guide covering
+  hardware setup, high-availability configuration, and cluster management."
+excerpt:
+  "I've created a comprehensive guide for building a Kubernetes cluster from scratch using Raspberry Pi devices. Learn
+  everything from hardware setup to cluster configuration in this hands-on tutorial."
+keywords:
+  "Kubernetes cluster, Raspberry Pi, DevOps, home lab, container orchestration, cluster setup, high availability,
+  tutorial"
+image: /assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/hardware-overview.webp
+author: Philip Niedertscheider
 ---
 
 I've been working on something exciting lately - a guide about building a Kubernetes cluster from scratch using

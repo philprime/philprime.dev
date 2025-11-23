@@ -1,0 +1,106 @@
+{% comment %} Guide/Tutorial Schema for Educational Content Enables rich snippets for instructional content {%
+endcomment %} {% if page.layout contains 'guide' %}
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "{{ page.title }}",
+    "description": "{{ page.description | default: page.guide_abstract | strip_html | escape }}",
+    "image": "{{ site.url }}{{ page.image | default: site.defaults[0].values.image }}",
+    "author": {
+      "@type": "Person",
+      "name": "{{ site.author.name }}",
+      "url": "{{ site.url }}"
+    },
+    "datePublished": "{{ page.date | date_to_xmlschema }}",
+    "dateModified": "{{ page.modified_date | default: page.date | date_to_xmlschema }}",
+    {% if page.guide_id == 'building-a-production-ready-kubernetes-cluster-from-scratch' %}
+    "totalTime": "PT8H",
+    "estimatedCost": {
+      "@type": "MonetaryAmount",
+      "currency": "USD",
+      "value": "200"
+    },
+    "supply": [
+      {
+        "@type": "HowToSupply",
+        "name": "Raspberry Pi 4 devices (3-4 units)"
+      },
+      {
+        "@type": "HowToSupply",
+        "name": "MicroSD cards"
+      },
+      {
+        "@type": "HowToSupply",
+        "name": "Ethernet cables"
+      },
+      {
+        "@type": "HowToSupply",
+        "name": "Network switch or router"
+      }
+    ],
+    "tool": [
+      {
+        "@type": "HowToTool",
+        "name": "Computer with SSH client"
+      },
+      {
+        "@type": "HowToTool",
+        "name": "Raspberry Pi Imager"
+      }
+    ],
+    {% endif %}
+    "step": [
+      {% if page.guide_id == 'building-a-production-ready-kubernetes-cluster-from-scratch' %}
+      {
+        "@type": "HowToStep",
+        "name": "Hardware Setup",
+        "text": "Set up Raspberry Pi hardware including flashing SD cards and network configuration",
+        "url": "{{ site.url }}/guides/building-a-production-ready-kubernetes-cluster-from-scratch/section-1.html"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Operating System Installation",
+        "text": "Install and configure Ubuntu Server on Raspberry Pi devices",
+        "url": "{{ site.url }}/guides/building-a-production-ready-kubernetes-cluster-from-scratch/section-2.html"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Kubernetes Installation",
+        "text": "Install Kubernetes control plane and worker nodes",
+        "url": "{{ site.url }}/guides/building-a-production-ready-kubernetes-cluster-from-scratch/section-3.html"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Cluster Configuration",
+        "text": "Configure networking, storage, and essential cluster services",
+        "url": "{{ site.url }}/guides/building-a-production-ready-kubernetes-cluster-from-scratch/section-4.html"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Production Hardening",
+        "text": "Implement security, monitoring, and backup solutions",
+        "url": "{{ site.url }}/guides/building-a-production-ready-kubernetes-cluster-from-scratch/section-5.html"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Testing and Deployment",
+        "text": "Deploy applications and validate cluster functionality",
+        "url": "{{ site.url }}/guides/building-a-production-ready-kubernetes-cluster-from-scratch/section-6.html"
+      }
+      {% else %}
+      {
+        "@type": "HowToStep",
+        "name": "Follow the Guide",
+        "text": "{{ page.description | default: page.guide_abstract | strip_html | escape }}",
+        "url": "{{ site.url }}{{ page.url }}"
+      }
+      {% endif %}
+    ],
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "{{ site.url }}{{ page.url }}"
+    }
+  }
+</script>
+{% endif %}

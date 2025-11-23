@@ -1,9 +1,20 @@
 ---
 layout: post.liquid
-title: 'Modularize Xcode Projects using local Swift Packages'
+title: "Modularize Xcode Projects using local Swift Packages"
 date: 2021-04-12 17:00:00 +0200
 categories: blog
-tags: iOS Swift SPM
+tags: iOS Swift SPM Xcode modularization Swift-Package-Manager architecture
+description:
+  "Learn how to modularize your Xcode projects using local Swift Package Manager (SPM) packages. Improve code
+  organization, compilation times, and team collaboration with practical examples."
+excerpt:
+  "Discover how to use Swift Package Manager to modularize your Xcode projects. This guide covers setting up local SPM
+  packages, improving code organization, and speeding up builds."
+keywords:
+  "Swift Package Manager, SPM, Xcode modularization, iOS architecture, Swift packages, code organization, iOS
+  development, Xcode build optimization"
+image: /assets/blog/modularize-xcode-projects-using-local-swift-packages/image-14.png
+author: Philip Niedertscheider
 ---
 
 Swift Package Manager… SPM… It is everywhere, many use it and it is most likely the future of working with Swift
@@ -612,6 +623,19 @@ UI modules using interfaces to communicate in a [VIPER pattern](https://www.objc
 (which is something I am currently using in a large-scale iOS/macOS cross-platform app). Therefore I will cover advanced
 topics, such as how SPM can help you transitioning from UIKit/AppKit to SwiftUI using XIB files into their own packages,
 in a future article (make sure to follow me to get notified!).
+
+## Swift Development Series
+
+Ready to dive deeper into advanced Swift development? Check out these related articles:
+
+- **[Advanced cross-platform apps using local Swift packages and
+  UIKit/AppKit]({% post_url 2021-04-19-advanced-cross-platform-apps-uikit-appkit %})** - Build sophisticated
+  cross-platform iOS/macOS apps with shared logic
+- **[5 Swift Extensions to write Smarter Code]({% post_url 2021-05-03-five-swift-extension-smarter-code %})** - Improve
+  your Swift development skills with essential extensions
+- **[Why You Should Strongly-Type Your Localizations with
+  Swiftgen]({% post_url 2021-05-31-strongly-type-localizations-swiftgen %})** - Another code generation tool that
+  complements modular architectures
 
 If you would like to know more, check out my other articles, follow me on [Twitter](https://twitter.com/philprimes) and
 feel free to drop me a DM. Do you have a specific topic you want me to cover? Let me know! 😃

@@ -1,16 +1,25 @@
 ---
 layout: post.liquid
-title: 'Building SwiftUI apps in Markdown'
+title: "Building SwiftUI apps in Markdown"
 date: 2021-05-17 17:00:00 +0200
 categories: blog
+tags: SwiftUI iOS Swift Markdown parser AST UIKit development tutorial
+description:
+  "Learn how to transform Markdown documents into native SwiftUI views using custom parsing and the Resolver/Strategy
+  pattern. Build dynamic iOS apps with Markdown content."
+excerpt:
+  "Discover how to parse Markdown into SwiftUI views dynamically. This tutorial covers AST parsing, the Resolver
+  pattern, and building interactive iOS apps from Markdown documents."
+keywords:
+  "SwiftUI, Markdown parser, iOS development, Swift AST, UIKit, mobile app, live preview, SwiftUI views, iOS tutorial"
+image: /assets/blog/building-swiftui-apps-in-markdown/1_aC12NB2cxLzk1dEKhU-Urw.gif
+author: Philip Niedertscheider
 ---
 
 When your iOS app uses Markdown documents, why can’t we just transform them into natives view? What if instead of
 writing Swift UI code, we build a custom viewer app, which can even be run from Xcode Live Preview Canvas?
 
 Just look at what you can do with it:
-
-![Demo showing live Markdown to SwiftUI teasing this article](/assets/blog/building-swiftui-apps-in-markdown/1_aC12NB2cxLzk1dEKhU-Urw.gif)
 
 In this story we are going to cover the following topics:
 
@@ -25,8 +34,13 @@ which also includes a work-in-progress library `CDSwiftUIMapper.`
 
 ## Parsing Markdown into a AST Node Tree
 
-It’s highly recommended that you read my previous article [_"Creating your own Markdown Parser from Scratch in
+It's highly recommended that you read my previous article [_"Creating your own Markdown Parser from Scratch in
 Swift"_]({% post_url 2021-05-11-creating-own-markdown-parser-swift %}) as we will reuse concepts from there.
+
+> **Related Reading:** This tutorial builds upon concepts from my Markdown parser guide. You might also be interested in
+> learning about [5 Swift Extensions to write Smarter Code]({% post_url 2021-05-03-five-swift-extension-smarter-code %})
+> and [3 ways of styling SwiftUI views]({% post_url 2021-05-24-three-ways-styling-swiftui %}) for additional SwiftUI
+> development insights.
 
 Anyway here is a short recap of the explained concepts:
 
@@ -39,9 +53,18 @@ Anyway here is a short recap of the explained concepts:
 
 Usually an example is easier to understand, so please take a look at the following one:
 
-{% gist e34b4cf5182224e594a8db368b176961 %}
+```markdown
+# My _awesome_ article
 
-The styling is done by GitHub Gists. The actual raw document looks like the following:
+This is a simple markdown document with **bold** and _cursive_ text.
+
+Also here is a simple bullet list:
+
+- My first list item
+- Another list item
+```
+
+The actual raw document looks like the following:
 
 ```md
 # My _awesome_ article
@@ -115,7 +138,7 @@ VStack {
 As you can see, each node is mapped to a view structure:
 
 - `.list` becomes a `VStack` view
-- `.bullet` becomes a `HStack` view, with a `Text("-") `as the first element
+- `.bullet` becomes a `HStack` view, with a `Text("-")`as the first element
 - `.text` becomes a `Text` view
 
 It is necessary to add a mapping function for every single node type, and manage it in an efficient way. The easiest way
@@ -258,7 +281,6 @@ As a final step (to get to the original GIF at the beginning) add we add a new v
 input parameter text into nodes and after mapping wraps them in a ScrollView:
 
 ```swift
-
 import SwiftUI
 import CoolDownParser
 import CoolDownSwiftUIMapper

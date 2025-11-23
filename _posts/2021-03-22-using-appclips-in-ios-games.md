@@ -1,9 +1,20 @@
 ---
 layout: post.liquid
-title: 'Using App Clips in iOS Games'
+title: "Using App Clips in iOS Games"
 date: 2021-03-22 17:00:00 +0200
 categories: blog
-tags: iOS game
+tags: iOS game App-Clips deep-links NFC QR-codes mobile-games instant-apps
+description:
+  "Learn how to implement App Clips in iOS games to provide instant access to gameplay without full app downloads. This
+  tutorial covers deep links, QR codes, and marketing strategies for mobile games."
+excerpt:
+  "Discover how to use iOS App Clips in mobile games to let users play instantly without downloading the full app. Learn
+  about deep linking, QR codes, NFC tags, and creating engaging instant game experiences."
+keywords:
+  "iOS App Clips, mobile games, instant apps, deep links, QR codes, NFC tags, iOS game development, App Clip marketing,
+  puzzle games"
+image: /assets/blog/using-appclips-in-ios-games/image-1.jpeg
+author: Philip Niedertscheider
 ---
 
 With the release of iOS 14, App Clips were introduced, to give users instant access to your mobile iOS app
@@ -14,8 +25,6 @@ game for your everyday distraction, created by us at [techprimate.com](https://t
 
 After our initial release, when it came to new features, we decided to combine our puzzle game with the App Clip
 experience.
-
-![](/assets/blog/using-appclips-in-ios-games/image-1.jpeg)
 
 Just a short summary of what App Clips are:
 

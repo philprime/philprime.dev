@@ -91,16 +91,16 @@ spec:
                       operator: In
                       values:
                         - sample-app
-                topologyKey: 'kubernetes.io/hostname'
+                topologyKey: "kubernetes.io/hostname"
       # Add tolerations with a short duration to allow rescheduling
       tolerations:
-        - key: 'node.kubernetes.io/unreachable'
-          operator: 'Exists'
-          effect: 'NoExecute'
+        - key: "node.kubernetes.io/unreachable"
+          operator: "Exists"
+          effect: "NoExecute"
           tolerationSeconds: 30
-        - key: 'node.kubernetes.io/not-ready'
-          operator: 'Exists'
-          effect: 'NoExecute'
+        - key: "node.kubernetes.io/not-ready"
+          operator: "Exists"
+          effect: "NoExecute"
           tolerationSeconds: 30
 ```
 
@@ -218,7 +218,6 @@ To test the availability of the Kubernetes API server during a control plane nod
 command on every node at the same time:
 
 ````bash
-
 ## Cleaning up
 
 After testing the high-availability setup, you can clean up the sample

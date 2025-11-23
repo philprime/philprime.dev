@@ -5,16 +5,17 @@
 @use 'base';
 
 .alert {
-  padding: 15px;
-  border-radius: 5px;
-  margin-bottom: 20px;
+  padding: 18px 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
   font-size: 16px;
+  line-height: 1.5;
 }
 
 .alert-note {
-  background-color: #e7f3fe;
-  border-left: 4px solid #2196f3;
-  color: #2175d9;
+  background-color: #e8f4fd;
+  border-left: 5px solid #2196f3;
+  color: #1565c0;
 }
 
 .alert-note a {
@@ -22,45 +23,55 @@
 }
 
 .alert-tip {
-  background-color: #e7fce7;
-  border-left: 4px solid #4caf50;
-  color: #3e8e41;
+  background-color: #e8f5e8;
+  border-left: 5px solid #4caf50;
+  color: #2e7d32;
 }
 
 .alert-important {
-  background-color: #fef7e6;
-  border-left: 4px solid #ff9800;
-  color: #f57c00;
+  background-color: #fff8e1;
+  border-left: 5px solid #ff9800;
+  color: #ef6c00;
 }
 
 .alert-warning {
-  background-color: #fff3cd;
-  border-left: 4px solid #ffc107;
-  color: #856404;
+  background-color: #fffbf0;
+  border-left: 5px solid #ffc107;
+  color: #bf360c;
 }
 
 .alert-caution {
-  background-color: #fdecea;
-  border-left: 4px solid #f44336;
-  color: #d32f2f;
+  background-color: #ffebee;
+  border-left: 5px solid #f44336;
+  color: #c62828;
 }
 
-// Fix the text color of the code in the alerts as the code background color is dark
+// Improve code readability in alerts
 .alert code {
-  color: white;
+  background-color: rgba(0, 0, 0, 0.1);
+  color: inherit;
+  font-weight: 600;
+  padding: 2px 4px;
+  border-radius: 3px;
 }
 
 .alert pre {
-  color: white;
+  background-color: rgba(0, 0, 0, 0.1);
+  color: inherit;
+  border: none;
+  padding: 12px;
+  border-radius: 4px;
 }
 
 .contribute-cta {
-  padding: 15px;
-  border-radius: 5px;
-  margin-bottom: 20px;
+  padding: 20px 24px;
+  border-radius: 8px;
+  margin-bottom: 24px;
   font-size: 16px;
-  background-color: #2d3f5e;
-  color: white;
+  line-height: 1.5;
+  background-color: #1e3a5f;
+  color: #f8fafc;
+  border-left: 5px solid #3b82f6;
 }
 
 .contribute-cta-links {

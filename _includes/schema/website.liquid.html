@@ -1,0 +1,54 @@
+{% comment %} Website Schema for philprime.dev Establishes site authority and search appearance {% endcomment %}
+
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "name": "{{ site.title }}",
+    "url": "{{ site.url }}",
+    "description": "{{ site.description }}",
+    "inLanguage": "{{ site.lang | default: 'en-US' }}",
+    "author": {
+      "@type": "Person",
+      "name": "{{ site.author.name }}",
+      "url": "{{ site.url }}"
+    },
+    "publisher": {
+      "@type": "Person",
+      "name": "{{ site.author.name }}",
+      "url": "{{ site.url }}"
+    },
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "{{ site.url }}/search?q={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    },
+    "sameAs": [
+      "https://github.com/{{ site.author.github }}",
+      "https://twitter.com/{{ site.author.twitter }}",
+      "https://linkedin.com/in/{{ site.author.linkedin }}"
+    ]
+  }
+</script>
+
+{% if page.layout == 'home.liquid' %}
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    "mainEntity": {
+      "@type": "Person",
+      "name": "{{ site.author.name }}",
+      "url": "{{ site.url }}",
+      "description": "{{ site.author.bio }}"
+    },
+    "about": {
+      "@type": "Person",
+      "name": "{{ site.author.name }}"
+    }
+  }
+</script>
+{% endif %}

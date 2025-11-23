@@ -1,8 +1,20 @@
 ---
 layout: post.liquid
-title: 'Creating your own Markdown Parser from Scratch in Swift'
+title: "Creating your own Markdown Parser from Scratch in Swift"
 date: 2021-05-11 17:00:00 +0200
 categories: blog
+tags: Swift Markdown parser iOS programming tutorial AST compiler
+description:
+  "Build a complete Markdown parser from scratch in Swift. Learn AST concepts, parsing techniques, and how to convert
+  Markdown text into structured data for iOS apps."
+excerpt:
+  "Step-by-step guide to creating a Markdown parser in Swift from scratch. Covers parsing fundamentals, AST
+  construction, and practical implementation for iOS development."
+keywords:
+  "Swift markdown parser, AST parsing, iOS development, Swift programming, compiler design, text parsing, markdown to
+  swift, iOS tutorial"
+image: /assets/blog/creating-own-markdown-parser-swift/1_oV75cDIooAre7oB0o4u64g.png
+author: Philip Niedertscheider
 ---
 
 You know Markdown, right? That text format which uses funky characters like `**` or `>` to create well formatted
@@ -399,7 +411,7 @@ For the actual fragment parsing logic you can choose from multiple approaches (s
 approach we are using a character-based lexer.
 
 The fragment lexer differs from the previous ones, as it iterates the content by each character and also offers
-additional methods to _peak_ at further characters (does not increase the iterator counter) and _rewind_ to move the
+additional methods to _peek_ at further characters (does not increase the iterator counter) and _rewind_ to move the
 iterator backwards.
 
 ```swift
@@ -419,7 +431,7 @@ class FragmentLexer: IteratorProtocol {
         return content[content.index(content.startIndex, offsetBy: offset)]
     }
 
-    func peakPrevious(count: Int = 1) -> Character? {
+    func peekPrevious(count: Int = 1) -> Character? {
         offset -= count
         let character = currentCharacter
         offset += count
@@ -432,7 +444,7 @@ class FragmentLexer: IteratorProtocol {
         return character
     }
 
-    func peakNext() -> Character? {
+    func peekNext() -> Character? {
         let character = next()
         rewindCharacter()
         return character
@@ -571,7 +583,6 @@ mechanism. If you want to know now more, [CoolDown](https://github.com/techprima
 Alright, this is the final `FragmentParser` for the scope of this tutorial:
 
 ```swift
-
 class FragmentParser {
 
     let fragment: String
@@ -587,7 +598,7 @@ class FragmentParser {
         // Start iterating every character
         while let character = lexer.next() {
             // Check if the character is an asterisk
-            if character == "*" && lexer.peakNext() == "*" {
+            if character == "*" && lexer.peekNext() == "*" {
                 // Move the cursor once forward to skip the second asterisk
                 _ = lexer.next()
                 // Array to track the characters inside the bold inline segment
@@ -599,7 +610,7 @@ class FragmentParser {
                 // Iterate remaining characters until the bold segment finishes or the block runs out of charactesr
                 while let nestedChar = lexer.next() {
                     rewindCount += 1
-                    if nestedChar == "*" && lexer.peakNext() == "*" {
+                    if nestedChar == "*" && lexer.peekNext() == "*" {
                         // skip second asteriks
                         _ = lexer.next()
                         // exit the loop, as the bold segment is done
@@ -634,7 +645,7 @@ class FragmentParser {
 ```
 
 The code is commented so it should be self-explanatory. In this example you can also see why our FragmentLexer has
-additional peak and rewind methods.
+additional peek and rewind methods.
 
 When you run the test case once again, they still fails with the following result:
 
@@ -701,6 +712,18 @@ is eventually getting production ready. We decided to build it as an Open Source
 
 Next to actually writing a small working parser, you also got more insight into the document format itself. Now you
 should be able to pick it up from there and continue working on the parser.
+
+## Swift Development Series
+
+If you enjoyed this article, you might also find these helpful:
+
+- **[Building SwiftUI apps in Markdown]({% post_url 2021-05-17-building-swiftui-apps-in-markdown %})** - Learn how to
+  use your Markdown parser to create SwiftUI views dynamically
+- **[5 Swift Extensions to write Smarter Code]({% post_url 2021-05-03-five-swift-extension-smarter-code %})** - Improve
+  your Swift code quality with these essential extensions
+- **[Modularize Xcode Projects using local Swift
+  Packages]({% post_url 2021-04-12-modularize-xcode-projects-using-local-swift-packages %})** - Learn about Swift
+  Package Manager for better code organization
 
 If you would like to know more, checkout my other articles, follow me on [Twitter](https://twitter.com/philprimes) and
 feel free to drop me a DM. You have a specific topic you want me to cover? Let me know! 😃
