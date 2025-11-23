@@ -24,14 +24,31 @@
 
 @charset "utf-8";
 
-@use 'theme' as *;
-@use 'sass:color';
+@use "theme" as *;
+@use "sass:color";
 
 // Define defaults for each variable.
 
-$base-font-family: -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Emoji', 'Segoe UI Symbol',
-  'Apple Color Emoji', Roboto, Helvetica, Arial, sans-serif !default;
-$code-font-family: 'Menlo', 'Inconsolata', 'Consolas', 'Roboto Mono', 'Ubuntu Mono', 'Liberation Mono', 'Courier New',
+$base-font-family:
+  -apple-system,
+  system-ui,
+  BlinkMacSystemFont,
+  "Segoe UI",
+  "Segoe UI Emoji",
+  "Segoe UI Symbol",
+  "Apple Color Emoji",
+  Roboto,
+  Helvetica,
+  Arial,
+  sans-serif !default;
+$code-font-family:
+  "Menlo",
+  "Inconsolata",
+  "Consolas",
+  "Roboto Mono",
+  "Ubuntu Mono",
+  "Liberation Mono",
+  "Courier New",
   monospace;
 $base-font-size: 16px !default;
 $base-font-weight: 400 !default;
@@ -102,14 +119,15 @@ figure {
  * Basic styling
  */
 body {
-  font: $base-font-weight #{$base-font-size}/#{$base-line-height} $base-font-family;
+  font: $base-font-weight #{$base-font-size}/#{$base-line-height}
+    $base-font-family;
   color: $text-color;
   background-color: $background-color;
   -webkit-text-size-adjust: 100%;
-  -webkit-font-feature-settings: 'kern' 1;
-  -moz-font-feature-settings: 'kern' 1;
-  -o-font-feature-settings: 'kern' 1;
-  font-feature-settings: 'kern' 1;
+  -webkit-font-feature-settings: "kern" 1;
+  -moz-font-feature-settings: "kern" 1;
+  -o-font-feature-settings: "kern" 1;
+  font-feature-settings: "kern" 1;
   font-kerning: normal;
   display: flex;
   min-height: 100vh;
@@ -297,7 +315,7 @@ pre {
  * Wrapper
  */
 .wrapper {
-  max-width: calc(#{$content-width} - (#{$spacing-unit}));
+  max-width: calc(#{$content-width} - #{$spacing-unit});
   margin-right: auto;
   margin-left: auto;
   padding-right: $spacing-unit * 0.5;
@@ -305,7 +323,7 @@ pre {
   @extend %clearfix;
 
   @media screen and (min-width: $on-large) {
-    max-width: calc(#{$content-width} - (#{$spacing-unit} * 2));
+    max-width: calc(#{$content-width} - #{$spacing-unit} * 2);
     padding-right: $spacing-unit;
     padding-left: $spacing-unit;
   }
@@ -315,7 +333,7 @@ pre {
  * Clearfix
  */
 %clearfix:after {
-  content: '';
+  content: "";
   display: table;
   clear: both;
 }
@@ -344,6 +362,74 @@ pre {
 /**
  * Tables
  */
+.post-content table,
+.page-content table {
+  margin-bottom: $spacing-unit;
+  width: auto;
+  min-width: 100%;
+  text-align: $table-text-align;
+  color: $table-text-color;
+  border-collapse: collapse;
+  border: 1px solid $table-border-color;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  // Force scrollbar to always be visible
+  &::-webkit-scrollbar {
+    height: 12px;
+    -webkit-appearance: none;
+  }
+
+  &::-webkit-scrollbar-track {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  // For Firefox
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.1);
+
+  // Add shadow hint for horizontal scroll
+  background:
+    linear-gradient(90deg, $background-color 0%, transparent 20px),
+    linear-gradient(-90deg, $background-color 0%, transparent 20px),
+    radial-gradient(farthest-side at 0% 50%, rgba(0, 0, 0, 0.2), transparent),
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.2), transparent);
+  background-position: 0 0, 100% 0, 0 0, 100% 0;
+  background-repeat: no-repeat;
+  background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+  background-attachment: local, local, scroll, scroll;
+
+  tr {
+    &:nth-child(even) {
+      background-color: $table-zebra-color;
+    }
+  }
+  th,
+  td {
+    padding: ($spacing-unit * 33.3333333333 * 0.01) ($spacing-unit * 0.5);
+    white-space: nowrap;
+  }
+  th {
+    background-color: $table-header-bg-color;
+    border: 1px solid $table-header-border;
+  }
+  td {
+    border: 1px solid $table-border-color;
+  }
+}
+
+// Fallback for tables not in post/page content
 table {
   margin-bottom: $spacing-unit;
   width: 100%;
@@ -351,6 +437,7 @@ table {
   color: $table-text-color;
   border-collapse: collapse;
   border: 1px solid $table-border-color;
+
   tr {
     &:nth-child(even) {
       background-color: $table-zebra-color;
@@ -366,13 +453,6 @@ table {
   }
   td {
     border: 1px solid $table-border-color;
-  }
-
-  @include media-query($on-laptop) {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    -ms-overflow-style: -ms-autohiding-scrollbar;
   }
 }
 
@@ -432,7 +512,7 @@ table {
     }
   }
 
-  label[for='nav-trigger'] {
+  label[for="nav-trigger"] {
     display: block;
     float: right;
     width: 36px;
@@ -470,7 +550,7 @@ table {
     border: none;
     background-color: inherit;
 
-    label[for='nav-trigger'] {
+    label[for="nav-trigger"] {
       display: none;
     }
 
@@ -529,24 +609,24 @@ table {
 
 .footer-col-1,
 .footer-col-2 {
-  width: calc(50% - (#{$spacing-unit} / 2));
+  width: calc(50% - #{$spacing-unit} / 2);
 }
 
 .footer-col-3 {
-  width: calc(100% - (#{$spacing-unit} / 2));
+  width: calc(100% - #{$spacing-unit} / 2);
 }
 
 @media screen and (min-width: $on-large) {
   .footer-col-1 {
-    width: calc(35% - (#{$spacing-unit} / 2));
+    width: calc(35% - #{$spacing-unit} / 2);
   }
 
   .footer-col-2 {
-    width: calc(20% - (#{$spacing-unit} / 2));
+    width: calc(20% - #{$spacing-unit} / 2);
   }
 
   .footer-col-3 {
-    width: calc(45% - (#{$spacing-unit} / 2));
+    width: calc(45% - #{$spacing-unit} / 2);
   }
 }
 
@@ -556,7 +636,7 @@ table {
   }
 
   .footer-col {
-    width: calc(100% - (#{$spacing-unit} / 2));
+    width: calc(100% - #{$spacing-unit} / 2);
     padding: 0 ($spacing-unit * 0.5);
 
     &:first-child {
@@ -720,6 +800,6 @@ table {
  */
 @media screen and (min-width: $on-large) {
   .one-half {
-    width: calc(50% - (#{$spacing-unit} / 2));
+    width: calc(50% - #{$spacing-unit} / 2);
   }
 }
