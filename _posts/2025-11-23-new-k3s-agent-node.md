@@ -215,7 +215,7 @@ $ tailscale ip -4
 100.64.1.10
 ```
 
-{% include alert.liquid.html type='note' title='NOTE:' content='For servers and remotely-accessed devices, consider disabling key expiry in the Tailscale admin console to avoid periodic re-authentication.' %}
+{% include alert.liquid.html type='note' title='NOTE:' content='For servers and remotely accessed devices, consider disabling key expiry in the Tailscale admin console to avoid periodic re-authentication.' %}
 
 ![](/assets/blog/2025-11-23-new-k3s-agent-node/image-3.webp)
 
@@ -426,7 +426,7 @@ $ curl -sfL https://get.k3s.io | K3S_URL=https://10.0.0.1:6443 K3S_TOKEN=K102f06
 ```
 
 When `K3S_URL` is set, K3s automatically installs in agent mode. The script will download the K3s binary, set up the systemd service, and start the agent.
-This process will also install any addition services required for K3s operation, such as `containerd`.
+This process will also install any additional services required for K3s operation, such as `containerd`.
 
 ## Configuring the node with config files
 
