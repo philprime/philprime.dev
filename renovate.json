@@ -5,7 +5,7 @@
     "config:recommended"
   ],
   "lockFileMaintenance": {
-    "automerge": true,
+    "automerge": false,
     "enabled": true,
     "extends": [
       "schedule:daily"
