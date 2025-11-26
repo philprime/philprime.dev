@@ -285,40 +285,47 @@ We'll replace the default permissive rules with a more restrictive configuration
 
 **Rules (incoming):**
 
-| ID | Name            | Version | Protocol | Source IP | Destination IP | Source Port | Destination Port | TCP Flags | Action |
-| -- | --------------- | ------- | -------- | --------- | -------------- | ----------- | ---------------- | --------- | ------ |
-| #1 | icmp            | ipv4    | ICMP     |           |                |             |                  |           | Allow  |
-| #2 | ssh             | ipv4    | TCP      |           |                |             | 22               |           | Allow  |
-| #3 | tcp established | ipv4    | TCP      |           |                |             | 1024-65535       | ack       | Allow  |
-| #4 | dns responses   | ipv4    | UDP      | 53        |                |             | 1024-65535       |           | Allow  |
-| #5 | k3s api         | ipv4    | TCP      |           |                |             | 6443             |           | Allow  |
-| #6 | tailscale       | ipv4    | UDP      |           |                |             | 41641            |           | Allow  |
+| ID | Name            | Version | Protocol | Source IP   | Destination IP | Source Port | Destination Port | TCP Flags | Action |
+| -- | --------------- | ------- | -------- | ----------- | -------------- | ----------- | ---------------- | --------- | ------ |
+| #1 | vswitch         | ipv4    | *        | 10.0.0.0/24 |                |             |                  |           | Allow  |
+| #2 | icmp            | ipv4    | ICMP     |             |                |             |                  |           | Allow  |
+| #3 | ssh             | ipv4    | TCP      |             |                |             | 22               |           | Allow  |
+| #4 | tcp established | ipv4    | TCP      |             |                |             | 1024-65535       | ack       | Allow  |
+| #5 | dns responses   | ipv4    | UDP      | 53          |                |             | 1024-65535       |           | Allow  |
+| #6 | k3s api         | ipv4    | TCP      |             |                |             | 6443             |           | Allow  |
+| #7 | tailscale       | ipv4    | UDP      |             |                |             | 41641            |           | Allow  |
 
 Here's what each rule does:
 
-- **Rule #1 (ICMP):**
+- **Rule #1 (vSwitch traffic):**
+
+  **CRITICAL:** Allows all traffic from the private vSwitch network (10.0.0.0/24).
+  This is essential for K3s cluster communication, pod-to-pod networking via Flannel, and all internal cluster operations.
+  Without this rule, pods cannot communicate across nodes and cluster networking will fail.
+
+- **Rule #2 (ICMP):**
 
   Enables ping and basic network diagnostics.
 
-- **Rule #2 (SSH):**
+- **Rule #3 (SSH):**
 
   Allows remote administration on TCP port 22.
 
-- **Rule #3 (TCP established):**
+- **Rule #4 (TCP established):**
 
   Accepts inbound TCP packets with ACK targeting ephemeral ports (1024–65535).
   This correctly handles all return traffic from outbound connections (HTTPS, HTTP, container pull operations, APIs, etc.).
   It replaces the previous two fragmented return-traffic rules.
 
-- **Rule #4 (DNS responses):**
+- **Rule #5 (DNS responses):**
 
-  Permits DNS replies (source port 53) to reach the server’s ephemeral ports.
+  Permits DNS replies (source port 53) to reach the server's ephemeral ports.
 
-- **Rule #5 (K3s API):**
+- **Rule #6 (K3s API):**
 
   Opens port 6443 for Kubernetes API server communication.
 
-- **Rule #6 (Tailscale):**
+- **Rule #7 (Tailscale):**
 
   Allows inbound Tailscale UDP traffic on port 41641.
 
