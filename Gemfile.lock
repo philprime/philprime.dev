@@ -52,7 +52,7 @@ GEM
     google-protobuf (4.33.1-x86_64-linux-musl)
       bigdecimal
       rake (>= 13)
-    http_parser.rb (0.8.0)
+    http_parser.rb (0.8.1)
     i18n (1.14.7)
       concurrent-ruby (~> 1.0)
     jekyll (4.4.1)
@@ -169,7 +169,7 @@ PLATFORMS
 
 DEPENDENCIES
   benchmark
-  http_parser.rb (~> 0.6.0)
+  http_parser.rb (~> 0.8.0)
   jekyll
   jekyll-favicon (~> 1.1.0)
   jekyll-feed (~> 0.12)
