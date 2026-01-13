@@ -50,6 +50,10 @@ defaults:
       path: "assets/files/cv.pdf"
     values:
       sitemap: false
+  - scope:
+      path: "assets/files/developing-security-guidelines-for-ios-app-developers.pdf"
+    values:
+      sitemap: false
 
 description: >
   Philip Niedertscheider's technical blog featuring iOS/Swift development tutorials, Kubernetes guides, open source
