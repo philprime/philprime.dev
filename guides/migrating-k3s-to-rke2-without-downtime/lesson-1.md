@@ -15,21 +15,21 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-1.md
 ---
 
-A successful zero-downtime migration requires meticulous planning. In this lesson, we'll establish the context for our
-migration, develop our complete migration strategy, and understand the risks involved.
+A successful zero-downtime migration requires meticulous planning.
+In this lesson, we'll establish the context for our migration, develop our complete migration strategy, and understand the risks involved.
 
 {% include guide-overview-link.liquid.html %}
 
 ## The Migration Challenge
 
-Migrating a production Kubernetes cluster is one of the most complex operations in infrastructure management. The
-challenge multiplies when you need to:
+Migrating a production Kubernetes cluster is one of the most complex operations in infrastructure management.
+The challenge multiplies when you need to:
 
-1. **Maintain zero downtime** - Your services must remain available throughout
-2. **Change the underlying distribution** - Moving from k3s to RKE2
-3. **Reconfigure the node topology** - Shifting from 1 control plane + 2 workers to 3 control planes + 1 worker
-4. **Replace the operating system** - Moving to Rocky Linux 9
-5. **Upgrade networking and storage** - Implementing Cilium and Longhorn
+1. Maintain zero downtime while keeping services available throughout
+2. Change the underlying distribution from k3s to RKE2
+3. Reconfigure the node topology from 1 control plane + 2 workers to 3 control planes + 1 worker
+4. Replace the operating system with Rocky Linux 9
+5. Upgrade networking and storage by implementing Cilium and Longhorn
 
 ## Current State vs Target State
 
@@ -86,10 +86,10 @@ class aB clusterB
 class bU unassigned
 ```
 
-**Risk Level: LOW** - Cluster A is not affected; we can abandon Node 4 setup if issues arise.
+**Risk Level: LOW** - Cluster A is not affected and we can abandon Node 4 setup if issues arise.
 
-We start with our existing k3s cluster using Node 1 as the control plane and Nodes 2 and 3 as workers. Our objective
-is creating a new RKE2 cluster using Node 4 as the first control plane.
+We start with our existing k3s cluster using Node 1 as the control plane and Nodes 2 and 3 as workers.
+Our objective is creating a new RKE2 cluster using Node 4 as the first control plane.
 
 The steps we will take are:
 
@@ -99,8 +99,7 @@ The steps we will take are:
 4. Deploy Cilium CNI
 5. Verify cluster functionality
 
-At the end of this phase we will have a single-node RKE2 cluster running on Node 4, while Cluster A remains fully
-operational with Nodes 1-3.
+At the end of this phase we will have a single-node RKE2 cluster running on Node 4, while Cluster A remains fully operational with Nodes 1-3.
 
 ## Phase 2: First Node Migration
 
@@ -141,11 +140,10 @@ class bB,aB clusterB
 class after critical
 ```
 
-**Risk Level: CRITICAL** - Both clusters are at minimum viable capacity. Cluster B has 2 control planes (no quorum
-tolerance yet).
+**Risk Level: CRITICAL** - Both clusters are at minimum viable capacity and Cluster B has 2 control planes (no quorum tolerance yet).
 
-In this phase we will remove Node 3 from Cluster A and add it as a control plane node to Cluster B. This phase is
-critical because achieving control plane quorum requires an odd number of nodes.
+In this phase we will remove Node 3 from Cluster A and add it as a control plane node to Cluster B.
+This phase is critical because achieving control plane quorum requires an odd number of nodes.
 
 The actions we will take are:
 
@@ -155,9 +153,8 @@ The actions we will take are:
 4. Join as RKE2 control plane node
 5. Verify etcd cluster health
 
-Before draining the nodes, ensure that all workloads are running on Node 1 and Node 2, and that Node 3 is not hosting
-any critical services. Furthermore, ensure all DNS records are not pointing to Node 3, and that any external traffic
-is routed to Nodes 1 and 2.
+Before draining the nodes, ensure that all workloads are running on Node 1 and Node 2, and that Node 3 is not hosting any critical services.
+Furthermore, ensure all DNS records are not pointing to Node 3, and that any external traffic is routed to Nodes 1 and 2.
 
 This will reduce compute capacity from Cluster A, so make sure that Node 1 is healthy and can handle the load.
 
@@ -202,8 +199,8 @@ class after success
 
 **Risk Level: MODERATE** - Cluster A is at minimum (single node), but Cluster B achieves full HA with 3 control planes.
 
-In this phase we will remove Node 2 from Cluster A and add it as a control plane node to Cluster B. This is important
-because it allows us to achieve high availability in Cluster B with 3 control plane nodes.
+In this phase we will remove Node 2 from Cluster A and add it as a control plane node to Cluster B.
+This is important because it allows us to achieve high availability in Cluster B with 3 control plane nodes.
 
 The steps we will take are:
 
@@ -213,8 +210,8 @@ The steps we will take are:
 4. Join as RKE2 control plane
 5. Verify 3-node etcd quorum
 
-Once again we need to ensure that all workloads are running on Node 1, but at this point we can start switching
-workloads to Cluster B if needed, as it will have a healthy control plane with 3 nodes.
+Once again we need to ensure that all workloads are running on Node 1.
+At this point we can start switching workloads to Cluster B if needed, as it will have a healthy control plane with 3 nodes.
 
 ## Phase 4: Workload Migration
 
@@ -255,10 +252,9 @@ class bB,aB clusterB
 class after success
 ```
 
-**Risk Level: LOW** - Both clusters are operational; we can switch DNS back if issues arise.
+**Risk Level: LOW** - Both clusters are operational and we can switch DNS back if issues arise.
 
-Now that we have a fully operational RKE2 cluster with 3 control plane nodes, we can proceed to migrate workloads from
-Cluster A to Cluster B.
+Now that we have a fully operational RKE2 cluster with 3 control plane nodes, we can proceed to migrate workloads from Cluster A to Cluster B.
 
 The steps we will take are:
 
@@ -272,7 +268,7 @@ The steps we will take are:
 8. Monitor and validate
 
 At the end of this phase, all workloads will be running on Cluster B, and external traffic will be routed to it.
-Cluster A will still have Node 1 running, but it will not be serving any production workloads.
+Cluster A will still have Node 1 running but it will not be serving any production workloads.
 
 ## Phase 5: Cleanup and Consolidation
 
@@ -307,10 +303,9 @@ class bB,aB clusterB
 class after success
 ```
 
-**Risk Level: LOW** - All workloads already on Cluster B; Node 1 can be rolled back if needed.
+**Risk Level: LOW** - All workloads are already on Cluster B and Node 1 can be rolled back if needed.
 
-Now that the migration is complete and all workloads are running on Cluster B, we can decommission Cluster A and
-finalize our new RKE2 cluster.
+Now that the migration is complete and all workloads are running on Cluster B, we can decommission Cluster A and finalize our new RKE2 cluster.
 
 The steps we will take are:
 
@@ -322,12 +317,12 @@ The steps we will take are:
 
 ## Time and Risk Considerations
 
-This migration requires careful execution. While the actual migration can be completed in a single maintenance window,
-I recommend:
+This migration requires careful execution.
+While the actual migration can be completed in a single maintenance window, I recommend:
 
 - Thoroughly review all lessons before starting
 - Practice the node installation process on a test system if possible
 - Ensure you have complete backups of all persistent data
 
-The highest-risk phase occurs during Phase 2 when both clusters are at minimum viable capacity. Never proceed to
-workload migration until Cluster B has achieved full HA with 3 control plane nodes.
+The highest-risk phase occurs during Phase 2 when both clusters are at minimum viable capacity.
+Never proceed to workload migration until Cluster B has achieved full HA with 3 control plane nodes.
