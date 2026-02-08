@@ -14,8 +14,7 @@ repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/section-1.md
 ---
 
 This section introduces the migration project and guides you through developing a comprehensive migration strategy.
-You will understand the current and target cluster states, learn the phased approach, and assess the risks involved
-at each step.
+You will understand the current and target cluster states, learn the phased approach, and assess the risks involved at each step.
 
 ## Topics Covered
 
@@ -24,5 +23,4 @@ at each step.
 - Detailed breakdown of all 5 migration phases
 - Risk levels and considerations for each phase
 
-By the end of this section, you will have a clear understanding of what the migration entails and a solid plan for
-executing it safely.
+By the end of this section, you will have a clear understanding of what the migration entails and a solid plan for executing it safely.

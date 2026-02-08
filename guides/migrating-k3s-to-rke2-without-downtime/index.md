@@ -23,9 +23,8 @@ tags: Kubernetes RKE2 k3s migration DevOps Rocky-Linux Cilium Longhorn Traefik H
 author: Philip Niedertscheider
 ---
 
-Welcome to this comprehensive guide on migrating from a k3s Kubernetes cluster to RKE2 without experiencing any
-downtime. This guide documents the complete process of transitioning a 3-node k3s cluster to a 4-node RKE2 cluster
-with high availability, using enterprise-grade tools and practices.
+Welcome to this comprehensive guide on migrating from a k3s Kubernetes cluster to RKE2 without experiencing any downtime.
+This guide documents the complete process of transitioning a 3-node k3s cluster to a 4-node RKE2 cluster with high availability, using enterprise-grade tools and practices.
 
 {% include alert.liquid.html type='note' title='Please read this!' content='
 
@@ -39,20 +38,25 @@ with high availability, using enterprise-grade tools and practices.
 
 I started our original cluster using k3s due to the ease of setup and lightweight nature for our CI/CD workloads, as they were not considered as mission-critical tasks at the time.
 As our migration from bare-metal GitHub Action runners to Kubernetes GitHub Action Runner Controller (ARC) continued, we noticed a significant increase in our resource demand.
-So, I decided to add two additional Hetzner dedicated servers as worker nodes to our cluster and looked into getting them production-ready, using e.g. inter-node communication via vSwitch (see my existing blog post [New K3s agent node for our cluster](/2025-11-23-new-k3s-agent-node) if you want to learn more).
+I decided to add two additional Hetzner dedicated servers as worker nodes to our cluster and looked into getting them production-ready, using inter-node communication via vSwitch (see my existing blog post [New K3s agent node for our cluster](/2025-11-23-new-k3s-agent-node) if you want to learn more).
 
-This enabled us to move even more development and proof-of-concept workloads from an comparably expensive Elastic Kubernetes Service (EKS) in Amazon Web Services (AWS) to our self-managed cluster, allowing us to save a fortune. However, as we continued to grow and add more workloads, we started to feel the limitations of k3s, as it was not designed for larger, more complex clusters with high availability requirements, but instead focused on simplicity and ease of use for edge and IoT environments.
+This enabled us to move even more development and proof-of-concept workloads from a comparably expensive Elastic Kubernetes Service (EKS) in Amazon Web Services (AWS) to our self-managed cluster, allowing us to save a fortune.
+However, as we continued to grow and add more workloads, we started to feel the limitations of k3s, as it was not designed for larger, more complex clusters with high availability requirements, but instead focused on simplicity and ease of use for edge and IoT environments.
 
 This made me look into alternatives and that's when I came across RKE2, which is a more robust and enterprise-grade Kubernetes distribution also maintained by SUSE/Rancher, the same company behind k3s.
 k3s is great as it offers a lot of built-in features and convenience tools, but as the cluster grows, I wanted to be closer to enterprise-level Kubernetes behavior and have more control over the cluster components, which RKE2 provides.
 
-On top of that I have noticed that the etcd component in k3s was causing stability issues, especially as I did not get to migrate to high availability yet. With RKE2, I can now set up a proper HA control plane with multiple etcd nodes, which will significantly improve the stability and reliability of our cluster. Furthermore, with RKE2's focus on security and compliance, I expect to have a stronger security foundation to begin with, which is crucial as we continue to add more critical workloads to our cluster.
+On top of that I have noticed that the etcd component in k3s was causing stability issues, especially as I did not get to migrate to high availability yet.
+With RKE2, I can now set up a proper HA control plane with multiple etcd nodes, which will significantly improve the stability and reliability of our cluster.
+Furthermore, with RKE2's focus on security and compliance, I expect to have a stronger security foundation to begin with, which is crucial as we continue to add more critical workloads to our cluster.
 
-As a final great reason to migrate now, was the decision to add another bare-metal dedicated server to our cluster, allowing me to build and migrate to RKE2 without downtime by using the new node as the starting point for the new cluster, without touching the existing cluster nodes.
+As a final great reason to migrate now was the decision to add another bare-metal dedicated server to our cluster.
+This allowed me to build and migrate to RKE2 without downtime by using the new node as the starting point for the new cluster, without touching the existing cluster nodes.
 
 ## Migration Overview
 
-This guide covers a step-by-step migration process while maintaining service availability from a 3-node k3s cluster to a 4-node RKE2 cluster. In detail our setup looks like the following:
+This guide covers a step-by-step migration process while maintaining service availability from a 3-node k3s cluster to a 4-node RKE2 cluster.
+In detail our setup looks like the following:
 
 ```mermaid!
 %%{init: {
