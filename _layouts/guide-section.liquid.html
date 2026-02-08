@@ -18,6 +18,7 @@ layout: default.liquid
   {% include guide-overview-link.liquid.html %}
 
   {% assign lessons = site.pages
+    | where: 'guide_id', page.guide_id
     | where: 'guide_section_id', page.guide_section_id
     | where_exp: 'item', 'item.url != page.url'
     | sort: 'guide_lesson_id'
