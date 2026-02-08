@@ -206,9 +206,6 @@ In this guide, you will learn to:
 
 ## Quick Reference: k3s vs RKE2
 
-<details>
-<summary>Click to expand comparison tables</summary>
-
 ### k3s Strengths
 
 | Feature               | Benefit                               |
@@ -264,8 +261,6 @@ flowchart TB
         R3 <--> RAFT
     end
 ```
-
-</details>
 
 ## Prerequisites
 

@@ -14,8 +14,7 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-3.md
 ---
 
-A successful zero-downtime migration requires meticulous planning. In this lesson, we'll develop our complete
-migration strategy, identify risks, and establish mitigation procedures.
+A successful zero-downtime migration requires meticulous planning. In this lesson, we'll develop our complete migration strategy, identify risks, and establish mitigation procedures.
 
 {% include guide-overview-link.liquid.html %}
 
@@ -23,165 +22,196 @@ migration strategy, identify risks, and establish mitigation procedures.
 
 Our migration consists of five distinct phases, each with specific objectives and success criteria:
 
+```mermaid!
+%%{init: {
+  "theme": "base",
+  "flowchart": {
+    "nodeSpacing": 20,
+    "rankSpacing": 30
+  },
+  "themeVariables": {
+    "padding": 6,
+    "nodePadding": 6,
+    "subGraphPadding": 8,
+    "fontSize": "12px"
+  }
+}}%%
+
+flowchart LR
+
+%% =========================
+%% Global Styles
+%% =========================
+classDef clusterA fill:#2563eb,color:#ffffff,stroke:#1e40af
+classDef clusterB fill:#16a34a,color:#ffffff,stroke:#166534
+classDef unassigned fill:#9ca3af,color:#ffffff,stroke:#6b7280
+classDef critical stroke:#dc2626,stroke-width:3px
+classDef success stroke:#16a34a,stroke-width:2px
+
+%% =========================
+%% Phase 0 — Initial State
+%% =========================
+subgraph Phase0["Phase 0 · Initial State"]
+  direction LR
+
+  subgraph P0A["k3s"]
+    direction TB
+    P0A1["🧠 Node 1"]
+    P0A2["⚙️ Node 2"]
+    P0A3["⚙️ Node 3"]
+  end
+
+  P0U["Node 4 · Unassigned"]
+end
+
+class P0A clusterA
+class P0U unassigned
+
+%% =========================
+%% Phase 1 — Bootstrap
+%% =========================
+subgraph Phase1["Phase 1 · Bootstrap"]
+  direction LR
+
+  subgraph P1A["k3s"]
+    direction TB
+    P1A1["🧠 Node 1"]
+    P1A2["⚙️ Node 2"]
+    P1A3["⚙️ Node 3"]
+  end
+
+  subgraph P1B["RKE2"]
+    direction TB
+    P1B4["🧠 Node 4"]
+  end
+end
+
+class P1A clusterA
+class P1B clusterB
+
+%% =========================
+%% Phase 2 — Critical Split
+%% =========================
+subgraph Phase2["Phase 2 · Critical"]
+  direction LR
+
+  subgraph P2A["k3s"]
+    direction TB
+    P2A1["🧠 Node 1"]
+    P2A2["⚙️ Node 2"]
+  end
+
+  subgraph P2B["RKE2"]
+    direction TB
+    P2B3["🧠 Node 3"]
+    P2B4["🧠 Node 4"]
+  end
+end
+
+class P2A clusterA
+class P2B clusterB
+class Phase2 critical
+
+%% =========================
+%% Phase 3 — HA Achieved
+%% =========================
+subgraph Phase3["Phase 3 · HA Achieved"]
+  direction LR
+
+  subgraph P3A["k3s"]
+    direction TB
+    P3A1["🧠 Node 1"]
+  end
+
+  subgraph P3B["RKE2"]
+    direction TB
+    P3B2["🧠 Node 2"]
+    P3B3["🧠 Node 3"]
+    P3B4["🧠 Node 4"]
+  end
+end
+
+class P3A clusterA
+class P3B clusterB
+class Phase3 success
+
+%% =========================
+%% Phase 4 — Migration Complete
+%% =========================
+subgraph Phase4["Phase 4 · Complete"]
+  direction LR
+
+  subgraph P4B["RKE2"]
+    direction TB
+    P4B1["⚙️ Node 1"]
+    P4B2["🧠 Node 2"]
+    P4B3["🧠 Node 3"]
+    P4B4["🧠 Node 4"]
+  end
+end
+
+class P4B clusterB
+class Phase4 success
+
+%% =========================
+%% Timeline
+%% =========================
+Phase0 -.-> Phase1 -.-> Phase2 -.-> Phase3 -.-> Phase4
 ```
-┌────────────────────────────────────────────────────────────────────────────┐
-│                         MIGRATION TIMELINE                                  │
-├────────────────────────────────────────────────────────────────────────────┤
-│                                                                            │
-│  Phase 1         Phase 2         Phase 3         Phase 4         Phase 5  │
-│  Bootstrap       First Node      Second Node     Workload         Cleanup │
-│  Cluster B       Migration       Migration       Migration                │
-│                                                                            │
-│  [A: 1,2,3]      [A: 1,2]        [A: 1]          [A: 1]          []       │
-│  [B: 4]          [B: 3,4]        [B: 2,3,4]      [B: 2,3,4]      [B:1,2,3,4] │
-│                                                                            │
-│  ────────────────────────────────────────────────────────────────────────  │
-│  LOW RISK        CRITICAL        MODERATE        LOW RISK       LOW RISK  │
-└────────────────────────────────────────────────────────────────────────────┘
-```
 
-## Phase 1: Bootstrap Cluster B
+## Phase 1: Bootstrap Cluster B (LOW RISK)
 
-**Objective**: Create initial RKE2 cluster on Node 4
+We are starting of with our existing k3s cluster `Cluster A` using Node 1 as the control plane and Nodes 2 and 3 as workers. In phase 1 our objective is creating a new RKE2 cluster `Cluster B` using Node 4 as the first control plane.
 
-**Starting State**:
-
-- Cluster A: Nodes 1 (CP), 2 (Worker), 3 (Worker)
-- Cluster B: None
-- Node 4: Unassigned
-
-**Actions**:
+The steps we will take are:
 
 1. Install Rocky Linux 9 on Node 4
 2. Configure Hetzner vSwitch networking
-3. Install RKE2 as first control plane
+3. Install RKE2 with first control plane
 4. Deploy Cilium CNI
 5. Verify cluster functionality
 
-**End State**:
+At the end of this phase we will have a single-node RKE2 cluster running on Node 4, while Cluster A remains fully operational with Nodes 1-3.
 
-- Cluster A: Unchanged (fully operational)
-- Cluster B: Node 4 (single CP)
+## Phase 2: First Node Migration (CRITICAL RISK)
 
-**Risk Level**: LOW
+In this phase we will remove node 3 from `Cluster A` and add it as a control plane node to `Cluster B`. This phase is critical because to acquire a control plane quorum, the cluster needs an odd number of control plane nodes, which will not be possible at this point.
 
-- Cluster A is not affected
-- Can abandon Node 4 setup if issues arise
+The actions we will take are:
 
-**Success Criteria**:
-
-- [ ] Node 4 running Rocky Linux 9
-- [ ] RKE2 control plane operational
-- [ ] Cilium pods running
-- [ ] Can deploy test workload
-
-## Phase 2: First Node Migration (CRITICAL)
-
-**Objective**: Migrate Node 3 from Cluster A to Cluster B
-
-**Starting State**:
-
-- Cluster A: Nodes 1 (CP), 2 (Worker), 3 (Worker)
-- Cluster B: Node 4 (CP)
-
-**Actions**:
-
-1. Drain Node 3 from Cluster A
-2. Remove Node 3 from k3s cluster
-3. Reinstall with Rocky Linux 9
-4. Join as RKE2 control plane
+1. Cordon and drain Node 3 from `Cluster A`
+2. Remove Node 3 from `Cluster A`
+3. (Optional) Reinstall OS with Rocky Linux 9
+4. Join as RKE2 control plane node
 5. Verify etcd cluster health
 
-**End State**:
+Before draining the nodes, ensure that all workloads are running on Node 1 and Node 2, and that Node 3 is not hosting any critical services. This will minimize the risk of downtime during the transition. Furthermore, we need to ensure all DNS records are not pointing to Node 3, and that any external traffic is routed to Nodes 1 and 2.
 
-- Cluster A: Nodes 1 (CP), 2 (Worker)
-- Cluster B: Nodes 3 (CP), 4 (CP)
+This will reduce compute capacity from `Cluster A`, so make sure that Node 1 is healthy and can handle the load. At the end of this phase, `Cluster A` will be running with Nodes 1 and 2, while `Cluster B` will have Nodes 3 and 4 as control planes.
 
-**Risk Level**: CRITICAL
+As `Cluster B` is not fully operational yet, we will not be able to switch workloads or traffic to it until we achieve high availability in the next phase.
 
-This is the highest-risk phase because:
-
-- Cluster A loses one worker (reduced capacity)
-- Cluster B has 2 control planes (not yet HA - no quorum tolerance)
-- Both clusters are at minimum viable capacity
-
-**Mitigation Strategies**:
-
-```bash
-# Before starting Phase 2, ensure:
-
-# 1. Cluster A workloads can run on remaining capacity
-kubectl get pods -A -o wide | grep node-3  # List all pods on Node 3
-kubectl get pdb -A  # Check Pod Disruption Budgets
-
-# 2. Backup k3s etcd data
-sudo k3s etcd-snapshot save --name pre-migration-backup
-
-# 3. Have k3s reinstall script ready for rollback
-# (save this for emergency)
-curl -sfL https://get.k3s.io > /tmp/k3s-install.sh
-```
-
-**Rollback Procedure**:
-If Node 3 fails to join Cluster B:
-
-1. Reinstall original OS
-2. Rejoin as k3s worker
-3. Uncordon and restore workloads
-
-**Success Criteria**:
-
-- [ ] Node 3 removed cleanly from Cluster A
-- [ ] Node 3 joined as RKE2 control plane
-- [ ] etcd shows 2 members
-- [ ] Cluster A workloads redistributed to Nodes 1 and 2
+At the end of this phase, `Cluster A` will be running with Node 1 as the only control plane and Node 2 as a worker, while `Cluster B` will have Nodes 3 and 4 as control planes.
 
 ## Phase 3: Second Node Migration
 
-**Objective**: Migrate Node 2 from Cluster A to Cluster B
+In this phase we will remove node 2 from `Cluster A` and add it as a control plane node to `Cluster B`. This phase is important because it will allow us to achieve high availability in `Cluster B` with 3 control plane nodes, while `Cluster A` will be left with only the single control plane node.
 
-**Starting State**:
+The steps we will take are:
 
-- Cluster A: Nodes 1 (CP), 2 (Worker)
-- Cluster B: Nodes 3 (CP), 4 (CP)
-
-**Actions**:
-
-1. Drain Node 2 from Cluster A
-2. Remove Node 2 from k3s cluster
-3. Reinstall with Rocky Linux 9
+1. Cordon and drain Node 2 from Cluster A
+2. Remove Node 2 from cluster and uninstall k3s
+3. (Optional) Reinstall with Rocky Linux 9
 4. Join as RKE2 control plane
 5. Verify 3-node etcd quorum
 
-**End State**:
-
-- Cluster A: Node 1 (CP only)
-- Cluster B: Nodes 2 (CP), 3 (CP), 4 (CP) - FULL HA
-
-**Risk Level**: MODERATE
-
-- Cluster A is at minimum (single node)
-- Cluster B achieves HA (3 control planes)
-
-**Critical Milestone**: After this phase, Cluster B is production-ready with full HA capability.
-
-**Success Criteria**:
-
-- [ ] Node 2 joined as RKE2 control plane
-- [ ] etcd shows 3 healthy members
-- [ ] Quorum tolerance verified (can lose 1 node)
-- [ ] Cluster A still operational on Node 1
+Once again we need to ensure that all workloads are running on Node 1, but at this point we start to be able to switch workloads to `Cluster B` if needed, as it will have a healthy control plane with 3 nodes.
 
 ## Phase 4: Workload Migration
 
-**Objective**: Move all workloads from Cluster A to Cluster B
+Now that we have a fully operational RKE2 cluster with 3 control plane nodes, we can proceed to migrate workloads from `Cluster A` to `Cluster B`. This phase is critical because it involves moving production workloads and switching traffic, so careful planning and execution are required.
 
-**Starting State**:
-
-- Cluster A: Node 1 (CP with workloads)
-- Cluster B: Nodes 2, 3, 4 (3-node HA CP, no workloads)
-
-**Actions**:
+The steps we will take are:
 
 1. Set up storage on Cluster B (Longhorn + local-path)
 2. Configure ingress (Traefik + Hetzner LB)
@@ -192,116 +222,16 @@ If Node 3 fails to join Cluster B:
 7. Switch DNS to Cluster B ingress
 8. Monitor and validate
 
-**End State**:
-
-- Cluster A: Node 1 (CP, no workloads)
-- Cluster B: Nodes 2, 3, 4 (serving all traffic)
-
-**Risk Level**: LOW (with proper preparation)
-
-- Both clusters operational during migration
-- Can switch DNS back if issues arise
-
-**Success Criteria**:
-
-- [ ] All workloads deployed to Cluster B
-- [ ] Persistent data migrated and verified
-- [ ] Ingress serving traffic through Hetzner LB
-- [ ] DNS pointing to Cluster B
-- [ ] Monitoring confirms healthy services
+At the end of this phase, all workloads will be running on `Cluster B`, and external traffic will be routed to it. `Cluster A` will still have Node 1 running, but it will not be serving any production workloads anymore.
 
 ## Phase 5: Cleanup and Consolidation
 
-**Objective**: Decommission Cluster A and add Node 1 as worker
-
-**Starting State**:
-
-- Cluster A: Node 1 (idle)
-- Cluster B: Nodes 2, 3, 4 (serving traffic)
-
-**Actions**:
+Now that the migration is complete and all workloads are running on `Cluster B`, we can proceed to decommission `Cluster A` and finalize our new RKE2 cluster. The steps we will take are:
 
 1. Verify Cluster B stability (24-48 hour soak)
-2. Stop k3s on Node 1
-3. Reinstall with Rocky Linux 9
+2. Stop and uninstall k3s on Node 1
+3. (Optional) Reinstall with Rocky Linux 9
 4. Join as RKE2 agent (worker)
-5. Final documentation
-
-**End State**:
-
-- Cluster A: Decommissioned
-- Cluster B: Nodes 1 (Worker), 2 (CP), 3 (CP), 4 (CP)
-
-**Risk Level**: LOW
-
-- All workloads already on Cluster B
-- Node 1 can be rolled back if needed
-
-**Success Criteria**:
-
-- [ ] k3s completely removed
-- [ ] Node 1 joined as RKE2 worker
-- [ ] Final cluster health verified
-- [ ] Documentation updated
-
-## Risk Matrix
-
-| Risk                           | Probability | Impact   | Mitigation                             |
-| ------------------------------ | ----------- | -------- | -------------------------------------- |
-| Node fails during OS reinstall | Low         | High     | Have IPMI/KVM access ready             |
-| etcd quorum loss (Cluster B)   | Medium      | High     | Don't proceed to Phase 4 until 3 nodes |
-| Workload incompatibility       | Low         | Medium   | Test with non-critical services first  |
-| DNS propagation delays         | Medium      | Low      | Use low TTL before cutover             |
-| Persistent data corruption     | Low         | Critical | Backup all PVs before migration        |
-| Network misconfiguration       | Medium      | High     | Verify Cilium before proceeding        |
-
-## Rollback Points
-
-At each phase, we have a clear rollback path:
-
-| Phase | Rollback Action                               |
-| ----- | --------------------------------------------- |
-| 1     | Abandon Node 4 setup, continue with k3s       |
-| 2     | Reinstall Node 3 with original OS, rejoin k3s |
-| 3     | Reinstall Node 2 with original OS, rejoin k3s |
-| 4     | Switch DNS back to Cluster A                  |
-| 5     | (No rollback needed - migration complete)     |
-
-## Pre-Migration Checklist
-
-Before starting the migration:
-
-```bash
-# 1. Document current state
-kubectl get nodes -o wide > cluster-a-nodes.txt
-kubectl get pods -A > cluster-a-pods.txt
-kubectl get pv,pvc -A > cluster-a-storage.txt
-kubectl get ingress -A > cluster-a-ingress.txt
-
-# 2. Backup k3s data
-sudo k3s etcd-snapshot save --name final-pre-migration
-
-# 3. Verify backup restore capability
-# (test this on a separate system if possible)
-
-# 4. Lower DNS TTL (at least 24h before migration)
-# Change your DNS records from 3600s to 300s
-
-# 5. Notify stakeholders
-# Send maintenance notification
-
-# 6. Prepare Node 4
-# Ensure network connectivity, IPMI access, etc.
-```
-
-## Communication Plan
-
-| Event                    | Audience         | Timing         |
-| ------------------------ | ---------------- | -------------- |
-| Migration announcement   | All stakeholders | 1 week before  |
-| Phase 2 start (critical) | Ops team         | Real-time      |
-| Workload migration start | All stakeholders | At start       |
-| DNS cutover              | All stakeholders | At completion  |
-| Migration complete       | All stakeholders | After 24h soak |
+5. Verify final cluster health
 
 In the next lesson, we'll audit your existing infrastructure and verify all prerequisites are in place.

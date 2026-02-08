@@ -121,7 +121,7 @@ classDef success stroke:#16a34a,stroke-width:2px
 subgraph Phase4["Phase 4 · Complete"]
   direction LR
 
-  subgraph P4B["RKE2"]
+  subgraph P4B["Cluster B - RKE2"]
     direction TB
     P4B1["⚙️ Node 1"]
     P4B2["🧠 Node 2"]
@@ -132,11 +132,6 @@ end
 
 class P4B clusterB
 class Phase4 success
-
-%% =========================
-%% Timeline
-%% =========================
-Phase0 -.-> Phase1 -.-> Phase2 -.-> Phase3 -.-> Phase4
 ```
 
 This configuration provides:
