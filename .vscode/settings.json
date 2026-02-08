@@ -1,6 +1,8 @@
 {
   "cSpell.words": [
-    "Traefik"
+    "installimage",
+    "Traefik",
+    "usermod"
   ],
   "editor.defaultFormatter": "dprint.dprint",
   "files.associations": {

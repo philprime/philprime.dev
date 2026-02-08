@@ -9,224 +9,206 @@ guide_lesson_id: 5
 guide_lesson_abstract: >
   Install and configure Rocky Linux 9 on Node 4, preparing it as the first node for the new RKE2 cluster.
 guide_lesson_conclusion: >
-  Node 4 is now running Rocky Linux 9 with all the necessary kernel modules and system configurations for Kubernetes.
+  Node 4 is now running Rocky Linux 9 with a dedicated user account, SSH key authentication, and basic security hardening.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-5.md
 ---
 
-In this lesson, we'll install Rocky Linux 9 on Node 4 and configure it for Kubernetes workloads. Rocky Linux is a
-community-driven, enterprise-grade Linux distribution that is 100% compatible with Red Hat Enterprise Linux.
+In this lesson, we'll install Rocky Linux 9 on Node 4 and configure it for Kubernetes workloads.
+Rocky Linux is a community-driven, enterprise-grade Linux distribution that is 100% compatible with Red Hat Enterprise Linux.
+We chose Rocky Linux for its long-term support (10-year lifecycle), enterprise stability, and excellent compatibility with RKE2 and container workloads.
 
 {% include guide-overview-link.liquid.html %}
 
-## Why Rocky Linux?
+{% include alert.liquid.html type='note' title='Detailed Node Setup Guide' content='
+For a comprehensive walkthrough of adding nodes to a Hetzner bare-metal cluster, see my blog post <a href="/2025-11-23-new-k3s-agent-node">New K3s agent node for our cluster</a>.
+This lesson covers the essential steps specific to our RKE2 migration.
+' %}
 
-Rocky Linux offers several advantages for Kubernetes deployments:
+## Installing Rocky Linux via Hetzner Robot
 
-- **RHEL compatibility**: Binary-compatible with Red Hat Enterprise Linux
-- **Long-term support**: 10-year lifecycle with regular security updates
-- **Enterprise stability**: Predictable updates and conservative approach to changes
-- **SELinux support**: Full security-enhanced Linux integration
-- **Wide ecosystem**: Excellent support for RKE2 and enterprise tools
+Before we can install the operating system, we need to configure the server identity in Hetzner's management interface.
+Log into the [Hetzner Robot](https://robot.hetzner.com/servers) web interface and set the server name (e.g., `node4`) along with a reverse DNS entry.
+Having a proper reverse DNS entry helps with server identification in logs and monitoring tools.
 
-## Installation Methods
-
-Depending on your Hetzner server type, you have several options:
-
-### Option A: Hetzner Robot Rescue System (Dedicated Servers)
-
-1. Log into Hetzner Robot console
-2. Navigate to your server (Node 4)
-3. Select "Rescue" tab
-4. Activate Linux rescue system
-5. Reset the server
-
-After the server boots into rescue mode:
+After receiving the root credentials via email, access the server through SSH:
 
 ```bash
-# SSH into the rescue system
 ssh root@<node4-public-ip>
+# Enter password from email
+```
 
-# Run installimage
+Hetzner provides the `installimage` tool which makes OS installation straightforward on their dedicated servers.
+This tool handles disk partitioning, OS deployment, and basic configuration in one step:
+
+```bash
 installimage
 ```
 
-In the installimage menu:
+In the configuration editor, select Rocky Linux 9 and set the hostname to match your naming convention.
+We use a simple partition layout without swap, dedicating the entire disk to the root partition with a small separate `/boot`:
 
-1. Select "Rocky Linux"
-2. Choose "Rocky-9"
-3. Configure disk layout (see below)
+```
+PART  /boot  ext3   1024M
+PART  /      ext4   all
+```
 
-### Option B: Hetzner Cloud (Virtual Servers)
+Kubernetes requires swap to be disabled, and RKE2 will verify this during installation.
+Rather than creating swap space we'd immediately disable, we allocate all available disk space to the root partition where container images and volumes will live.
 
-If using Hetzner Cloud:
+After installation completes, reboot the server to boot into the new operating system:
 
 ```bash
-# Using hcloud CLI
-hcloud server rebuild <server-id> --image rocky-9
+reboot
 ```
 
-### Option C: Manual Installation via KVM
+When reconnecting via SSH, you'll see a host key warning because the server's SSH keys changed with the new OS installation.
+This is expected behavior - remove the old entries from `~/.ssh/known_hosts` on your local machine and accept the new key when prompted.
 
-For servers with KVM access:
+## Essential Security Configuration
 
-1. Mount Rocky Linux 9 ISO
-2. Boot from ISO
-3. Follow standard installation wizard
+A freshly installed server needs immediate security hardening before we proceed with any other configuration.
+These steps protect the server from unauthorized access and establish good security practices from the start.
 
-## Recommended Disk Layout
+### Change the Root Password
 
-For Kubernetes nodes, I recommend this partition layout:
-
-```
-DRIVE1 /dev/sda
-├── /boot     512MB   ext4
-├── /boot/efi 256MB   vfat    (if UEFI)
-├── swap      8GB     swap
-├── /         50GB    xfs
-└── /var/lib  rest    xfs     (for container storage)
-```
-
-In `installimage`, configure like this:
+The default root password was sent via email, which means it has already been transmitted over the network.
+Change it to something only you know:
 
 ```bash
-# Example installimage config
-SWRAID 0
-SWRAIDLEVEL 0
-BOOTLOADER grub
-HOSTNAME node4
-PART /boot ext4 512M
-PART /boot/efi vfat 256M
-PART swap swap 8G
-PART / xfs 50G
-PART /var/lib xfs all
-IMAGE /root/.oldroot/nfs/images/Rocky-9-latest-amd64-base.tar.gz
-```
-
-## Post-Installation Configuration
-
-After Rocky Linux is installed and the server reboots:
-
-```bash
-# SSH into the new system
-ssh root@<node4-public-ip>
-
-# Verify installation
-cat /etc/os-release
+$ whoami
+root
+$ passwd
+Changing password for root.
+New password: ********
+Retype new password: ********
+passwd: all authentication tokens updated successfully.
 ```
 
 ### Update the System
 
+Security vulnerabilities are discovered regularly, and the installation image may be weeks or months old.
+Update all packages to ensure the system has the latest security patches before exposing it to any workloads:
+
 ```bash
-# Update all packages
 dnf update -y
-
-# Reboot if kernel was updated
-needs-restarting -r || reboot
 ```
 
-### Set Hostname
+### Create a Dedicated User Account
+
+Running commands as root is dangerous as it provides unrestricted access to the system. We create a dedicated admin account that requires explicit `sudo` for privileged operations, providing both safety and accountability.
+
+For the username, choose something that indicates the account's purpose, but ultimately it's up to you.
+I recommend using a consistent naming convention across all cluster nodes, such as `k8sadmin` for Kubernetes administration:
 
 ```bash
-# Set a descriptive hostname
-hostnamectl set-hostname node4.k8s.example.com
-
-# Verify
-hostname -f
+useradd k8sadmin
+passwd k8sadmin
+usermod -aG wheel k8sadmin
 ```
 
-### Configure Timezone
+We add the user to the `wheel` group, as it is the standard group for granting sudo privileges on RHEL-based systems.
+
+Test that the new user account works by opening a new SSH session from your local machine:
 
 ```bash
-# Set timezone (adjust for your location)
-timedatectl set-timezone Europe/Berlin
-
-# Verify
-timedatectl
+ssh k8sadmin@<node4-public-ip>
 ```
 
-### Disable SELinux (or Configure for RKE2)
+### Set Up SSH Key Authentication
 
-RKE2 can work with SELinux, but for simplicity during migration, we'll set it to permissive:
+Password authentication is vulnerable to brute-force attacks and requires typing the password every time you connect.
+SSH key authentication is both more secure (keys are much harder to crack than passwords) and more convenient (no password prompts).
+
+Generate an ED25519 key pair on your local machine, as it offers better security and performance than RSA:
 
 ```bash
-# Check current status
-getenforce
-
-# Set to permissive
-setenforce 0
-
-# Make persistent
-sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
-
-# Verify
-grep ^SELINUX= /etc/selinux/config
+ssh-keygen -t ed25519 -f ~/.ssh/node4_k8sadmin_ed25519
+ssh-copy-id -i ~/.ssh/node4_k8sadmin_ed25519 k8sadmin@<node4-public-ip>
 ```
 
-{% include alert.liquid.html type='note' title='SELinux Note' content='
-If you require SELinux enforcement, RKE2 includes SELinux policies. You can enable enforcement after the cluster is stable by setting SELINUX=enforcing and rebooting.
-' %}
+To avoid typing the full connection details every time, add an entry to your `~/.ssh/config` file:
 
-### Configure Kernel Modules
-
-Kubernetes requires specific kernel modules for networking:
-
-```bash
-# Create module configuration
-cat <<EOF | tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
-
-# Load modules immediately
-modprobe overlay
-modprobe br_netfilter
-
-# Verify modules are loaded
-lsmod | grep -E "overlay|br_netfilter"
+```
+Host node4
+  HostName <node4-public-ip>
+  User k8sadmin
+  IdentityFile ~/.ssh/node4_k8sadmin_ed25519
+  IdentitiesOnly yes
 ```
 
-### Configure Sysctl Parameters
-
-Set required kernel parameters for Kubernetes networking:
+Now you can connect with just `ssh node4` and verify that key-based authentication works before proceeding:
 
 ```bash
-# Create sysctl configuration
-cat <<EOF | tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
-EOF
-
-# Apply sysctl settings
-sysctl --system
-
-# Verify settings
-sysctl net.bridge.bridge-nf-call-iptables
-sysctl net.ipv4.ip_forward
+ssh node4
 ```
 
-### Disable Swap (Optional but Recommended)
+### Disable Root Login
 
-While newer Kubernetes versions support swap, it's traditionally disabled:
+With SSH key authentication working for our admin user, we can now disable root login entirely.
+This is a critical security measure as automated bots constantly scan the internet for servers accepting root SSH connections:
 
 ```bash
-# Disable swap immediately
-swapoff -a
+sudo vi /etc/ssh/sshd_config
+# Set: PermitRootLogin no
 
-# Remove swap from fstab to persist across reboots
-sed -i '/swap/d' /etc/fstab
-
-# Verify
-free -h | grep Swap
+sudo systemctl restart sshd
 ```
 
-### Install Essential Tools
+From this point forward, only the `k8sadmin` account can be used to access the server, and all administrative tasks require explicit `sudo` elevation.
 
-Install tools that will be useful for cluster management:
+Using `sudo` will also log all privileged commands to the system journal, providing an audit trail of who did what and when.
+
+## Optional: Set Up Tailscale
+
+Managing bare-metal servers often means dealing with changing IP addresses, firewall rules, and VPN configurations.
+Tailscale simplifies this by creating a secure mesh network that works regardless of network topology.
+
+With Tailscale, you can access your cluster nodes using consistent hostnames (like `node4.tailnet-name.ts.net`) from anywhere, even behind NAT or firewalls.
+This is especially valuable when you're troubleshooting cluster issues remotely.
 
 ```bash
-# Install essential packages
-dnf install -y \
+sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/9/tailscale.repo
+sudo dnf install -y tailscale
+sudo systemctl enable --now tailscaled
+sudo tailscale up
+```
+
+Follow the authentication URL provided in the output to connect the machine to your Tailscale network.
+After authentication, verify the Tailscale IP address:
+
+```bash
+tailscale ip -4
+```
+
+For servers that should remain permanently accessible, consider disabling key expiry in the Tailscale admin console. While it removes the need for periodic re-authentication, it also means that if the server is compromised, the attacker could maintain access indefinitely, so use this option with caution.
+
+## Configure Timezone and Hostname
+
+Consistent timezone configuration across all cluster nodes is important for log correlation and debugging. When investigating issues, you need timestamps to match across nodes, so all of the nodes should be set to their correct local timezone.
+
+As our cluster nodes are located in Helsinki, we will set the timezone to `Europe/Helsinki`:
+
+```bash
+$ sudo timedatectl set-timezone Europe/Helsinki
+```
+
+The hostname should already be set from the installation, but verify it matches your naming convention:
+
+```bash
+$ hostname
+node4
+
+# If not correct, set it with:
+$ sudo hostnamectl set-hostname node4
+```
+
+## Install Essential Tools
+
+A Kubernetes node needs various tools for administration, troubleshooting, and automation.
+Install these now so they're available when you need them:
+
+```bash
+sudo dnf install -y \
     curl \
     wget \
     vim \
@@ -236,75 +218,59 @@ dnf install -y \
     unzip \
     net-tools \
     bind-utils \
-    tcpdump \
     htop \
-    iotop \
-    jq \
-    yq
-
-# Install container tools (useful for debugging)
-dnf install -y \
-    container-selinux \
-    iptables-nft
+    jq
 ```
 
-### Configure SSH
+Each tool serves a specific purpose:
 
-Ensure SSH is properly configured for secure access:
-
-```bash
-# Verify SSH service
-systemctl status sshd
-
-# Recommended: Add your SSH key if not already done
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-# Add your public key to ~/.ssh/authorized_keys
-```
+- `curl` and `wget` download files and test HTTP endpoints
+- `vim` edits configuration files directly on the server
+- `git` manages configuration as code and pulls deployment scripts
+- `bash-completion` makes command-line work faster with tab completion
+- `tar` and `unzip` extract downloaded archives
+- `net-tools` and `bind-utils` provide networking diagnostics like `netstat` and `nslookup`
+- `htop` monitors system resources in real-time
+- `jq` parses JSON output from kubectl and APIs
 
 ## Verify System Readiness
 
-Run these checks to ensure the system is ready for RKE2:
+Before proceeding to the next lesson, verify that the system is properly configured and can communicate with the outside world.
+These checks catch common issues like DNS misconfiguration or firewall problems:
 
 ```bash
-# 1. Check kernel version (should be 5.14+)
-uname -r
+# Check kernel version (should be 5.14+ for Rocky 9)
+$ uname -r
 
-# 2. Verify modules
-lsmod | grep -E "overlay|br_netfilter"
+# Check available memory (RKE2 needs at least 4GB, 8GB+ recommended)
+$ free -h
 
-# 3. Verify sysctl
-sysctl net.ipv4.ip_forward
-sysctl net.bridge.bridge-nf-call-iptables
+# Check disk space (need at least 20GB free for container images)
+$ df -h /
 
-# 4. Check available memory
-free -h
+# Verify DNS resolution works
+$ nslookup philprime.dev
 
-# 5. Check disk space
-df -h /var/lib
-
-# 6. Verify DNS resolution
-nslookup google.com
-
-# 7. Verify internet connectivity
-curl -s https://get.rke2.io > /dev/null && echo "Internet OK"
+# Verify HTTPS connectivity (needed to download RKE2)
+$ curl -s https://get.rke2.io > /dev/null && echo "Internet OK"
 ```
+
+If any of these checks fail, resolve the issue before continuing.
+Network problems at this stage will cause harder-to-diagnose failures during RKE2 installation.
 
 ## System Information
 
-Document the system information for your records:
+Document the system information for your records.
+This is useful when troubleshooting issues or comparing configurations across nodes:
 
 ```bash
-# Generate system summary
-echo "=== Node 4 System Information ===" > /root/node4-info.txt
-echo "Hostname: $(hostname -f)" >> /root/node4-info.txt
-echo "OS: $(cat /etc/os-release | grep PRETTY_NAME)" >> /root/node4-info.txt
-echo "Kernel: $(uname -r)" >> /root/node4-info.txt
-echo "CPU: $(lscpu | grep 'Model name')" >> /root/node4-info.txt
-echo "Memory: $(free -h | grep Mem | awk '{print $2}')" >> /root/node4-info.txt
-echo "Disk: $(df -h / | tail -1 | awk '{print $2}')" >> /root/node4-info.txt
-cat /root/node4-info.txt
+echo "=== Node 4 System Information ==="
+echo "Hostname: $(hostname)"
+echo "OS: $(grep PRETTY_NAME /etc/os-release | cut -d'"' -f2)"
+echo "Kernel: $(uname -r)"
+echo "Memory: $(free -h | grep Mem | awk '{print $2}')"
+echo "Disk: $(df -h / | tail -1 | awk '{print $2}')"
 ```
 
-With Rocky Linux 9 installed and configured, Node 4 is ready for network configuration. In the next lesson, we'll
-set up the Hetzner vSwitch private networking.
+With Rocky Linux 9 installed and secured, Node 4 is ready for network configuration.
+In the next lesson, we'll set up the Hetzner vSwitch private networking that allows secure communication between cluster nodes.
