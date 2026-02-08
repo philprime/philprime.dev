@@ -1,4 +1,7 @@
 {
+  "cSpell.words": [
+    "Traefik"
+  ],
   "editor.defaultFormatter": "dprint.dprint",
   "files.associations": {
     "*.liquid.html": "liquid"

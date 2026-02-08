@@ -39,3 +39,6 @@ gem "jekyll-sitemap"
 
 # Favicon Generation
 gem "jekyll-favicon", "~> 1.1.0"
+
+# Mermaid Diagrams
+gem "jekyll-spaceship", "~> 0.10.2"
