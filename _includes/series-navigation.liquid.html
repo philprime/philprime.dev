@@ -8,10 +8,10 @@
   {% assign series_posts = site.posts | where: "series", page.series | sort: "series_part" %}
   {% if series_posts.size > 1 %}
     {% assign first_post = series_posts.first %}
-    <nav class="series-navigation">
+    <nav class="series-navigation" aria-labelledby="series-navigation-title">
       <div class="series-header">
         <span class="series-label">Series</span>
-        <h3 class="series-title">{{ first_post.series_title }}</h3>
+        <h3 class="series-title" id="series-navigation-title">{{ first_post.series_title }}</h3>
       </div>
       <ul class="series-posts">
         {% for post in series_posts %}
