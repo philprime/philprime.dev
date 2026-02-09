@@ -14,7 +14,7 @@ series_title: "Building Type-Safe Metrics API in Swift"
 series_part: 2
 ---
 
-{% include alert.liquid.html type='note' content='This blog post was originally published on the <a href="https://sentry.engineering/blog/building-type-safe-metrics-api-in-swift-part-ii" target="_blank" rel="noopener">Sentry Engineering Blog</a>. I am republishing it here on my personal blog (adapted for better readability) to make it easier to discover and accessible to a broader audience of Swift developers. Make sure to checkout their blog for even more interesting content.' %}
+{% include alert.liquid.html type='note' content='This blog post was originally published on the <a href="https://sentry.engineering/blog/building-type-safe-metrics-api-in-swift-part-ii" target="_blank" rel="noopener">Sentry Engineering Blog</a>. I am republishing it here on my personal blog (adapted for better readability) to make it easier to discover and accessible to a broader audience of Swift developers. Make sure to check out their blog for even more interesting content.' %}
 
 _This is part II of a two-part series on designing type-safe Swift APIs. If you haven't read [Part I](/blog/2026/02/09/building-type-safe-metrics-api-in-swift-part-i/) yet, I highly recommend starting there, as we covered protocol extensions for default values, enums with associated values, and `ExpressibleByStringLiteral` for cleaner syntax._
 
