@@ -14,7 +14,7 @@ series_title: "Building Type-Safe Metrics API in Swift"
 series_part: 1
 ---
 
-{% include alert.liquid.html type='note' content='This blog post was originally published on the <a href="https://sentry.engineering/blog/building-type-safe-metrics-api-in-swift-part-i" target="_blank" rel="noopener">Sentry Engineering Blog</a>. I am republishing it here on my personal blog (adapted for better readability) to make it easier to discover and accessible to a broader audience of Swift developers. Make sure to checkout their blog for even more interesting content.' %}
+{% include alert.liquid.html type='note' content='This blog post was originally published on the <a href="https://sentry.engineering/blog/building-type-safe-metrics-api-in-swift-part-i" target="_blank" rel="noopener">Sentry Engineering Blog</a>. I am republishing it here on my personal blog (adapted for better readability) to make it easier to discover and accessible to a broader audience of Swift developers. Make sure to check out their blog for even more interesting content.' %}
 
 With the release of [Apple / Cocoa SDK v9.4.0](https://github.com/getsentry/sentry-cocoa/releases/tag/9.4.0), we're excited to share not just the new experimental Metrics feature, but the engineering thinking behind it.
 
