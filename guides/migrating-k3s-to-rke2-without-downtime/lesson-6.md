@@ -24,7 +24,7 @@ A vSwitch creates a private network segment between your servers:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         HETZNER DATACENTER                               │
+│                         HETZNER DATACENTER                              │
 │                                                                         │
 │   ┌─────────────────────────────────────────────────────────────────┐   │
 │   │                      vSwitch (VLAN 4000)                        │   │

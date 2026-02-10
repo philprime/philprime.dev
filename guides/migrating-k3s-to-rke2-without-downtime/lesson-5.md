@@ -15,7 +15,7 @@ repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-5.md
 
 In this lesson, we'll install Rocky Linux 9 on Node 4 and configure it for Kubernetes workloads.
 Rocky Linux is a community-driven, enterprise-grade Linux distribution that is 100% compatible with Red Hat Enterprise Linux.
-We chose Rocky Linux for its long-term support (10-year lifecycle), enterprise stability, and excellent compatibility with RKE2 and container workloads.
+We chose Rocky Linux for its open source nature, stability, and first-class support by Hetzner.
 
 {% include guide-overview-link.liquid.html %}
 
@@ -33,7 +33,7 @@ Having a proper reverse DNS entry helps with server identification in logs and m
 After receiving the root credentials via email, access the server through SSH:
 
 ```bash
-ssh root@<node4-public-ip>
+$ ssh root@<node4-public-ip>
 # Enter password from email
 ```
 
@@ -41,7 +41,7 @@ Hetzner provides the `installimage` tool which makes OS installation straightfor
 This tool handles disk partitioning, OS deployment, and basic configuration in one step:
 
 ```bash
-installimage
+$ installimage
 ```
 
 In the configuration editor, select Rocky Linux 9 and set the hostname to match your naming convention.
@@ -58,7 +58,7 @@ Rather than creating swap space we'd immediately disable, we allocate all availa
 After installation completes, reboot the server to boot into the new operating system:
 
 ```bash
-reboot
+$ reboot
 ```
 
 When reconnecting via SSH, you'll see a host key warning because the server's SSH keys changed with the new OS installation.
@@ -90,7 +90,7 @@ Security vulnerabilities are discovered regularly, and the installation image ma
 Update all packages to ensure the system has the latest security patches before exposing it to any workloads:
 
 ```bash
-dnf update -y
+$ dnf update -y
 ```
 
 ### Create a Dedicated User Account
@@ -101,9 +101,9 @@ For the username, choose something that indicates the account's purpose, but ult
 I recommend using a consistent naming convention across all cluster nodes, such as `k8sadmin` for Kubernetes administration:
 
 ```bash
-useradd k8sadmin
-passwd k8sadmin
-usermod -aG wheel k8sadmin
+$ useradd k8sadmin
+$ passwd k8sadmin
+$ usermod -aG wheel k8sadmin
 ```
 
 We add the user to the `wheel` group, as it is the standard group for granting sudo privileges on RHEL-based systems.
@@ -111,7 +111,7 @@ We add the user to the `wheel` group, as it is the standard group for granting s
 Test that the new user account works by opening a new SSH session from your local machine:
 
 ```bash
-ssh k8sadmin@<node4-public-ip>
+$ ssh k8sadmin@<node4-public-ip>
 ```
 
 ### Set Up SSH Key Authentication
@@ -122,8 +122,8 @@ SSH key authentication is both more secure (keys are much harder to crack than p
 Generate an ED25519 key pair on your local machine, as it offers better security and performance than RSA:
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/node4_k8sadmin_ed25519
-ssh-copy-id -i ~/.ssh/node4_k8sadmin_ed25519 k8sadmin@<node4-public-ip>
+$ ssh-keygen -t ed25519 -f ~/.ssh/node4_k8sadmin_ed25519
+$ ssh-copy-id -i ~/.ssh/node4_k8sadmin_ed25519 k8sadmin@<node4-public-ip>
 ```
 
 To avoid typing the full connection details every time, add an entry to your `~/.ssh/config` file:
@@ -139,7 +139,7 @@ Host node4
 Now you can connect with just `ssh node4` and verify that key-based authentication works before proceeding:
 
 ```bash
-ssh node4
+$ ssh node4
 ```
 
 ### Disable Root Login
@@ -148,10 +148,11 @@ With SSH key authentication working for our admin user, we can now disable root 
 This is a critical security measure as automated bots constantly scan the internet for servers accepting root SSH connections:
 
 ```bash
-sudo vi /etc/ssh/sshd_config
+$ sudo vi /etc/ssh/sshd_config
+
 # Set: PermitRootLogin no
 
-sudo systemctl restart sshd
+$ sudo systemctl restart sshd
 ```
 
 From this point forward, only the `k8sadmin` account can be used to access the server, and all administrative tasks require explicit `sudo` elevation.
@@ -167,17 +168,17 @@ With Tailscale, you can access your cluster nodes using consistent hostnames (li
 This is especially valuable when you're troubleshooting cluster issues remotely.
 
 ```bash
-sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/9/tailscale.repo
-sudo dnf install -y tailscale
-sudo systemctl enable --now tailscaled
-sudo tailscale up
+$ sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/9/tailscale.repo
+$ sudo dnf install -y tailscale
+$ sudo systemctl enable --now tailscaled
+$ sudo tailscale up
 ```
 
 Follow the authentication URL provided in the output to connect the machine to your Tailscale network.
 After authentication, verify the Tailscale IP address:
 
 ```bash
-tailscale ip -4
+$ tailscale ip -4
 ```
 
 For servers that should remain permanently accessible, consider disabling key expiry in the Tailscale admin console. While it removes the need for periodic re-authentication, it also means that if the server is compromised, the attacker could maintain access indefinitely, so use this option with caution.
@@ -208,7 +209,7 @@ A Kubernetes node needs various tools for administration, troubleshooting, and a
 Install these now so they're available when you need them:
 
 ```bash
-sudo dnf install -y \
+$ sudo dnf install -y \
     curl \
     wget \
     vim \
