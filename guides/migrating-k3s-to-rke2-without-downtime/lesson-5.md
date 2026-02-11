@@ -7,9 +7,9 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 5
 guide_lesson_abstract: >
-  Install and configure Rocky Linux 9 on Node 4, preparing it as the first node for the new RKE2 cluster.
+  Install Rocky Linux 9 on Node 4 and plan the dual-stack architecture decisions required before cluster creation.
 guide_lesson_conclusion: >
-  Node 4 is now running Rocky Linux 9 with a dedicated user account, SSH key authentication, and basic security hardening.
+  Node 4 is now running Rocky Linux 9 with security hardening complete and dual-stack architecture decisions documented for the cluster build.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-5.md
 ---
 
@@ -258,6 +258,145 @@ $ curl -s https://get.rke2.io > /dev/null && echo "Internet OK"
 
 If any of these checks fail, resolve the issue before continuing.
 Network problems at this stage will cause harder-to-diagnose failures during RKE2 installation.
+
+## Planning Your Dual-Stack Architecture
+
+Before configuring networking in the next lessons, you need to make several architectural decisions that cannot be changed after the cluster is created.
+Dual-stack (IPv4 + IPv6) networking is one of those decisions.
+
+### Why Dual-Stack Now?
+
+Kubernetes cluster networking CIDRs are embedded in certificates, etcd data, and running workloads.
+Changing from single-stack to dual-stack later requires a complete cluster rebuild.
+Since we're building a new cluster anyway, this is the perfect opportunity to future-proof it.
+
+### Decisions You Must Make Now
+
+**Pod and Service CIDRs** define the IP ranges for all pods and services in your cluster.
+You need ranges for both IPv4 and IPv6:
+
+| Network         | IPv4 CIDR    | IPv6 CIDR     | Purpose                  |
+| --------------- | ------------ | ------------- | ------------------------ |
+| Pod Network     | 10.42.0.0/16 | fd00:42::/56  | IP addresses for pods    |
+| Service Network | 10.43.0.0/16 | fd00:43::/112 | ClusterIP services       |
+| Node Network    | 10.1.1.0/24  | fd00:1::/64   | vSwitch inter-node comms |
+
+We use Unique Local Addresses (fd00::/8) for IPv6 as they are the equivalent of private IPv4 ranges and are not routable on the public internet.
+
+**CNI Selection** determines your networking capabilities.
+Not all CNIs support dual-stack equally:
+
+- Cilium has excellent dual-stack support with eBPF, native routing, and WireGuard encryption
+- Calico supports dual-stack but requires more configuration
+- Flannel has limited dual-stack support
+
+We'll use Cilium for its superior dual-stack implementation and observability features.
+
+**IP Family Preference** controls which address family Kubernetes prefers for services.
+With `PreferDualStack`, services get both IPv4 and IPv6 addresses, with IPv4 as the primary.
+This provides maximum compatibility while enabling IPv6 where supported.
+
+### What About NAT64 for IPv4-Only Services?
+
+You might wonder if you need NAT64/DNS64 to reach IPv4-only external services like github.com from IPv6-only pods.
+The answer is no—in a true dual-stack cluster, pods have both IPv4 and IPv6 addresses.
+When a pod needs to reach an IPv4-only service, it uses its IPv4 address automatically.
+The kernel handles address family selection based on DNS resolution.
+
+NAT64 is only needed in IPv6-only environments where nodes lack IPv4 connectivity entirely.
+Since Hetzner dedicated servers have both IPv4 and IPv6 public addresses, this isn't a concern.
+
+### Ingress and Load Balancer Considerations
+
+Your ingress controller and load balancer must also support dual-stack from day one:
+
+- Traefik supports dual-stack natively
+- Hetzner Cloud Load Balancer supports both IPv4 and IPv6 targets
+- MetalLB requires separate address pools for each family
+
+We'll configure Traefik as a DaemonSet with the Hetzner Cloud Load Balancer in later lessons.
+
+{% include alert.liquid.html type='warning' title='Document Your Choices' content='
+Write down your chosen CIDR ranges before proceeding.
+You will use these values in lessons 6 (vSwitch), 8 (RKE2), and 9 (Cilium).
+Inconsistent values between lessons will cause networking failures.
+' %}
+
+## Planning Your Storage Architecture
+
+Storage decisions affect disk partitioning, which is done during OS installation.
+While you can add storage classes later, the underlying disk layout is set now.
+
+### Longhorn Disk Requirements
+
+Longhorn stores volume replicas on each node's local disk.
+With the default replica count of 2, a 10GB volume consumes 20GB of total cluster storage.
+Plan your disk space accordingly:
+
+| Component        | Minimum | Recommended | Notes                                 |
+| ---------------- | ------- | ----------- | ------------------------------------- |
+| OS and RKE2      | 20GB    | 40GB        | Container images, logs, etcd data     |
+| Longhorn storage | 50GB    | 100GB+      | Per-node, depends on workload volumes |
+| local-path       | 10GB    | 20GB        | Fast local storage for caching        |
+
+For our simple partition layout (`/boot` + `/`), all storage shares the root partition.
+If you have large storage requirements, consider a dedicated partition or disk for `/var/lib/longhorn`.
+
+### Storage Class Strategy
+
+We'll configure two storage classes with different trade-offs:
+
+| Storage Class | Replicas | Use Case                                   |
+| ------------- | -------- | ------------------------------------------ |
+| longhorn      | 2        | Databases, stateful apps needing HA        |
+| local-path    | 0        | Build caches, temp data, performance needs |
+
+This is configured in [Lesson 17](/guides/migrating-k3s-to-rke2-without-downtime/lesson-17), but plan your disk sizes now.
+
+### Backup Target
+
+Longhorn supports backup to S3 or NFS.
+If you plan to use backups (recommended for production), ensure you have:
+
+- S3-compatible storage (AWS S3, MinIO, Hetzner Object Storage)
+- Or an NFS server accessible from all nodes
+
+This can be configured later but is easier to set up from the start.
+
+## Security Decisions
+
+Some security features are easier to enable during initial cluster setup.
+
+### Secrets Encryption at Rest
+
+By default, Kubernetes secrets are stored unencrypted in etcd.
+RKE2 supports encrypting secrets at rest, but enabling it later requires re-encrypting all existing secrets.
+
+To enable secrets encryption, add to your RKE2 config (covered in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8)):
+
+```yaml
+secrets-encryption: true
+```
+
+This is optional but recommended for production clusters handling sensitive data.
+
+### Pod Security Standards
+
+Kubernetes Pod Security Standards (PSS) replace the deprecated PodSecurityPolicy.
+RKE2 supports enforcing these at the cluster level:
+
+- `privileged` - No restrictions (default)
+- `baseline` - Prevents known privilege escalations
+- `restricted` - Heavily restricted, follows security best practices
+
+You can start with `privileged` and tighten later, but consider your security requirements now.
+
+### Network Policies
+
+With Cilium, you get L3-L7 network policies out of the box.
+Decide early whether you want a default-deny policy (more secure, requires explicit allow rules) or default-allow (easier to start, less secure).
+
+This can be changed later, but planning now helps with workload manifest preparation.
 
 ## System Information
 

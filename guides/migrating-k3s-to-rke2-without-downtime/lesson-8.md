@@ -58,6 +58,7 @@ flowchart TB
 
 ## Dual-Stack Network Planning
 
+These CIDR ranges were planned in [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5) and cannot be changed after cluster creation.
 For our dual-stack cluster, we need separate CIDR ranges for IPv4 and IPv6:
 
 | Network         | IPv4 CIDR    | IPv6 CIDR     |
@@ -162,20 +163,25 @@ cluster-dns: 10.43.0.10
 # Enable etcd snapshots
 etcd-snapshot-schedule-cron: "0 */6 * * *"
 etcd-snapshot-retention: 5
+
+# Encrypt secrets at rest (optional but recommended for production)
+# See Lesson 5 for security planning discussion
+secrets-encryption: true
 EOF
 ```
 
 ## Configuration Options Explained
 
-| Option         | Value                      | Purpose                                     |
-| -------------- | -------------------------- | ------------------------------------------- |
-| `token`        | Secret string              | Authenticates nodes joining the cluster     |
-| `tls-san`      | IPs/hostnames (v4 and v6)  | Adds to API server certificate              |
-| `cni: none`    | Disables default           | We'll install Cilium as our CNI             |
-| `node-ip`      | 10.1.1.4,fd00:1::4         | Both node IPs for dual-stack                |
-| `cluster-cidr` | 10.42.0.0/16,fd00:42::/56  | Dual-stack pod network ranges               |
-| `service-cidr` | 10.43.0.0/16,fd00:43::/112 | Dual-stack service network ranges           |
-| `cluster-dns`  | 10.43.0.10                 | DNS service IP (CoreDNS serves both stacks) |
+| Option               | Value                      | Purpose                                     |
+| -------------------- | -------------------------- | ------------------------------------------- |
+| `token`              | Secret string              | Authenticates nodes joining the cluster     |
+| `tls-san`            | IPs/hostnames (v4 and v6)  | Adds to API server certificate              |
+| `cni: none`          | Disables default           | We'll install Cilium as our CNI             |
+| `node-ip`            | 10.1.1.4,fd00:1::4         | Both node IPs for dual-stack                |
+| `cluster-cidr`       | 10.42.0.0/16,fd00:42::/56  | Dual-stack pod network ranges               |
+| `service-cidr`       | 10.43.0.0/16,fd00:43::/112 | Dual-stack service network ranges           |
+| `cluster-dns`        | 10.43.0.10                 | DNS service IP (CoreDNS serves both stacks) |
+| `secrets-encryption` | true                       | Encrypts secrets at rest in etcd            |
 
 ## Enable and Start RKE2
 
