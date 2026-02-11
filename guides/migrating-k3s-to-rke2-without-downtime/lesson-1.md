@@ -145,7 +145,11 @@ class after critical
 In this phase we will remove Node 3 from Cluster A and add it as a control plane node to Cluster B.
 This phase is critical because achieving control plane quorum requires an odd number of nodes.
 
-// TODO: CAN WE FORCE QUORUM WITH 2 NODES? IF NOT, HOW DO WE MITIGATE THIS RISK?
+{% include alert.liquid.html type='warning' title='etcd Quorum with 2 Nodes' content='
+etcd requires a strict majority for quorum, and there is no mechanism to bias voting or force quorum with 2 nodes.
+However, 2 nodes have the same fault tolerance as 1 node (zero), so this phase is not more dangerous than the initial single-node bootstrap.
+Mitigate by minimizing time in this state and ensuring both nodes are stable before proceeding to Phase 3.
+' %}
 
 The actions we will take are:
 

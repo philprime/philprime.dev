@@ -14,7 +14,7 @@ repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-5.md
 ---
 
 In this lesson, we'll install Rocky Linux 9 on Node 4 and configure it for Kubernetes workloads.
-Rocky Linux is a community-driven, enterprise-grade Linux distribution that is 100% compatible with Red Hat Enterprise Linux.
+Rocky Linux is a community-driven, enterprise-grade Linux distribution that is fully compatible with Red Hat Enterprise Linux.
 We chose Rocky Linux for its open source nature, stability, and first-class support by Hetzner.
 
 {% include guide-overview-link.liquid.html %}
