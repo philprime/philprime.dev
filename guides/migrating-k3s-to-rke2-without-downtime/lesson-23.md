@@ -278,7 +278,7 @@ With k3s uninstalled, there is no rollback to Cluster A. Ensure you have verifie
 
 In the next lesson, we'll:
 
-1. Install Rocky Linux 9 on Node 1
+1. Install Rocky Linux 10 on Node 1
 2. Configure it as an RKE2 agent (worker)
 3. Join it to Cluster B
 

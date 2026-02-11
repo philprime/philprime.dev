@@ -318,7 +318,7 @@ Node 3 is now:
 - k3s agent stopped
 - Ready for Rocky Linux installation
 
-In the next lesson, we'll install Rocky Linux 9 and RKE2 on Node 3, joining it to Cluster B as the second control
+In the next lesson, we'll install Rocky Linux 10 and RKE2 on Node 3, joining it to Cluster B as the second control
 plane node.
 
 {% include alert.liquid.html type='info' title='Proceed Promptly' content='

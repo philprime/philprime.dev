@@ -20,7 +20,7 @@ In this lesson, we'll configure firewalld to allow necessary traffic over both I
 
 ## Firewalld and Dual-Stack
 
-Rocky Linux 9 uses firewalld as its default firewall manager.
+Rocky Linux 10 uses firewalld as its default firewall manager.
 The good news is that firewalld handles both IPv4 and IPv6 automatically for most rules.
 Port and service rules apply to both protocols by default.
 

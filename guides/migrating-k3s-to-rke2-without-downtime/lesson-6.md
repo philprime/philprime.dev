@@ -99,7 +99,7 @@ If you only have one interface, you'll create a VLAN subinterface on the main in
 
 ## Configure Dual-Stack with NetworkManager
 
-Rocky Linux 9 uses NetworkManager for network configuration.
+Rocky Linux 10 uses NetworkManager for network configuration.
 We'll create a VLAN interface with both IPv4 and IPv6 addresses.
 
 ### Option A: VLAN on Main Interface (Most Common)

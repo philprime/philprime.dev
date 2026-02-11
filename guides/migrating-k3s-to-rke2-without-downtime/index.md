@@ -7,11 +7,11 @@ guide_component: guide
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_abstract: >
   A comprehensive guide for migrating from a 3-node k3s cluster to a 4-node RKE2 Kubernetes cluster with zero downtime,
-  using Rocky Linux 9, Cilium CNI, and Hetzner infrastructure.
+  using Rocky Linux 10, Cilium CNI, and Hetzner infrastructure.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/index.md
 description:
   "Complete guide to migrating from k3s to RKE2 Kubernetes without downtime. Covers node-by-node migration strategy,
-  Rocky Linux 9 setup, Cilium CNI, Longhorn storage, Traefik ingress with Hetzner Load Balancer, and HA configuration."
+  Rocky Linux 10 setup, Cilium CNI, Longhorn storage, Traefik ingress with Hetzner Load Balancer, and HA configuration."
 excerpt:
   "Learn to migrate from k3s to RKE2 Kubernetes with zero downtime. Step-by-step tutorial covering node migration,
   Rocky Linux setup, Cilium networking, persistent storage migration, and high-availability ingress configuration

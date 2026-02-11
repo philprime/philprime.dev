@@ -1,19 +1,19 @@
 ---
 layout: guide-lesson.liquid
-title: Installing Rocky Linux 9 on Node 4
+title: Installing Rocky Linux 10 on Node 4
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 5
 guide_lesson_abstract: >
-  Install Rocky Linux 9 on Node 4 and plan the dual-stack architecture decisions required before cluster creation.
+  Install Rocky Linux 10 on Node 4 and plan the dual-stack architecture decisions required before cluster creation.
 guide_lesson_conclusion: >
-  Node 4 is now running Rocky Linux 9 with security hardening complete and dual-stack architecture decisions documented for the cluster build.
+  Node 4 is now running Rocky Linux 10 with security hardening complete and dual-stack architecture decisions documented for the cluster build.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-5.md
 ---
 
-In this lesson, we'll install Rocky Linux 9 on Node 4 and configure it for Kubernetes workloads.
+In this lesson, we'll install Rocky Linux 10 on Node 4 and configure it for Kubernetes workloads.
 Rocky Linux is a community-driven, enterprise-grade Linux distribution that is fully compatible with Red Hat Enterprise Linux.
 We chose Rocky Linux for its open source nature, stability, and first-class support by Hetzner.
 
@@ -44,7 +44,7 @@ This tool handles disk partitioning, OS deployment, and basic configuration in o
 $ installimage
 ```
 
-In the configuration editor, select Rocky Linux 9 and set the hostname to match your naming convention.
+In the configuration editor, select Rocky Linux 10 and set the hostname to match your naming convention.
 We use a simple partition layout without swap, dedicating the entire disk to the root partition with a small separate `/boot`:
 
 ```
@@ -168,7 +168,7 @@ With Tailscale, you can access your cluster nodes using consistent hostnames (li
 This is especially valuable when you're troubleshooting cluster issues remotely.
 
 ```bash
-$ sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/9/tailscale.repo
+$ sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/10/tailscale.repo
 $ sudo dnf install -y tailscale
 $ sudo systemctl enable --now tailscaled
 $ sudo tailscale up
@@ -240,7 +240,7 @@ Before proceeding to the next lesson, verify that the system is properly configu
 These checks catch common issues like DNS misconfiguration or firewall problems:
 
 ```bash
-# Check kernel version (should be 5.14+ for Rocky 9)
+# Check kernel version (should be 6.12+ for Rocky 10)
 $ uname -r
 
 # Check available memory (RKE2 needs at least 4GB, 8GB+ recommended)
@@ -412,5 +412,5 @@ echo "Memory: $(free -h | grep Mem | awk '{print $2}')"
 echo "Disk: $(df -h / | tail -1 | awk '{print $2}')"
 ```
 
-With Rocky Linux 9 installed and secured, Node 4 is ready for network configuration.
+With Rocky Linux 10 installed and secured, Node 4 is ready for network configuration.
 In the next lesson, we'll set up the Hetzner vSwitch private networking that allows secure communication between cluster nodes.

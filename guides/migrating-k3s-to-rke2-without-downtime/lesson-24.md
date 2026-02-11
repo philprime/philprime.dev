@@ -7,13 +7,13 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 5
 guide_lesson_id: 24
 guide_lesson_abstract: >
-  Install Rocky Linux 9 on Node 1 and configure it as an RKE2 worker node to complete the cluster.
+  Install Rocky Linux 10 on Node 1 and configure it as an RKE2 worker node to complete the cluster.
 guide_lesson_conclusion: >
   Node 1 has joined Cluster B as a worker node, completing the 4-node cluster configuration.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-24.md
 ---
 
-With k3s decommissioned, we'll now install Rocky Linux 9 on Node 1 and add it to Cluster B as a worker node.
+With k3s decommissioned, we'll now install Rocky Linux 10 on Node 1 and add it to Cluster B as a worker node.
 
 {% include guide-overview-link.liquid.html %}
 
@@ -52,7 +52,7 @@ flowchart LR
 
 Follow the same setup process as previous nodes:
 
-1. **Install Rocky Linux 9** using Hetzner Rescue System ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
+1. **Install Rocky Linux 10** using Hetzner Rescue System ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
 2. **Configure dual-stack vSwitch networking** with IP `10.1.1.1` and `fd00:1::1` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
 3. **Configure firewall** for worker node ports ([Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7))
 
@@ -275,7 +275,7 @@ Timestamp: $(date)
 Node 1 configuration:
 - Role: Worker (agent)
 - IP: 10.1.1.1
-- OS: Rocky Linux 9
+- OS: Rocky Linux 10
 - RKE2: Agent mode
 
 Final cluster configuration:

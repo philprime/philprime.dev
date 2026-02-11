@@ -247,7 +247,7 @@ rke2 etcd-snapshot save --name manual-backup
 
 ### Adding a Node
 
-1. Install Rocky Linux 9
+1. Install Rocky Linux 10
 2. Configure vSwitch
 3. Install RKE2 (server for CP, agent for worker)
 4. Configure and start RKE2

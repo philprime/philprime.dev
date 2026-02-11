@@ -28,7 +28,7 @@ The challenge multiplies when you need to:
 1. Maintain zero downtime while keeping services available throughout
 2. Change the underlying distribution from k3s to RKE2
 3. Reconfigure the node topology from 1 control plane + 2 workers to 3 control planes + 1 worker
-4. Replace the operating system with Rocky Linux 9
+4. Replace the operating system with Rocky Linux 10
 5. Upgrade networking and storage by implementing Cilium and Longhorn
 
 {% include alert.liquid.html type='tip' title='Why not 5 nodes?' content='
@@ -95,7 +95,7 @@ Our objective is creating a new RKE2 cluster using Node 4 as the first control p
 
 The steps we will take are:
 
-1. Install Rocky Linux 9 on Node 4
+1. Install Rocky Linux 10 on Node 4
 2. Configure Hetzner vSwitch networking
 3. Install RKE2 with first control plane
 4. Deploy Cilium CNI
@@ -155,7 +155,7 @@ The actions we will take are:
 
 1. Cordon and drain Node 3 from Cluster A
 2. Remove Node 3 from Cluster A
-3. (Optional) Reinstall OS with Rocky Linux 9
+3. (Optional) Reinstall OS with Rocky Linux 10
 4. Join as RKE2 control plane node
 5. Verify etcd cluster health
 
@@ -210,7 +210,7 @@ The steps we will take are:
 
 1. Cordon and drain Node 2 from Cluster A
 2. Remove Node 2 from cluster and uninstall k3s
-3. (Optional) Reinstall with Rocky Linux 9
+3. (Optional) Reinstall with Rocky Linux 10
 4. Join as RKE2 control plane
 5. Verify 3-node etcd quorum
 
@@ -314,7 +314,7 @@ The steps we will take are:
 1. Verify Cluster B stability (24-48 hour soak)
 2. Drain and remove Node 1 from Cluster A
 3. Stop and uninstall k3s on Node 1
-4. (Optional) Reinstall with Rocky Linux 9
+4. (Optional) Reinstall with Rocky Linux 10
 5. Join as RKE2 agent (worker)
 
 ## Time and Risk Considerations

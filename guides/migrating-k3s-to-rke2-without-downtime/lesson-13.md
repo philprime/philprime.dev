@@ -7,13 +7,13 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 3
 guide_lesson_id: 13
 guide_lesson_abstract: >
-  Install Rocky Linux 9 on Node 3 and join it to Cluster B as the second control plane node.
+  Install Rocky Linux 10 on Node 3 and join it to Cluster B as the second control plane node.
 guide_lesson_conclusion: >
   Node 3 is now running RKE2 as the second control plane node in Cluster B, with etcd showing 2 members.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-13.md
 ---
 
-With Node 3 drained and removed from Cluster A, we'll now install Rocky Linux 9 and configure it as an RKE2
+With Node 3 drained and removed from Cluster A, we'll now install Rocky Linux 10 and configure it as an RKE2
 control plane node to join Cluster B.
 
 {% include guide-overview-link.liquid.html %}
@@ -22,7 +22,7 @@ control plane node to join Cluster B.
 
 Follow the same setup process as Node 4:
 
-1. **Install Rocky Linux 9** using Hetzner Rescue System ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
+1. **Install Rocky Linux 10** using Hetzner Rescue System ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
 2. **Configure dual-stack vSwitch networking** with IP `10.1.1.3` and `fd00:1::3` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
 3. **Configure firewall** for control plane ports ([Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7))
 
