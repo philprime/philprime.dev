@@ -81,12 +81,12 @@ $ passwd
 Changing password for root.
 New password: ********
 Retype new password: ********
-passwd: all authentication tokens updated successfully.
+passwd: password updated successfully
 ```
 
 ### Update the System
 
-Security vulnerabilities are discovered regularly, and the installation image may be weeks or months old.
+Security vulnerabilities are patched regularly, and the installation image may be weeks or months old.
 Update all packages to ensure the system has the latest security patches before exposing it to any workloads:
 
 ```bash
@@ -95,7 +95,8 @@ $ dnf update -y
 
 ### Create a Dedicated User Account
 
-Running commands as root is dangerous as it provides unrestricted access to the system. We create a dedicated admin account that requires explicit `sudo` for privileged operations, providing both safety and accountability.
+Running commands as root is dangerous as it provides unrestricted access to the system.
+We create a dedicated admin account that requires explicit `sudo` for privileged operations, providing both safety and accountability.
 
 For the username, choose something that indicates the account's purpose, but ultimately it's up to you.
 I recommend using a consistent naming convention across all cluster nodes, such as `k8sadmin` for Kubernetes administration:
@@ -103,6 +104,9 @@ I recommend using a consistent naming convention across all cluster nodes, such 
 ```bash
 $ useradd k8sadmin
 $ passwd k8sadmin
+New password:
+Retype new password:
+passwd: password updated successfully
 $ usermod -aG wheel k8sadmin
 ```
 
@@ -168,7 +172,7 @@ With Tailscale, you can access your cluster nodes using consistent hostnames (li
 This is especially valuable when you're troubleshooting cluster issues remotely.
 
 ```bash
-$ sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/10/tailscale.repo
+$ sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/fedora//tailscale.repo
 $ sudo dnf install -y tailscale
 $ sudo systemctl enable --now tailscaled
 $ sudo tailscale up
@@ -210,8 +214,6 @@ Install these now so they're available when you need them:
 
 ```bash
 $ sudo dnf install -y \
-    curl \
-    wget \
     vim \
     git \
     bash-completion \
@@ -219,20 +221,18 @@ $ sudo dnf install -y \
     unzip \
     net-tools \
     bind-utils \
-    htop \
     jq
 ```
 
 Each tool serves a specific purpose:
 
-- `curl` and `wget` download files and test HTTP endpoints
-- `vim` edits configuration files directly on the server
 - `git` manages configuration as code and pulls deployment scripts
 - `bash-completion` makes command-line work faster with tab completion
 - `tar` and `unzip` extract downloaded archives
 - `net-tools` and `bind-utils` provide networking diagnostics like `netstat` and `nslookup`
-- `htop` monitors system resources in real-time
 - `jq` parses JSON output from kubectl and APIs
+
+For detailed setup steps and best practices, please look up the relevant documentation for each tool.
 
 ## Verify System Readiness
 
@@ -242,18 +242,37 @@ These checks catch common issues like DNS misconfiguration or firewall problems:
 ```bash
 # Check kernel version (should be 6.12+ for Rocky 10)
 $ uname -r
+6.12.0-124.27.1.el10_1.x86_64
 
 # Check available memory (RKE2 needs at least 4GB, 8GB+ recommended)
 $ free -h
+               total        used        free      shared  buff/cache   available
+Mem:           125Gi       5.0Gi       119Gi       4.3Mi       1.2Gi       120Gi
+Swap:             0B          0B          0B
 
 # Check disk space (need at least 20GB free for container images)
 $ df -h /
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/md1        1.8T  1.5G  1.7T   1% /
 
 # Verify DNS resolution works
 $ nslookup philprime.dev
+Server:		100.100.100.100
+Address:	100.100.100.100#53
+
+Non-authoritative answer:
+Name:	philprime.dev
+Address: 104.21.66.10
+Name:	philprime.dev
+Address: 172.67.197.206
+Name:	philprime.dev
+Address: 2606:4700:3032::6815:420a
+Name:	philprime.dev
+Address: 2606:4700:3036::ac43:c5ce
 
 # Verify HTTPS connectivity (needed to download RKE2)
 $ curl -s https://get.rke2.io > /dev/null && echo "Internet OK"
+Internet OK
 ```
 
 If any of these checks fail, resolve the issue before continuing.
