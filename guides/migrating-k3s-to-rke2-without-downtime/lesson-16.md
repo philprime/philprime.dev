@@ -20,14 +20,25 @@ secrets from Cluster A.
 
 ## Current State
 
-```
-Cluster A (k3s):          Cluster B (RKE2):
-┌─────────────────┐       ┌─────────────────────┐
-│ Node 1 (CP)     │       │ Node 2 (CP)         │
-│ [All Workloads] │  ──>  │ Node 3 (CP)         │
-│                 │       │ Node 4 (CP)         │
-└─────────────────┘       └─────────────────────┘
-  Source                    Target (ready for workloads)
+```mermaid!
+flowchart LR
+  subgraph A["Cluster A · k3s"]
+    A1["🧠 Node 1<br/><small>all workloads</small>"]
+  end
+
+  subgraph B["Cluster B · RKE2"]
+    B2["🧠 Node 2"]
+    B3["🧠 Node 3"]
+    B4["🧠 Node 4"]
+  end
+
+  A1 -->|"export manifests"| B
+
+  classDef clusterA fill:#2563eb,color:#fff,stroke:#1e40af
+  classDef clusterB fill:#16a34a,color:#fff,stroke:#166534
+
+  class A clusterA
+  class B clusterB
 ```
 
 ## Connect to Cluster A

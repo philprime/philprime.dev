@@ -21,15 +21,25 @@ Cluster A (k3s) to Cluster B (RKE2).
 
 ## Current State
 
-```
-Cluster A (k3s):          Cluster B (RKE2):
-┌─────────────────┐       ┌─────────────────┐
-│ Node 1 (CP)     │       │ Node 4 (CP) ✓   │
-│ Node 2 (Worker) │       │                 │
-│ Node 3 (Worker) │ ←     │                 │
-└─────────────────┘  │    └─────────────────┘
-                     │
-            Preparing for migration
+```mermaid!
+flowchart LR
+  subgraph A["Cluster A · k3s"]
+    A1["🧠 Node 1"]
+    A2["⚙️ Node 2"]
+    A3["⚙️ Node 3"]
+  end
+
+  subgraph B["Cluster B · RKE2"]
+    B4["🧠 Node 4 ✓"]
+  end
+
+  A3 -.->|"preparing"| B
+
+  classDef clusterA fill:#2563eb,color:#fff,stroke:#1e40af
+  classDef clusterB fill:#16a34a,color:#fff,stroke:#166534
+
+  class A clusterA
+  class B clusterB
 ```
 
 ## Pre-Migration Analysis

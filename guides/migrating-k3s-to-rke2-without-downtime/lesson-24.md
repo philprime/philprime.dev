@@ -19,142 +19,63 @@ With k3s decommissioned, we'll now install Rocky Linux 9 on Node 1 and add it to
 
 ## Current State
 
+```mermaid!
+flowchart LR
+  subgraph before["Before"]
+    direction TB
+    B1["Node 1<br/><small>empty</small>"]
+    B2["🧠 Node 2"]
+    B3["🧠 Node 3"]
+    B4["🧠 Node 4"]
+  end
+
+  subgraph after["After"]
+    direction TB
+    A1["⚙️ Node 1 ✓"]
+    A2["🧠 Node 2"]
+    A3["🧠 Node 3"]
+    A4["🧠 Node 4"]
+  end
+
+  before -->|"add worker"| after
+
+  classDef empty fill:#9ca3af,color:#fff,stroke:#6b7280
+  classDef cp fill:#2563eb,color:#fff,stroke:#1e40af
+  classDef worker fill:#16a34a,color:#fff,stroke:#166534
+
+  class B1 empty
+  class B2,B3,B4,A2,A3,A4 cp
+  class A1 worker
 ```
-Before:                         After:
-┌─────────────────────┐        ┌─────────────────────┐
-│ Node 1 (empty)      │        │ Node 1 (Worker) ✓   │
-│                     │        │                     │
-│ Node 2 (CP)         │   →    │ Node 2 (CP)         │
-│ Node 3 (CP)         │        │ Node 3 (CP)         │
-│ Node 4 (CP)         │        │ Node 4 (CP)         │
-└─────────────────────┘        └─────────────────────┘
-    3 CP nodes                     3 CP + 1 Worker
-```
 
-## Install Rocky Linux 9
+## Prepare Node 1
 
-Follow the same process as previous nodes:
+Follow the same setup process as previous nodes:
 
-### Using Hetzner Rescue System
+1. **Install Rocky Linux 9** using Hetzner Rescue System ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
+2. **Configure dual-stack vSwitch networking** with IP `10.1.1.1` and `fd00:1::1` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
+3. **Configure firewall** for worker node ports ([Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7))
+
+{% include alert.liquid.html type='note' title='Worker Node Firewall' content='
+Worker nodes need fewer ports than control planes.
+You can skip the etcd ports (2379, 2380) and API server port (6443) from the control plane configuration.
+' %}
+
+Set the hostname after installation:
 
 ```bash
-# SSH into rescue system
-ssh root@<node1-public-ip>
-
-# Run installimage
-installimage
-
-# Select Rocky-9, configure partitions as before
-```
-
-### Post-Installation
-
-```bash
-# After reboot, SSH into the new system
-ssh root@node1
-
-# Update system
-dnf update -y
-
-# Set hostname
 hostnamectl set-hostname node1.k8s.example.com
 ```
 
-## Configure System for Kubernetes
-
-Apply the same configurations as other nodes:
+Verify connectivity to existing cluster nodes:
 
 ```bash
-# SELinux
-setenforce 0
-sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
-
-# Kernel modules
-cat <<EOF | tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
-modprobe overlay
-modprobe br_netfilter
-
-# Sysctl settings
-cat <<EOF | tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
-EOF
-sysctl --system
-
-# Disable swap
-swapoff -a
-sed -i '/swap/d' /etc/fstab
-
-# Install essential tools
-dnf install -y curl wget vim git bash-completion jq
-```
-
-## Configure Hetzner vSwitch
-
-```bash
-# Configure vSwitch interface
-nmcli connection add \
-    type vlan \
-    con-name vswitch \
-    dev enp0s31f6 \
-    id 4000 \
-    ipv4.method manual \
-    ipv4.addresses 10.1.1.1/24 \
-    ipv6.method disabled
-
-nmcli connection up vswitch
-
-# Verify connectivity
-ping -c 3 10.1.1.2
+ping -c 3 10.1.1.2    # IPv4
 ping -c 3 10.1.1.3
 ping -c 3 10.1.1.4
-```
-
-## Configure /etc/hosts
-
-```bash
-cat <<EOF >> /etc/hosts
-
-# Kubernetes Cluster Nodes
-10.1.1.1  node1 node1.k8s.example.com
-10.1.1.2  node2 node2.k8s.example.com
-10.1.1.3  node3 node3.k8s.example.com
-10.1.1.4  node4 node4.k8s.example.com
-EOF
-```
-
-## Configure Firewall
-
-Worker nodes need fewer ports than control planes:
-
-```bash
-# Enable firewalld
-systemctl enable --now firewalld
-
-# Create kubernetes zone
-firewall-cmd --permanent --new-zone=kubernetes
-
-# Add vSwitch interface
-firewall-cmd --permanent --zone=kubernetes --add-interface=enp0s31f6.4000
-
-# Worker node ports (subset of control plane ports)
-firewall-cmd --permanent --zone=kubernetes --add-port=10250/tcp    # Kubelet
-firewall-cmd --permanent --zone=kubernetes --add-port=8472/udp     # Cilium VXLAN
-firewall-cmd --permanent --zone=kubernetes --add-port=4240/tcp     # Cilium health
-firewall-cmd --permanent --zone=kubernetes --add-port=30000-32767/tcp  # NodePorts
-firewall-cmd --permanent --zone=kubernetes --add-port=30000-32767/udp
-firewall-cmd --permanent --zone=kubernetes --add-port=30080/tcp    # Traefik HTTP
-firewall-cmd --permanent --zone=kubernetes --add-port=30443/tcp    # Traefik HTTPS
-firewall-cmd --permanent --zone=kubernetes --add-masquerade
-firewall-cmd --permanent --zone=kubernetes --add-protocol=icmp
-
-# Reload
-firewall-cmd --reload
-firewall-cmd --zone=kubernetes --list-all
+ping6 -c 3 fd00:1::2  # IPv6
+ping6 -c 3 fd00:1::3
+ping6 -c 3 fd00:1::4
 ```
 
 ## Install RKE2 Agent
@@ -198,8 +119,8 @@ server: https://10.1.1.4:9345
 # Cluster token
 token: ${TOKEN}
 
-# Network configuration
-node-ip: 10.1.1.1
+# Dual-stack node IPs
+node-ip: 10.1.1.1,fd00:1::1
 EOF
 ```
 
@@ -229,12 +150,12 @@ level=info msg="Running kubelet..."
 # Check nodes
 kubectl get nodes -o wide
 
-# Expected output:
+# Expected output (note both IPs in INTERNAL-IP):
 # NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
-# node1   Ready    <none>                      1m    v1.28.x+rke2r1   10.1.1.1
-# node2   Ready    control-plane,etcd,master   2d    v1.28.x+rke2r1   10.1.1.2
-# node3   Ready    control-plane,etcd,master   2d    v1.28.x+rke2r1   10.1.1.3
-# node4   Ready    control-plane,etcd,master   3d    v1.28.x+rke2r1   10.1.1.4
+# node1   Ready    <none>                      1m    v1.28.x+rke2r1   10.1.1.1,fd00:1::1
+# node2   Ready    control-plane,etcd,master   2d    v1.28.x+rke2r1   10.1.1.2,fd00:1::2
+# node3   Ready    control-plane,etcd,master   2d    v1.28.x+rke2r1   10.1.1.3,fd00:1::3
+# node4   Ready    control-plane,etcd,master   3d    v1.28.x+rke2r1   10.1.1.4,fd00:1::4
 ```
 
 Note that Node 1 has no roles (worker only).

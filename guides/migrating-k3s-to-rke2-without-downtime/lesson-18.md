@@ -20,27 +20,31 @@ Traefik as a DaemonSet on all nodes and use Hetzner Cloud Load Balancer to distr
 
 ## HA Ingress Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              INTERNET                                        │
-│                                  │                                          │
-│                                  ▼                                          │
-│                    ┌──────────────────────────┐                             │
-│                    │ Hetzner Cloud Load       │                             │
-│                    │ Balancer (Static IP)     │                             │
-│                    │ :80 → :30080             │                             │
-│                    │ :443 → :30443            │                             │
-│                    └──────────────────────────┘                             │
-│                      │           │           │                              │
-│              ┌───────┘           │           └───────┐                      │
-│              ▼                   ▼                   ▼                      │
-│    ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐         │
-│    │ Node 2           │ │ Node 3           │ │ Node 4           │         │
-│    │ Traefik :30080   │ │ Traefik :30080   │ │ Traefik :30080   │         │
-│    │ Traefik :30443   │ │ Traefik :30443   │ │ Traefik :30443   │         │
-│    └──────────────────┘ └──────────────────┘ └──────────────────┘         │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid!
+flowchart TB
+  Internet["🌐 Internet"]
+
+  subgraph LB["Hetzner Cloud Load Balancer"]
+    LBInfo["Static IP<br/>:80 → :30080<br/>:443 → :30443"]
+  end
+
+  subgraph Cluster["RKE2 Cluster"]
+    direction LR
+    N2["Node 2<br/>Traefik :30080/:30443"]
+    N3["Node 3<br/>Traefik :30080/:30443"]
+    N4["Node 4<br/>Traefik :30080/:30443"]
+  end
+
+  Internet --> LB
+  LB --> N2
+  LB --> N3
+  LB --> N4
+
+  classDef lb fill:#f59e0b,color:#fff,stroke:#d97706
+  classDef node fill:#16a34a,color:#fff,stroke:#166534
+
+  class LB lb
+  class N2,N3,N4 node
 ```
 
 ## Install Traefik

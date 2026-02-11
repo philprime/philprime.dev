@@ -31,6 +31,12 @@ The challenge multiplies when you need to:
 4. Replace the operating system with Rocky Linux 9
 5. Upgrade networking and storage by implementing Cilium and Longhorn
 
+{% include alert.liquid.html type='tip' title='Why not 5 nodes?' content='
+A 5-node setup would make this migration significantly easier as you could build a full 3-node HA control plane by only removing a single node from the original cluster, while keeping 2 nodes running workloads.
+With only 4 nodes, we must navigate a critical phase where both clusters run with reduced redundancy.
+This constraint makes the migration more challenging, but also more representative of real-world scenarios where resources are limited.
+' %}
+
 ## Current State vs Target State
 
 Our starting point is a 3-node k3s cluster with critical limitations:
@@ -46,8 +52,6 @@ Our target is a 4-node RKE2 cluster providing:
 - Robust storage options using Longhorn for replicated volumes and local-path for performance-sensitive workloads
 - Advanced networking with Cilium for better performance and observability
 - High-availability ingress with Traefik DaemonSet and Hetzner Cloud Load Balancer
-
-The [Migration Overview](/guides/migrating-k3s-to-rke2-without-downtime#migration-overview) on the guide index shows the complete phase timeline diagram.
 
 ## Phase 1: Bootstrap Cluster B
 
@@ -70,13 +74,13 @@ end
 
 subgraph after["After"]
   direction TB
+  subgraph aB["RKE2"]
+    aB4["🧠 Node 4"]
+  end
   subgraph aA["k3s"]
     aA1["🧠 Node 1"]
     aA2["⚙️ Node 2"]
     aA3["⚙️ Node 3"]
-  end
-  subgraph aB["RKE2"]
-    aB4["🧠 Node 4"]
   end
 end
 
@@ -85,8 +89,6 @@ class bA,aA clusterA
 class aB clusterB
 class bU unassigned
 ```
-
-**Risk Level: LOW** - Cluster A is not affected and we can abandon Node 4 setup if issues arise.
 
 We start with our existing k3s cluster using Node 1 as the control plane and Nodes 2 and 3 as workers.
 Our objective is creating a new RKE2 cluster using Node 4 as the first control plane.
@@ -112,25 +114,25 @@ classDef critical stroke:#dc2626,stroke-width:3px
 
 subgraph before["Before"]
   direction TB
+  subgraph bB["RKE2"]
+    bB4["🧠 Node 4"]
+  end
   subgraph bA["k3s"]
     bA1["🧠 Node 1"]
     bA2["⚙️ Node 2"]
     bA3["⚙️ Node 3"]
   end
-  subgraph bB["RKE2"]
-    bB4["🧠 Node 4"]
-  end
 end
 
 subgraph after["After"]
   direction TB
-  subgraph aA["k3s"]
-    aA1["🧠 Node 1"]
-    aA2["⚙️ Node 2"]
-  end
   subgraph aB["RKE2"]
     aB3["🧠 Node 3"]
     aB4["🧠 Node 4"]
+  end
+  subgraph aA["k3s"]
+    aA1["🧠 Node 1"]
+    aA2["⚙️ Node 2"]
   end
 end
 
@@ -140,10 +142,10 @@ class bB,aB clusterB
 class after critical
 ```
 
-**Risk Level: CRITICAL** - Both clusters are at minimum viable capacity and Cluster B has 2 control planes (no quorum tolerance yet).
-
 In this phase we will remove Node 3 from Cluster A and add it as a control plane node to Cluster B.
 This phase is critical because achieving control plane quorum requires an odd number of nodes.
+
+// TODO: CAN WE FORCE QUORUM WITH 2 NODES? IF NOT, HOW DO WE MITIGATE THIS RISK?
 
 The actions we will take are:
 
@@ -196,8 +198,6 @@ class bA,aA clusterA
 class bB,aB clusterB
 class after success
 ```
-
-**Risk Level: MODERATE** - Cluster A is at minimum (single node), but Cluster B achieves full HA with 3 control planes.
 
 In this phase we will remove Node 2 from Cluster A and add it as a control plane node to Cluster B.
 This is important because it allows us to achieve high availability in Cluster B with 3 control plane nodes.
@@ -261,7 +261,7 @@ The steps we will take are:
 1. Set up storage on Cluster B (Longhorn + local-path)
 2. Configure ingress (Traefik + Hetzner LB)
 3. Export workload manifests from Cluster A
-4. Migrate persistent data
+4. Migrate persistent data (if needed)
 5. Deploy workloads to Cluster B
 6. Verify workload health
 7. Switch DNS to Cluster B ingress
@@ -303,17 +303,15 @@ class bB,aB clusterB
 class after success
 ```
 
-**Risk Level: LOW** - All workloads are already on Cluster B and Node 1 can be rolled back if needed.
-
 Now that the migration is complete and all workloads are running on Cluster B, we can decommission Cluster A and finalize our new RKE2 cluster.
 
 The steps we will take are:
 
 1. Verify Cluster B stability (24-48 hour soak)
-2. Stop and uninstall k3s on Node 1
-3. (Optional) Reinstall with Rocky Linux 9
-4. Join as RKE2 agent (worker)
-5. Verify final cluster health
+2. Drain and remove Node 1 from Cluster A
+3. Stop and uninstall k3s on Node 1
+4. (Optional) Reinstall with Rocky Linux 9
+5. Join as RKE2 agent (worker)
 
 ## Time and Risk Considerations
 

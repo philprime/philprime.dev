@@ -20,32 +20,55 @@ post-migration cleanup, documentation, and operational considerations.
 
 ## Final Cluster State
 
+```mermaid!
+flowchart TB
+  subgraph LB["Hetzner Cloud Load Balancer"]
+    LBInfo["Static IP"]
+  end
+
+  subgraph Cluster["RKE2 Cluster · Final State"]
+    direction LR
+
+    subgraph N1["Node 1 · Worker"]
+      N1IP["10.1.1.1 · fd00:1::1"]
+      N1C["Traefik · Cilium · Longhorn"]
+    end
+
+    subgraph N2["Node 2 · Control Plane"]
+      N2IP["10.1.1.2 · fd00:1::2"]
+      N2C["etcd · Traefik · Cilium · Longhorn"]
+    end
+
+    subgraph N3["Node 3 · Control Plane"]
+      N3IP["10.1.1.3 · fd00:1::3"]
+      N3C["etcd · Traefik · Cilium · Longhorn"]
+    end
+
+    subgraph N4["Node 4 · Control Plane"]
+      N4IP["10.1.1.4 · fd00:1::4"]
+      N4C["etcd · Traefik · Cilium · Longhorn"]
+    end
+  end
+
+  LB --> N1
+  LB --> N2
+  LB --> N3
+  LB --> N4
+
+  classDef lb fill:#f59e0b,color:#fff,stroke:#d97706
+  classDef worker fill:#16a34a,color:#fff,stroke:#166534
+  classDef cp fill:#2563eb,color:#fff,stroke:#1e40af
+
+  class LB lb
+  class N1 worker
+  class N2,N3,N4 cp
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         CLUSTER B (RKE2) - FINAL STATE                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│    ┌──────────────────────────────────────────────────────────────┐        │
-│    │              Hetzner Cloud Load Balancer                      │        │
-│    │                    Static IP: x.x.x.x                         │        │
-│    └──────────────────────────────────────────────────────────────┘        │
-│                    │           │           │           │                    │
-│         ┌─────────┴───┐ ┌─────┴─────┐ ┌───┴───────┐ ┌─┴─────────┐         │
-│         │   Node 1    │ │  Node 2   │ │  Node 3   │ │  Node 4   │         │
-│         │   Worker    │ │    CP     │ │    CP     │ │    CP     │         │
-│         │ 10.1.1.1    │ │ 10.1.1.2  │ │ 10.1.1.3  │ │ 10.1.1.4  │         │
-│         │             │ │   etcd    │ │   etcd    │ │   etcd    │         │
-│         │  Traefik    │ │  Traefik  │ │  Traefik  │ │  Traefik  │         │
-│         │  Cilium     │ │  Cilium   │ │  Cilium   │ │  Cilium   │         │
-│         │  Longhorn   │ │  Longhorn │ │  Longhorn │ │  Longhorn │         │
-│         └─────────────┘ └───────────┘ └───────────┘ └───────────┘         │
-│                                                                             │
-│    Storage Classes: longhorn (default), local-path                          │
-│    CNI: Cilium (eBPF, kube-proxy replacement)                              │
-│    Ingress: Traefik (DaemonSet) + Hetzner LB                               │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+
+**Infrastructure Summary:**
+
+- **Storage Classes:** longhorn (default), local-path
+- **CNI:** Cilium (eBPF, kube-proxy replacement, dual-stack)
+- **Ingress:** Traefik (DaemonSet) + Hetzner Load Balancer
 
 ## 1. Cleanup Tasks
 

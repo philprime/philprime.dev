@@ -30,14 +30,25 @@ Before proceeding, confirm:
 
 ## Current State
 
-```
-Cluster A (k3s):          Cluster B (RKE2):
-┌─────────────────┐       ┌─────────────────────┐
-│ Node 1 (CP)     │       │ Node 2 (CP)         │
-│ (idle)          │       │ Node 3 (CP)         │
-│                 │  ──>  │ Node 4 (CP)         │
-└─────────────────┘       └─────────────────────┘
-  To decommission           Production
+```mermaid!
+flowchart LR
+  subgraph A["Cluster A · k3s"]
+    A1["🧠 Node 1<br/><small>to decommission</small>"]
+  end
+
+  subgraph B["Cluster B · RKE2"]
+    B2["🧠 Node 2"]
+    B3["🧠 Node 3"]
+    B4["🧠 Node 4"]
+  end
+
+  A1 -.->|"decommission"| B
+
+  classDef clusterA fill:#9ca3af,color:#fff,stroke:#6b7280
+  classDef clusterB fill:#16a34a,color:#fff,stroke:#166534
+
+  class A clusterA
+  class B clusterB
 ```
 
 ## Step 1: Final Backup

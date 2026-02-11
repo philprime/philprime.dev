@@ -1,27 +1,28 @@
 ---
 layout: guide-lesson.liquid
-title: Firewall Configuration with firewalld
+title: Firewall Configuration for Dual-Stack
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 7
 guide_lesson_abstract: >
-  Configure firewalld on Node 4 to allow RKE2, Cilium, and Kubernetes traffic while maintaining security.
+  Configure firewalld on Node 4 to allow RKE2, Cilium, and Kubernetes traffic over both IPv4 and IPv6.
 guide_lesson_conclusion: >
-  The firewall is now configured to allow all necessary Kubernetes cluster traffic while blocking unauthorized access.
+  The firewall is configured for dual-stack traffic, allowing Kubernetes communication over both IPv4 and IPv6.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-7.md
 ---
 
-Proper firewall configuration is critical for a secure Kubernetes cluster. In this lesson, we'll configure firewalld
-to allow necessary traffic while maintaining security.
+Proper firewall configuration is critical for a secure Kubernetes cluster.
+In this lesson, we'll configure firewalld to allow necessary traffic over both IPv4 and IPv6 while maintaining security.
 
 {% include guide-overview-link.liquid.html %}
 
-## Understanding Firewalld
+## Firewalld and Dual-Stack
 
-Rocky Linux 9 uses firewalld as its default firewall manager. Unlike iptables rules, firewalld uses zones and
-services for a more intuitive configuration.
+Rocky Linux 9 uses firewalld as its default firewall manager.
+The good news is that firewalld handles both IPv4 and IPv6 automatically for most rules.
+Port and service rules apply to both protocols by default.
 
 ```bash
 # Check firewalld status
@@ -52,9 +53,11 @@ RKE2 with Cilium requires these ports to be open between cluster nodes:
 | 4244      | TCP      | Hubble Relay    | Cilium observability (optional)     |
 | 4245      | TCP      | Hubble UI       | Cilium observability (optional)     |
 
+All ports need to be accessible over both IPv4 and IPv6.
+
 ## Create a Kubernetes Zone
 
-For better organization, we'll create a dedicated zone for Kubernetes traffic:
+Create a dedicated zone for Kubernetes traffic on the vSwitch interface:
 
 ```bash
 # Create a new zone for internal Kubernetes traffic
@@ -69,7 +72,8 @@ firewall-cmd --reload
 
 ## Configure Control Plane Ports
 
-Since Node 4 will be a control plane node, it needs all control plane ports:
+Since Node 4 will be a control plane node, it needs all control plane ports.
+These rules automatically apply to both IPv4 and IPv6:
 
 ```bash
 # Kubernetes API Server
@@ -138,41 +142,41 @@ firewall-cmd --permanent --zone=kubernetes --add-port=30443/tcp
 
 ## Configure Public Zone
 
-The public zone handles traffic from the internet (via the public IP):
+The public zone handles traffic from the internet via the public IP:
 
 ```bash
 # Ensure SSH remains accessible
 firewall-cmd --permanent --zone=public --add-service=ssh
-
-# Allow Kubernetes API from specific IPs (optional, for external kubectl access)
-# Replace with your admin IP
-# firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="YOUR.ADMIN.IP/32" port protocol="tcp" port="6443" accept'
 
 # Allow HTTP/HTTPS for ingress (if using public IPs directly)
 firewall-cmd --permanent --zone=public --add-service=http
 firewall-cmd --permanent --zone=public --add-service=https
 ```
 
-## Allow ICMP (Ping)
+## Allow ICMP and ICMPv6
 
-For troubleshooting, allow ICMP:
+Both ICMP (IPv4) and ICMPv6 are essential for network diagnostics.
+ICMPv6 is particularly important as it handles neighbor discovery, which IPv6 requires to function:
 
 ```bash
-# Allow ping on kubernetes zone
-firewall-cmd --permanent --zone=kubernetes --add-icmp-block-inversion
-firewall-cmd --permanent --zone=kubernetes --add-icmp-block=echo-reply
-firewall-cmd --permanent --zone=kubernetes --remove-icmp-block=echo-reply
-
-# Simpler: just allow all ICMP
+# Allow ICMPv4 (ping)
 firewall-cmd --permanent --zone=kubernetes --add-protocol=icmp
+
+# Allow ICMPv6 (required for IPv6 neighbor discovery)
+firewall-cmd --permanent --zone=kubernetes --add-protocol=ipv6-icmp
 ```
+
+{% include alert.liquid.html type='warning' title='ICMPv6 is Required' content='
+Unlike IPv4 where ICMP is optional, IPv6 requires ICMPv6 for basic functionality.
+Blocking ICMPv6 will break IPv6 neighbor discovery and cause connectivity failures.
+' %}
 
 ## Configure Masquerading
 
-Enable masquerading for pod network traffic:
+Enable masquerading for pod network traffic on both protocols:
 
 ```bash
-# Enable masquerading on kubernetes zone
+# Enable masquerading on kubernetes zone (applies to both IPv4 and IPv6)
 firewall-cmd --permanent --zone=kubernetes --add-masquerade
 ```
 
@@ -196,7 +200,7 @@ kubernetes (active)
   sources:
   services:
   ports: 6443/tcp 9345/tcp 2379/tcp 2380/tcp 10250/tcp 10255/tcp 8472/udp 4240/tcp 4244/tcp 4245/tcp 9879/tcp 30000-32767/tcp 30000-32767/udp 30080/tcp 30443/tcp
-  protocols: icmp
+  protocols: icmp ipv6-icmp
   forward: yes
   masquerade: yes
   forward-ports:
@@ -212,12 +216,11 @@ For convenience and documentation, create a script that can recreate the firewal
 ```bash
 cat <<'EOF' > /root/setup-firewall.sh
 #!/bin/bash
-# Kubernetes Firewall Configuration Script
-# Run this to restore firewall rules
+# Kubernetes Dual-Stack Firewall Configuration Script
 
 set -e
 
-echo "Configuring firewalld for Kubernetes..."
+echo "Configuring firewalld for dual-stack Kubernetes..."
 
 # Ensure firewalld is running
 systemctl enable --now firewalld
@@ -252,8 +255,9 @@ firewall-cmd --permanent --zone=kubernetes --add-port=30443/tcp
 # Enable masquerading
 firewall-cmd --permanent --zone=kubernetes --add-masquerade
 
-# Allow ICMP
+# Allow ICMP (IPv4) and ICMPv6 (required for IPv6)
 firewall-cmd --permanent --zone=kubernetes --add-protocol=icmp
+firewall-cmd --permanent --zone=kubernetes --add-protocol=ipv6-icmp
 
 # Reload
 firewall-cmd --reload
@@ -265,19 +269,26 @@ EOF
 chmod +x /root/setup-firewall.sh
 ```
 
-## Verify Connectivity
+## Verify Dual-Stack Connectivity
 
-Test that the firewall allows necessary traffic:
+Test that the firewall allows traffic over both protocols:
 
 ```bash
-# Test SSH (should work)
-ssh root@10.1.1.1 "echo 'SSH to node1 OK'"
-
-# Test ping (should work)
+# Test IPv4 ping
 ping -c 3 10.1.1.1
 
-# From another node, test port 6443 (after RKE2 is installed)
+# Test IPv6 ping
+ping6 -c 3 fd00:1::1
+
+# Test SSH over IPv4
+ssh k8sadmin@10.1.1.1 "echo 'SSH via IPv4 OK'"
+
+# Test SSH over IPv6
+ssh k8sadmin@fd00:1::1 "echo 'SSH via IPv6 OK'"
+
+# After RKE2 is installed, test API server on both protocols:
 # nc -zv 10.1.1.4 6443
+# nc -zv fd00:1::4 6443
 ```
 
 ## Troubleshooting
@@ -288,8 +299,21 @@ ping -c 3 10.1.1.1
 # View denied connections
 journalctl -f -u firewalld
 
-# Or check dmesg for drops
+# Check dmesg for drops
 dmesg | grep -i "DROPPED"
+```
+
+### IPv6 Not Working
+
+```bash
+# Verify ICMPv6 is allowed
+firewall-cmd --zone=kubernetes --query-protocol=ipv6-icmp
+
+# Check if IPv6 neighbor discovery is working
+ip -6 neigh show
+
+# Test basic IPv6 connectivity
+ping6 -c 3 fd00:1::1
 ```
 
 ### Temporarily Disable Firewall (Testing Only)
@@ -318,10 +342,10 @@ firewall-cmd --zone=kubernetes --list-all --permanent
 
 ## Security Considerations
 
-1. **Principle of least privilege**: Only open ports that are necessary
-2. **Zone segregation**: Keep public and cluster traffic separate
-3. **Regular audits**: Review firewall rules periodically
-4. **Logging**: Enable logging for denied connections in production
+- Only open ports that are necessary
+- Keep public and cluster traffic in separate zones
+- Review firewall rules periodically
+- Enable logging for denied connections in production
 
 ```bash
 # Enable logging for denied packets (optional)
@@ -330,5 +354,5 @@ firewall-cmd --permanent --zone=public --set-log-denied=all
 firewall-cmd --reload
 ```
 
-With the firewall properly configured, Node 4 is now ready for RKE2 installation. In the next lesson, we'll install
-and configure the first RKE2 control plane.
+With the firewall configured for dual-stack, Node 4 is ready for RKE2 installation.
+In the next lesson, we'll install and configure the first RKE2 control plane with dual-stack networking.

@@ -18,133 +18,25 @@ control plane node to join Cluster B.
 
 {% include guide-overview-link.liquid.html %}
 
-## Install Rocky Linux 9
+## Prepare Node 3
 
-Follow the same installation process as Node 4 (Lesson 5).
+Follow the same setup process as Node 4:
 
-### Using Hetzner Rescue System
+1. **Install Rocky Linux 9** using Hetzner Rescue System ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
+2. **Configure dual-stack vSwitch networking** with IP `10.1.1.3` and `fd00:1::3` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
+3. **Configure firewall** for control plane ports ([Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7))
 
-```bash
-# SSH into rescue system
-ssh root@<node3-public-ip>
-
-# Run installimage
-installimage
-
-# Select Rocky-9 and configure partitions
-```
-
-### Post-Installation
-
-After reboot:
+Set the hostname after installation:
 
 ```bash
-# SSH into the new system
-ssh root@node3
-
-# Update system
-dnf update -y
-
-# Set hostname
 hostnamectl set-hostname node3.k8s.example.com
 ```
 
-## Configure System for Kubernetes
-
-Apply the same configurations as Node 4:
+Verify connectivity to the existing cluster node:
 
 ```bash
-# SELinux
-setenforce 0
-sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
-
-# Kernel modules
-cat <<EOF | tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
-modprobe overlay
-modprobe br_netfilter
-
-# Sysctl settings
-cat <<EOF | tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
-EOF
-sysctl --system
-
-# Disable swap
-swapoff -a
-sed -i '/swap/d' /etc/fstab
-```
-
-## Configure Hetzner vSwitch
-
-Configure the private network interface:
-
-```bash
-# Create VLAN interface (adjust interface name and VLAN ID for your setup)
-nmcli connection add \
-    type vlan \
-    con-name vswitch \
-    dev enp0s31f6 \
-    id 4000 \
-    ipv4.method manual \
-    ipv4.addresses 10.1.1.3/24 \
-    ipv6.method disabled
-
-# Bring up the connection
-nmcli connection up vswitch
-
-# Verify connectivity
-ping -c 3 10.1.1.4  # Should reach Node 4
-```
-
-## Configure /etc/hosts
-
-```bash
-cat <<EOF >> /etc/hosts
-
-# Kubernetes Cluster Nodes
-10.1.1.1  node1 node1.k8s.example.com
-10.1.1.2  node2 node2.k8s.example.com
-10.1.1.3  node3 node3.k8s.example.com
-10.1.1.4  node4 node4.k8s.example.com
-EOF
-```
-
-## Configure Firewall
-
-Apply the same firewall rules as Node 4:
-
-```bash
-# Enable firewalld
-systemctl enable --now firewalld
-
-# Create kubernetes zone
-firewall-cmd --permanent --new-zone=kubernetes
-
-# Add vSwitch interface
-firewall-cmd --permanent --zone=kubernetes --add-interface=enp0s31f6.4000
-
-# Add all required ports (control plane)
-firewall-cmd --permanent --zone=kubernetes --add-port=6443/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=9345/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=2379/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=2380/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=10250/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=8472/udp
-firewall-cmd --permanent --zone=kubernetes --add-port=4240/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=30000-32767/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=30000-32767/udp
-firewall-cmd --permanent --zone=kubernetes --add-port=30080/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=30443/tcp
-firewall-cmd --permanent --zone=kubernetes --add-masquerade
-firewall-cmd --permanent --zone=kubernetes --add-protocol=icmp
-
-# Reload
-firewall-cmd --reload
+ping -c 3 10.1.1.4    # IPv4
+ping6 -c 3 fd00:1::4  # IPv6
 ```
 
 ## Install RKE2
@@ -177,22 +69,22 @@ server: https://10.1.1.4:9345
 # Use the same token as the first node
 token: ${TOKEN}
 
-# TLS SANs for this node
+# TLS SANs for this node (include both IPv4 and IPv6)
 tls-san:
   - node3
   - node3.k8s.example.com
   - 10.1.1.3
+  - fd00:1::3
 
 # Disable CNI (Cilium is already installed)
 cni: none
 
-# Network configuration
-node-ip: 10.1.1.3
-advertise-address: 10.1.1.3
+# Dual-stack node IPs
+node-ip: 10.1.1.3,fd00:1::3
 
-# Cluster configuration (must match Node 4)
-cluster-cidr: 10.42.0.0/16
-service-cidr: 10.43.0.0/16
+# Dual-stack cluster configuration (must match Node 4)
+cluster-cidr: 10.42.0.0/16,fd00:42::/56
+service-cidr: 10.43.0.0/16,fd00:43::/112
 cluster-dns: 10.43.0.10
 EOF
 ```
@@ -235,12 +127,12 @@ chmod 600 ~/.kube/config
 export PATH=$PATH:/var/lib/rancher/rke2/bin
 
 # Check nodes
-kubectl get nodes
+kubectl get nodes -o wide
 
-# Expected output:
-# NAME    STATUS   ROLES                       AGE   VERSION
-# node3   Ready    control-plane,etcd,master   1m    v1.28.x+rke2r1
-# node4   Ready    control-plane,etcd,master   2h    v1.28.x+rke2r1
+# Expected output (note both IPs in INTERNAL-IP):
+# NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
+# node3   Ready    control-plane,etcd,master   1m    v1.28.x+rke2r1   10.1.1.3,fd00:1::3
+# node4   Ready    control-plane,etcd,master   2h    v1.28.x+rke2r1   10.1.1.4,fd00:1::4
 ```
 
 ### Check from Node 4
@@ -305,15 +197,26 @@ kubectl get pods -n kube-system -o wide
 
 ## Current Cluster State
 
+```mermaid!
+flowchart LR
+  subgraph A["Cluster A · k3s"]
+    A1["🧠 Node 1"]
+    A2["⚙️ Node 2"]
+  end
+
+  subgraph B["Cluster B · RKE2"]
+    B3["🧠 Node 3 ✓"]
+    B4["🧠 Node 4 ✓"]
+  end
+
+  classDef clusterA fill:#2563eb,color:#fff,stroke:#1e40af
+  classDef clusterB fill:#16a34a,color:#fff,stroke:#166534
+
+  class A clusterA
+  class B clusterB
 ```
-Cluster A (k3s):          Cluster B (RKE2):
-┌─────────────────┐       ┌─────────────────┐
-│ Node 1 (CP)     │       │ Node 3 (CP) ✓   │
-│ Node 2 (Worker) │       │ Node 4 (CP) ✓   │
-│                 │       │                 │
-└─────────────────┘       └─────────────────┘
-  2 nodes (stable)          2 nodes (NOT yet HA)
-```
+
+Cluster B now has 2 control plane nodes but is **not yet HA** (needs 3 for etcd quorum).
 
 {% include alert.liquid.html type='warning' title='Not Yet HA' content='
 With 2 control plane nodes, Cluster B is NOT yet highly available. An etcd cluster needs 3 members for quorum tolerance. If one node fails, etcd loses quorum. Proceed with Node 2 migration to achieve HA.

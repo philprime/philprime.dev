@@ -20,15 +20,25 @@ high availability with 3 control plane nodes.
 
 ## Current State
 
-```
-Cluster A (k3s):          Cluster B (RKE2):
-┌─────────────────┐       ┌─────────────────┐
-│ Node 1 (CP)     │       │ Node 3 (CP)     │
-│ Node 2 (Worker) │ ←     │ Node 4 (CP)     │
-│                 │  │    │                 │
-└─────────────────┘  │    └─────────────────┘
-                     │
-            Next to migrate
+```mermaid!
+flowchart LR
+  subgraph A["Cluster A · k3s"]
+    A1["🧠 Node 1"]
+    A2["⚙️ Node 2"]
+  end
+
+  subgraph B["Cluster B · RKE2"]
+    B3["🧠 Node 3"]
+    B4["🧠 Node 4"]
+  end
+
+  A2 -.->|"migrating"| B
+
+  classDef clusterA fill:#2563eb,color:#fff,stroke:#1e40af
+  classDef clusterB fill:#16a34a,color:#fff,stroke:#166534
+
+  class A clusterA
+  class B clusterB
 ```
 
 ## Risk Assessment
@@ -111,16 +121,7 @@ ssh root@node2 "systemctl stop k3s-agent && systemctl disable k3s-agent"
 
 ## Cluster A Status
 
-Cluster A is now running on a single node:
-
-```
-Cluster A (k3s):
-┌─────────────────┐
-│ Node 1 (CP)     │
-│ (all workloads) │
-└─────────────────┘
-  1 node - VULNERABLE
-```
+Cluster A is now running on a single node, which makes it vulnerable to failure.
 
 {% include alert.liquid.html type='warning' title='Single Point of Failure' content='
 Cluster A is now extremely vulnerable. Any issue with Node 1 will cause complete cluster failure. Proceed with Node 2 installation promptly.
@@ -128,101 +129,27 @@ Cluster A is now extremely vulnerable. Any issue with Node 1 will cause complete
 
 ## Install Rocky Linux and RKE2 on Node 2
 
-### Install Rocky Linux 9
+### Prepare Node 2
 
-Follow the same process as previous nodes:
+Follow the same setup process as previous nodes:
+
+1. **Install Rocky Linux 9** using Hetzner Rescue System ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
+2. **Configure dual-stack vSwitch networking** with IP `10.1.1.2` and `fd00:1::2` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
+3. **Configure firewall** for control plane ports ([Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7))
+
+Set the hostname after installation:
 
 ```bash
-# Using Hetzner rescue system
-ssh root@<node2-public-ip>
-installimage
-# Select Rocky-9, configure partitions
-
-# After reboot
-dnf update -y
 hostnamectl set-hostname node2.k8s.example.com
 ```
 
-### Configure System
+Verify connectivity to existing cluster nodes:
 
 ```bash
-# SELinux
-setenforce 0
-sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
-
-# Kernel modules
-cat <<EOF | tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
-modprobe overlay
-modprobe br_netfilter
-
-# Sysctl
-cat <<EOF | tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
-EOF
-sysctl --system
-
-# Disable swap
-swapoff -a
-sed -i '/swap/d' /etc/fstab
-```
-
-### Configure vSwitch
-
-```bash
-nmcli connection add \
-    type vlan \
-    con-name vswitch \
-    dev enp0s31f6 \
-    id 4000 \
-    ipv4.method manual \
-    ipv4.addresses 10.1.1.2/24 \
-    ipv6.method disabled
-
-nmcli connection up vswitch
-
-# Verify
-ping -c 3 10.1.1.3
-ping -c 3 10.1.1.4
-```
-
-### Configure Hosts
-
-```bash
-cat <<EOF >> /etc/hosts
-
-# Kubernetes Cluster Nodes
-10.1.1.1  node1 node1.k8s.example.com
-10.1.1.2  node2 node2.k8s.example.com
-10.1.1.3  node3 node3.k8s.example.com
-10.1.1.4  node4 node4.k8s.example.com
-EOF
-```
-
-### Configure Firewall
-
-```bash
-systemctl enable --now firewalld
-firewall-cmd --permanent --new-zone=kubernetes
-firewall-cmd --permanent --zone=kubernetes --add-interface=enp0s31f6.4000
-firewall-cmd --permanent --zone=kubernetes --add-port=6443/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=9345/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=2379/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=2380/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=10250/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=8472/udp
-firewall-cmd --permanent --zone=kubernetes --add-port=4240/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=30000-32767/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=30000-32767/udp
-firewall-cmd --permanent --zone=kubernetes --add-port=30080/tcp
-firewall-cmd --permanent --zone=kubernetes --add-port=30443/tcp
-firewall-cmd --permanent --zone=kubernetes --add-masquerade
-firewall-cmd --permanent --zone=kubernetes --add-protocol=icmp
-firewall-cmd --reload
+ping -c 3 10.1.1.3    # IPv4 to Node 3
+ping -c 3 10.1.1.4    # IPv4 to Node 4
+ping6 -c 3 fd00:1::3  # IPv6 to Node 3
+ping6 -c 3 fd00:1::4  # IPv6 to Node 4
 ```
 
 ### Install RKE2
@@ -245,18 +172,21 @@ server: https://10.1.1.4:9345
 
 token: ${TOKEN}
 
+# TLS SANs for this node (include both IPv4 and IPv6)
 tls-san:
   - node2
   - node2.k8s.example.com
   - 10.1.1.2
+  - fd00:1::2
 
 cni: none
 
-node-ip: 10.1.1.2
-advertise-address: 10.1.1.2
+# Dual-stack node IPs
+node-ip: 10.1.1.2,fd00:1::2
 
-cluster-cidr: 10.42.0.0/16
-service-cidr: 10.43.0.0/16
+# Dual-stack cluster configuration (must match other nodes)
+cluster-cidr: 10.42.0.0/16,fd00:42::/56
+service-cidr: 10.43.0.0/16,fd00:43::/112
 cluster-dns: 10.43.0.10
 EOF
 ```
@@ -280,13 +210,13 @@ cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
 chmod 600 ~/.kube/config
 export PATH=$PATH:/var/lib/rancher/rke2/bin
 
-kubectl get nodes
+kubectl get nodes -o wide
 
-# Expected output:
-# NAME    STATUS   ROLES                       AGE   VERSION
-# node2   Ready    control-plane,etcd,master   1m    v1.28.x+rke2r1
-# node3   Ready    control-plane,etcd,master   1h    v1.28.x+rke2r1
-# node4   Ready    control-plane,etcd,master   3h    v1.28.x+rke2r1
+# Expected output (note both IPs in INTERNAL-IP):
+# NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
+# node2   Ready    control-plane,etcd,master   1m    v1.28.x+rke2r1   10.1.1.2,fd00:1::2
+# node3   Ready    control-plane,etcd,master   1h    v1.28.x+rke2r1   10.1.1.3,fd00:1::3
+# node4   Ready    control-plane,etcd,master   3h    v1.28.x+rke2r1   10.1.1.4,fd00:1::4
 ```
 
 ### Verify etcd HA
@@ -331,15 +261,26 @@ cilium status
 
 ## Current State
 
+```mermaid!
+flowchart LR
+  subgraph A["Cluster A · k3s"]
+    A1["🧠 Node 1<br/><small>all workloads</small>"]
+  end
+
+  subgraph B["Cluster B · RKE2 ✓"]
+    B2["🧠 Node 2 ✓"]
+    B3["🧠 Node 3 ✓"]
+    B4["🧠 Node 4 ✓"]
+  end
+
+  classDef clusterA fill:#2563eb,color:#fff,stroke:#1e40af
+  classDef clusterB fill:#16a34a,color:#fff,stroke:#166534
+
+  class A clusterA
+  class B clusterB
 ```
-Cluster A (k3s):          Cluster B (RKE2):
-┌─────────────────┐       ┌─────────────────────┐
-│ Node 1 (CP)     │       │ Node 2 (CP) ✓       │
-│ (all workloads) │       │ Node 3 (CP) ✓       │
-│                 │       │ Node 4 (CP) ✓       │
-└─────────────────┘       └─────────────────────┘
-  1 node (minimal)          3 nodes (FULL HA) ✓
-```
+
+Cluster A has 1 node (minimal) while Cluster B now has **3 nodes with full HA**.
 
 ## Critical Milestone Achieved
 

@@ -30,14 +30,31 @@ When we drain a node, Kubernetes:
 2. **Evicts** all pods (respecting PDBs)
 3. **Reschedules** pods on remaining nodes
 
-```
-Before Drain:                  After Drain:
-┌─────────────────────┐        ┌─────────────────────┐
-│ Node 1 │ Node 2 │ Node 3│    │ Node 1 │ Node 2 │ Node 3│
-│   CP   │ Worker │ Worker│    │   CP   │ Worker │   X   │
-│  [P1]  │  [P2]  │  [P3] │    │ [P1]   │[P2][P3]│ Empty │
-│  [P4]  │  [P5]  │  [P6] │    │ [P4]   │[P5][P6]│       │
-└─────────────────────┘        └─────────────────────┘
+```mermaid!
+flowchart LR
+  subgraph before["Before Drain"]
+    direction TB
+    B1["🧠 Node 1<br/>[P1][P4]"]
+    B2["⚙️ Node 2<br/>[P2][P5]"]
+    B3["⚙️ Node 3<br/>[P3][P6]"]
+  end
+
+  subgraph after["After Drain"]
+    direction TB
+    A1["🧠 Node 1<br/>[P1][P4]"]
+    A2["⚙️ Node 2<br/>[P2][P3][P5][P6]"]
+    A3["❌ Node 3<br/><small>Empty</small>"]
+  end
+
+  before -->|"drain"| after
+
+  classDef cp fill:#2563eb,color:#fff,stroke:#1e40af
+  classDef worker fill:#16a34a,color:#fff,stroke:#166534
+  classDef drained fill:#9ca3af,color:#fff,stroke:#6b7280
+
+  class B1,A1 cp
+  class B2,B3,A2 worker
+  class A3 drained
 ```
 
 ## Pre-Drain Verification
@@ -235,17 +252,29 @@ kubectl describe nodes | grep -A 5 "Allocated resources"
 
 After successful drain:
 
-```
-Cluster A (k3s):          Cluster B (RKE2):
-┌─────────────────┐       ┌─────────────────┐
-│ Node 1 (CP)     │       │ Node 4 (CP)     │
-│ Node 2 (Worker) │       │                 │
-│                 │       │                 │
-└─────────────────┘       └─────────────────┘
-  2 nodes (stable)          1 node (ready)
+```mermaid!
+flowchart LR
+  subgraph A["Cluster A · k3s"]
+    A1["🧠 Node 1"]
+    A2["⚙️ Node 2"]
+  end
 
-Node 3: Drained, stopped, ready for OS reinstall
+  N3["Node 3<br/><small>drained, stopped</small>"]
+
+  subgraph B["Cluster B · RKE2"]
+    B4["🧠 Node 4"]
+  end
+
+  classDef clusterA fill:#2563eb,color:#fff,stroke:#1e40af
+  classDef clusterB fill:#16a34a,color:#fff,stroke:#166534
+  classDef drained fill:#9ca3af,color:#fff,stroke:#6b7280
+
+  class A clusterA
+  class B clusterB
+  class N3 drained
 ```
+
+Node 3 is drained, stopped, and ready for OS reinstall.
 
 ## Document the Transition
 

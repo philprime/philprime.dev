@@ -24,7 +24,6 @@ RKE2 control plane with Cilium as the CNI plugin.
 - Configuring firewalld for RKE2 and Cilium traffic
 - Installing and configuring the first RKE2 control plane node
 - Deploying Cilium CNI for eBPF-based networking
-- Verifying the initial cluster setup
 
 By the end of this section, you will have a functional single-node RKE2 cluster ready to accept additional control
 plane nodes.
