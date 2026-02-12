@@ -7,24 +7,93 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 4
 guide_lesson_id: 17
 guide_lesson_abstract: >
-  Plan storage requirements and configure Longhorn for replicated storage and local-path-provisioner for fast local storage.
+  Configure Longhorn for replicated storage and local-path-provisioner for fast local storage on Cluster B.
 guide_lesson_conclusion: >
   Both Longhorn and local-path storage classes are configured and ready for workload deployment.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-17.md
 ---
 
-Before deploying workloads, we need to set up persistent storage.
-We'll configure two storage classes: Longhorn for replicated storage and local-path-provisioner for fast local storage.
+Before deploying workloads, we need to set up persistent storage on Cluster B.
+This lesson configures two storage classes: Longhorn for replicated storage and local-path-provisioner for fast local storage.
 
 {% include guide-overview-link.liquid.html %}
 
-## Storage Planning
+## Understanding Kubernetes Storage
 
-### Disk Space Requirements
+Kubernetes abstracts storage through several resources:
 
-Longhorn stores volume replicas on each node's local disk.
-With the default replica count of 2, a 10GB volume consumes 20GB of total cluster storage.
-Plan your disk space accordingly:
+| Resource                    | Purpose                                                   |
+| --------------------------- | --------------------------------------------------------- |
+| StorageClass                | Defines how storage is provisioned (provider, parameters) |
+| PersistentVolume (PV)       | Actual storage volume in the cluster                      |
+| PersistentVolumeClaim (PVC) | Request for storage by a pod                              |
+| CSI Driver                  | Interface between Kubernetes and storage backend          |
+
+When a pod requests storage via a PVC, the storage class's provisioner creates a PV that satisfies the request.
+
+## Understanding Longhorn
+
+Longhorn is a distributed block storage system for Kubernetes.
+It creates replicated volumes across multiple nodes, providing data redundancy.
+
+### Architecture
+
+```mermaid!
+flowchart TB
+  subgraph Pod
+    App[Application]
+  end
+
+  subgraph Longhorn
+    Engine[Longhorn Engine]
+    R1[Replica 1<br/>Node 2]
+    R2[Replica 2<br/>Node 3]
+    R3[Replica 3<br/>Node 4]
+  end
+
+  App -->|iSCSI| Engine
+  Engine --> R1
+  Engine --> R2
+  Engine --> R3
+
+  classDef pod fill:#3b82f6,color:#fff
+  classDef engine fill:#f59e0b,color:#fff
+  classDef replica fill:#10b981,color:#fff
+
+  class Pod pod
+  class Engine engine
+  class R1,R2,R3 replica
+```
+
+The Longhorn Engine handles read/write operations and synchronizes data across replicas.
+If a node fails, remaining replicas continue serving data while Longhorn rebuilds a new replica on a healthy node.
+
+### Replication and Quorum
+
+| Replica Count | Nodes Required | Can Lose | Best For       |
+| ------------- | -------------- | -------- | -------------- |
+| 1             | 1              | 0        | Development    |
+| 2             | 2              | 1        | Small clusters |
+| 3             | 3              | 1        | Production     |
+
+With 3 replicas, losing one node doesn't affect data availability.
+The tradeoff is storage consumption: a 10GB volume with 2 replicas uses 20GB of total cluster storage.
+
+## Choosing Storage Classes
+
+Different workloads have different storage needs:
+
+| Storage Class | Replication | Performance | Use Cases                                     |
+| ------------- | ----------- | ----------- | --------------------------------------------- |
+| Longhorn      | Yes         | Good        | Databases, stateful apps, data you can't lose |
+| local-path    | No          | Excellent   | Caching, temp storage, build artifacts        |
+
+For our migration, we'll configure both to match the flexibility most k3s clusters have.
+
+## Planning Storage Capacity
+
+Longhorn stores replicas on each node's local disk.
+Plan your disk space based on workload requirements:
 
 | Component        | Minimum | Recommended | Notes                                 |
 | ---------------- | ------- | ----------- | ------------------------------------- |
@@ -33,178 +102,142 @@ Plan your disk space accordingly:
 | local-path       | 10GB    | 20GB        | Fast local storage for caching        |
 
 For simple partition layouts (`/boot` + `/`), all storage shares the root partition.
-If you have large storage requirements, consider a dedicated partition or disk for `/var/lib/longhorn`.
+Consider a dedicated partition or disk for `/var/lib/longhorn` if you have large storage requirements.
 
-### Backup Target
+## Preparing Nodes for Longhorn
 
-Longhorn supports backup to S3 or NFS.
-If you plan to use backups (recommended for production), ensure you have:
-
-- S3-compatible storage (AWS S3, MinIO, Hetzner Object Storage)
-- Or an NFS server accessible from all nodes
-
-## Storage Strategy
-
-| Storage Class | Use Case                 | Replication        | Performance |
-| ------------- | ------------------------ | ------------------ | ----------- |
-| Longhorn      | Databases, stateful apps | Yes (configurable) | Good        |
-| local-path    | Caching, temp storage    | No                 | Excellent   |
-
-## Prepare Nodes for Longhorn
-
-Longhorn requires iSCSI support on all nodes. Run on each node:
+Longhorn uses iSCSI for block storage.
+Install the required packages on all nodes:
 
 ```bash
-# Install iSCSI initiator
-dnf install -y iscsi-initiator-utils
-
-# Enable and start iscsid
-systemctl enable --now iscsid
-
-# Install NFSv4 client (for backup support)
-dnf install -y nfs-utils
-
-# Verify
-systemctl status iscsid
-```
-
-### Create a Script to Run on All Nodes
-
-```bash
-# From your workstation or Node 4
 for node in node2 node3 node4; do
     echo "=== Configuring $node ==="
     ssh root@$node "dnf install -y iscsi-initiator-utils nfs-utils && systemctl enable --now iscsid"
 done
 ```
 
-## Install Longhorn
+The `nfs-utils` package enables NFS backup support if you configure backups later.
 
-### Add Longhorn Helm Repository
+## Installing Longhorn
+
+### Add Helm Repository
 
 ```bash
-# On any control plane node
 export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
 
-# Add Helm repo
 helm repo add longhorn https://charts.longhorn.io
 helm repo update
-
-# Search for available versions
-helm search repo longhorn/longhorn --versions | head -5
 ```
 
-### Create Longhorn Configuration
+### Create Configuration
 
 ```bash
 cat <<'EOF' > /root/longhorn-values.yaml
-# Longhorn Configuration
-
-# Default settings
 defaultSettings:
-  # Number of replicas for new volumes
   defaultReplicaCount: 2
-
-  # Storage reserved for other pods
   storageMinimalAvailablePercentage: 15
-
-  # Default data locality
   defaultDataLocality: "best-effort"
-
-  # Backup target (optional - configure if you have S3/NFS backup)
-  # backupTarget: "s3://backups@us-east-1/"
-  # backupTargetCredentialSecret: longhorn-backup-secret
-
-  # Node drain policy
   nodeDrainPolicy: "block-if-contains-last-replica"
-
-  # Guaranteed engine manager CPU
   guaranteedEngineManagerCPU: 12
-
-  # Guaranteed replica manager CPU
   guaranteedReplicaManagerCPU: 12
 
-# Persistence settings
 persistence:
   defaultClass: true
   defaultClassReplicaCount: 2
   reclaimPolicy: Delete
 
-# UI configuration
 ingress:
-  enabled: false  # We'll set up ingress separately if needed
+  enabled: false
 
-# Resource requests
-longhornManager:
-  priorityClass: ~
-  tolerations: []
-
-longhornDriver:
-  priorityClass: ~
-  tolerations: []
-
-# Enable default storage class
 defaultClass: true
 EOF
 ```
 
-### Install Longhorn
+Key settings:
+
+| Setting                           | Value                          | Purpose                                                  |
+| --------------------------------- | ------------------------------ | -------------------------------------------------------- |
+| defaultReplicaCount               | 2                              | Replicas per volume (balances redundancy and space)      |
+| storageMinimalAvailablePercentage | 15                             | Reserve disk space for system operations                 |
+| defaultDataLocality               | best-effort                    | Prefer placing replicas on the node running the workload |
+| nodeDrainPolicy                   | block-if-contains-last-replica | Prevent data loss during node maintenance                |
+
+### Install
 
 ```bash
-# Create namespace
 kubectl create namespace longhorn-system
 
-# Install Longhorn
 helm install longhorn longhorn/longhorn \
   --namespace longhorn-system \
   --values /root/longhorn-values.yaml \
   --wait
+```
 
-# Watch installation progress
+Watch the installation progress:
+
+```bash
 kubectl get pods -n longhorn-system -w
 ```
 
-Wait for all pods to be running:
+All pods should reach Running state:
 
 ```
 NAME                                        READY   STATUS    RESTARTS   AGE
 longhorn-manager-xxxxx                      1/1     Running   0          2m
 longhorn-driver-deployer-xxxxx              1/1     Running   0          2m
-longhorn-ui-xxxxx                           1/1     Running   0          2m
 csi-attacher-xxxxx                          1/1     Running   0          2m
 csi-provisioner-xxxxx                       1/1     Running   0          2m
-csi-snapshotter-xxxxx                       1/1     Running   0          2m
 engine-image-ei-xxxxx                       1/1     Running   0          2m
 instance-manager-xxxxx                      1/1     Running   0          2m
 ```
 
-### Verify Longhorn Installation
+## Installing local-path-provisioner
+
+For workloads that need fast local storage without replication:
 
 ```bash
-# Check storage class
-kubectl get storageclass
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
 
-# Expected:
-# NAME                 PROVISIONER          RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
-# longhorn (default)   driver.longhorn.io   Delete          Immediate           true                   1m
-
-# Check Longhorn nodes
-kubectl get nodes.longhorn.io -n longhorn-system
-
-# Check Longhorn volumes (should be empty)
-kubectl get volumes.longhorn.io -n longhorn-system
+kubectl wait --for=condition=Available deployment/local-path-provisioner -n local-path-storage --timeout=60s
 ```
 
-### Test Longhorn Storage
+The default configuration uses `/opt/local-path-provisioner` for storage.
+
+## Verification
+
+### Check Storage Classes
 
 ```bash
-# Create a test PVC
+kubectl get storageclass
+```
+
+Expected output:
+
+```
+NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION
+longhorn (default)   driver.longhorn.io      Delete          Immediate              true
+local-path           rancher.io/local-path   Delete          WaitForFirstConsumer   false
+```
+
+Longhorn is marked as the default storage class.
+PVCs without an explicit `storageClassName` will use Longhorn.
+
+### Check Longhorn Nodes
+
+```bash
+kubectl get nodes.longhorn.io -n longhorn-system
+```
+
+Should list all three nodes as schedulable for storage.
+
+### Test Volume Provisioning
+
+```bash
 cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: longhorn-test-pvc
-  namespace: default
+  name: storage-test
 spec:
   accessModes:
     - ReadWriteOnce
@@ -212,185 +245,71 @@ spec:
   resources:
     requests:
       storage: 1Gi
-EOF
-
-# Create a test pod
-cat <<EOF | kubectl apply -f -
+---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: longhorn-test-pod
-  namespace: default
+  name: storage-test
 spec:
   containers:
   - name: test
     image: busybox
-    command: ['sh', '-c', 'echo "Hello from Longhorn" > /data/test.txt && cat /data/test.txt && sleep 3600']
+    command: ['sh', '-c', 'echo "Storage works" > /data/test.txt && cat /data/test.txt && sleep 30']
     volumeMounts:
     - name: data
       mountPath: /data
   volumes:
   - name: data
     persistentVolumeClaim:
-      claimName: longhorn-test-pvc
+      claimName: storage-test
 EOF
 
-# Wait for pod
-kubectl wait --for=condition=Ready pod/longhorn-test-pod --timeout=120s
-
-# Verify data was written
-kubectl logs longhorn-test-pod
-
-# Check volume status
-kubectl get pvc longhorn-test-pvc
-kubectl get pv
-
-# Cleanup
-kubectl delete pod longhorn-test-pod
-kubectl delete pvc longhorn-test-pvc
+kubectl wait --for=condition=Ready pod/storage-test --timeout=120s
+kubectl logs storage-test
 ```
 
-## Install local-path-provisioner
+Output should show `Storage works`.
 
-For workloads that need fast local storage without replication:
+Clean up:
 
 ```bash
-# Install local-path-provisioner
-kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
-
-# Wait for deployment
-kubectl wait --for=condition=Available deployment/local-path-provisioner -n local-path-storage --timeout=60s
-
-# Check storage class
-kubectl get storageclass
-
-# Expected:
-# NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
-# longhorn (default)   driver.longhorn.io      Delete          Immediate              true                   10m
-# local-path           rancher.io/local-path   Delete          WaitForFirstConsumer   false                  1m
+kubectl delete pod storage-test
+kubectl delete pvc storage-test
 ```
 
-### Configure local-path-provisioner (Optional)
+## Updating Exported Manifests
+
+If your k3s cluster used different storage class names, update the exported PVC manifests:
 
 ```bash
-# The default configuration uses /opt/local-path-provisioner
-# To customize, edit the configmap:
-kubectl get configmap local-path-config -n local-path-storage -o yaml
-
-# You can change the storage path or add node-specific paths
+grep -r "storageClassName" /root/cluster-a-export/pvcs/
 ```
 
-### Test local-path Storage
+Common mappings:
+
+| k3s Storage Class | RKE2 Storage Class               |
+| ----------------- | -------------------------------- |
+| local-path        | local-path (no change)           |
+| longhorn          | longhorn (no change)             |
+| Other             | Update to longhorn or local-path |
+
+## Accessing Longhorn UI
+
+For troubleshooting and management, port-forward to the UI:
 
 ```bash
-# Create test PVC
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: local-path-test-pvc
-  namespace: default
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: local-path
-  resources:
-    requests:
-      storage: 1Gi
-EOF
-
-# Create test pod
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Pod
-metadata:
-  name: local-path-test-pod
-  namespace: default
-spec:
-  containers:
-  - name: test
-    image: busybox
-    command: ['sh', '-c', 'echo "Hello from local-path" > /data/test.txt && cat /data/test.txt && sleep 3600']
-    volumeMounts:
-    - name: data
-      mountPath: /data
-  volumes:
-  - name: data
-    persistentVolumeClaim:
-      claimName: local-path-test-pvc
-EOF
-
-# Wait for pod
-kubectl wait --for=condition=Ready pod/local-path-test-pod --timeout=60s
-
-# Verify
-kubectl logs local-path-test-pod
-
-# Cleanup
-kubectl delete pod local-path-test-pod
-kubectl delete pvc local-path-test-pvc
-```
-
-## Storage Class Summary
-
-```bash
-# View all storage classes
-kubectl get storageclass
-
-# NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
-# longhorn (default)   driver.longhorn.io      Delete          Immediate              true                   15m
-# local-path           rancher.io/local-path   Delete          WaitForFirstConsumer   false                  5m
-```
-
-## Update Exported Manifests
-
-If your k3s cluster used a different storage class name, update the exported PVC manifests:
-
-```bash
-# Check what storage classes were used in Cluster A
-grep -r "storageClassName" /root/cluster-a-export/pvc/
-
-# Common replacements:
-# - local-path (k3s default) -> local-path (same name, no change needed)
-# - Any other -> longhorn or local-path as appropriate
-
-# Example: Replace a storage class name
-# sed -i 's/storageClassName: old-class/storageClassName: longhorn/' /root/cluster-a-export/pvc/namespace/pvc.yaml
-```
-
-## Storage Migration Considerations
-
-For persistent data migration:
-
-| Scenario             | Approach                                   |
-| -------------------- | ------------------------------------------ |
-| Stateless apps       | Just redeploy, no data migration needed    |
-| Replicated databases | Use database-native replication            |
-| File storage         | Backup and restore, or sync tools          |
-| Small PVCs           | kubectl cp or rsync                        |
-| Large datasets       | Consider Velero or direct volume migration |
-
-## Access Longhorn UI (Optional)
-
-For troubleshooting and management:
-
-```bash
-# Port-forward to access UI locally
 kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
-
-# Access at http://localhost:8080
 ```
 
-Or set up ingress (we'll configure Traefik in the next lesson).
+Access at `http://localhost:8080`.
 
-## Storage Verification Checklist
+## Verification Checklist
 
-- [ ] Longhorn installed and running
-- [ ] Longhorn storage class created (default)
-- [ ] Longhorn test volume works
+- [ ] iSCSI installed on all nodes
+- [ ] Longhorn installed and pods running
+- [ ] Longhorn storage class is default
 - [ ] local-path-provisioner installed
-- [ ] local-path storage class created
-- [ ] local-path test volume works
+- [ ] Test volume provisions and mounts successfully
 - [ ] Exported PVC manifests reviewed for storage class compatibility
 
 In the next lesson, we'll set up HA ingress with Traefik and Hetzner Cloud Load Balancer.

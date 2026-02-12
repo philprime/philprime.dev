@@ -13,368 +13,181 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-16.md
 ---
 
-Before we can migrate workloads to Cluster B, we need to export all necessary manifests, configurations, and
-secrets from Cluster A.
+Before migrating workloads to Cluster B, we need to export all necessary manifests, configurations, and secrets from Cluster A.
 
 {% include guide-overview-link.liquid.html %}
 
-## Current State
+## Understanding the Export Process
 
-```mermaid!
-flowchart LR
-  subgraph A["Cluster A · k3s"]
-    A1["🧠 Node 1<br/><small>all workloads</small>"]
-  end
+Kubernetes stores workload definitions as resources in etcd.
+We can export these as YAML manifests, clean up cluster-specific metadata, and apply them to the new cluster.
 
-  subgraph B["Cluster B · RKE2"]
-    B2["🧠 Node 2"]
-    B3["🧠 Node 3"]
-    B4["🧠 Node 4"]
-  end
+### What to Export
 
-  A1 -->|"export manifests"| B
+| Resource Type | Purpose             | Notes                         |
+| ------------- | ------------------- | ----------------------------- |
+| Namespaces    | Logical isolation   | Skip kube-system, kube-public |
+| Deployments   | Stateless workloads | Most common workload type     |
+| StatefulSets  | Stateful workloads  | May need data migration       |
+| Services      | Network endpoints   | ClusterIPs will change        |
+| ConfigMaps    | Configuration       | Application settings          |
+| Secrets       | Sensitive data      | Handle securely               |
+| Ingress       | External access     | May need class changes        |
+| PVCs          | Storage claims      | Storage class may differ      |
 
-  classDef clusterA fill:#2563eb,color:#fff,stroke:#1e40af
-  classDef clusterB fill:#16a34a,color:#fff,stroke:#166534
+### What to Skip
 
-  class A clusterA
-  class B clusterB
-```
+- System namespaces (kube-system, kube-public, kube-node-lease)
+- Service account tokens (auto-generated)
+- System-generated ConfigMaps (kube-root-ca.crt)
+- Cluster-specific metadata (resourceVersion, uid, status)
 
-## Connect to Cluster A
+## Exporting Resources
+
+### Setup
 
 ```bash
-# Set kubeconfig for Cluster A
 export KUBECONFIG=/path/to/cluster-a-kubeconfig
-
-# Verify connection
 kubectl cluster-info
-kubectl get nodes
-```
 
-## Create Export Directory
-
-```bash
-# Create organized export structure
-mkdir -p /root/cluster-a-export/{namespaces,deployments,statefulsets,services,configmaps,secrets,ingress,pvc,networkpolicies,other}
+mkdir -p /root/cluster-a-export
 cd /root/cluster-a-export
 ```
 
-## Export Namespaces
+### Export Script
+
+This script exports all application resources, organized by type and namespace:
 
 ```bash
-# List all namespaces
-kubectl get namespaces
+cat <<'EOF' > export-resources.sh
+#!/bin/bash
+set -e
 
-# Export namespace definitions (exclude system namespaces)
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-|^default$"); do
+# Get non-system namespaces
+NAMESPACES=$(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-|^default$")
+
+# Export namespaces
+mkdir -p namespaces
+for ns in $NAMESPACES; do
     kubectl get namespace $ns -o yaml > namespaces/${ns}.yaml
-    echo "Exported namespace: $ns"
 done
-```
 
-## Export Deployments
-
-```bash
-# Export all deployments (excluding system namespaces)
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-"); do
-    deployments=$(kubectl get deployments -n $ns -o jsonpath='{.items[*].metadata.name}')
-    if [ -n "$deployments" ]; then
-        mkdir -p deployments/$ns
-        for dep in $deployments; do
-            kubectl get deployment $dep -n $ns -o yaml > deployments/$ns/${dep}.yaml
-            echo "Exported deployment: $ns/$dep"
-        done
-    fi
+# Export resources by type
+for ns in $NAMESPACES; do
+    for type in deployment statefulset service configmap ingress pvc networkpolicy daemonset cronjob; do
+        items=$(kubectl get $type -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || true)
+        if [ -n "$items" ]; then
+            mkdir -p ${type}s/$ns
+            for item in $items; do
+                # Skip system resources
+                [[ "$item" == "kubernetes" ]] && continue
+                [[ "$item" == "kube-root-ca.crt" ]] && continue
+                kubectl get $type $item -n $ns -o yaml > ${type}s/$ns/${item}.yaml
+                echo "Exported $type: $ns/$item"
+            done
+        fi
+    done
 done
-```
 
-## Export StatefulSets
-
-```bash
-# Export all statefulsets
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-"); do
-    statefulsets=$(kubectl get statefulsets -n $ns -o jsonpath='{.items[*].metadata.name}')
-    if [ -n "$statefulsets" ]; then
-        mkdir -p statefulsets/$ns
-        for sts in $statefulsets; do
-            kubectl get statefulset $sts -n $ns -o yaml > statefulsets/$ns/${sts}.yaml
-            echo "Exported statefulset: $ns/$sts"
-        done
-    fi
-done
-```
-
-## Export Services
-
-```bash
-# Export all services
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-"); do
-    services=$(kubectl get services -n $ns -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v "^kubernetes$")
-    if [ -n "$services" ]; then
-        mkdir -p services/$ns
-        for svc in $services; do
-            kubectl get service $svc -n $ns -o yaml > services/$ns/${svc}.yaml
-            echo "Exported service: $ns/$svc"
-        done
-    fi
-done
-```
-
-## Export ConfigMaps
-
-```bash
-# Export configmaps (excluding system-generated ones)
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-"); do
-    configmaps=$(kubectl get configmaps -n $ns -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v "kube-root-ca.crt")
-    if [ -n "$configmaps" ]; then
-        mkdir -p configmaps/$ns
-        for cm in $configmaps; do
-            kubectl get configmap $cm -n $ns -o yaml > configmaps/$ns/${cm}.yaml
-            echo "Exported configmap: $ns/$cm"
-        done
-    fi
-done
-```
-
-## Export Secrets
-
-{% include alert.liquid.html type='warning' title='Security Warning' content='
-Secrets contain sensitive data. Store exported secrets securely and delete them after migration. Never commit secrets to version control.
-' %}
-
-```bash
-# Export secrets (excluding service account tokens)
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-"); do
-    secrets=$(kubectl get secrets -n $ns -o jsonpath='{.items[?(@.type!="kubernetes.io/service-account-token")].metadata.name}')
+# Export secrets separately (excluding service account tokens)
+for ns in $NAMESPACES; do
+    secrets=$(kubectl get secrets -n $ns -o jsonpath='{.items[?(@.type!="kubernetes.io/service-account-token")].metadata.name}' 2>/dev/null || true)
     if [ -n "$secrets" ]; then
         mkdir -p secrets/$ns
         chmod 700 secrets/$ns
         for secret in $secrets; do
             kubectl get secret $secret -n $ns -o yaml > secrets/$ns/${secret}.yaml
             chmod 600 secrets/$ns/${secret}.yaml
-            echo "Exported secret: $ns/$secret"
-        done
-    fi
-done
-```
-
-## Export Ingress Resources
-
-```bash
-# Export ingress resources
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-"); do
-    ingresses=$(kubectl get ingress -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
-    if [ -n "$ingresses" ]; then
-        mkdir -p ingress/$ns
-        for ing in $ingresses; do
-            kubectl get ingress $ing -n $ns -o yaml > ingress/$ns/${ing}.yaml
-            echo "Exported ingress: $ns/$ing"
-        done
-    fi
-done
-```
-
-## Export PersistentVolumeClaims
-
-```bash
-# Export PVCs
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-"); do
-    pvcs=$(kubectl get pvc -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
-    if [ -n "$pvcs" ]; then
-        mkdir -p pvc/$ns
-        for pvc in $pvcs; do
-            kubectl get pvc $pvc -n $ns -o yaml > pvc/$ns/${pvc}.yaml
-            echo "Exported PVC: $ns/$pvc"
         done
     fi
 done
 
-# Export PersistentVolumes (cluster-level)
-kubectl get pv -o yaml > pvc/persistent-volumes.yaml
-```
-
-## Export Network Policies
-
-```bash
-# Export network policies
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-"); do
-    netpols=$(kubectl get networkpolicies -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
-    if [ -n "$netpols" ]; then
-        mkdir -p networkpolicies/$ns
-        for np in $netpols; do
-            kubectl get networkpolicy $np -n $ns -o yaml > networkpolicies/$ns/${np}.yaml
-            echo "Exported networkpolicy: $ns/$np"
-        done
-    fi
-done
-```
-
-## Export Other Resources
-
-```bash
-# DaemonSets
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-"); do
-    daemonsets=$(kubectl get daemonsets -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
-    if [ -n "$daemonsets" ]; then
-        mkdir -p other/daemonsets/$ns
-        for ds in $daemonsets; do
-            kubectl get daemonset $ds -n $ns -o yaml > other/daemonsets/$ns/${ds}.yaml
-        done
-    fi
-done
-
-# CronJobs
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-"); do
-    cronjobs=$(kubectl get cronjobs -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
-    if [ -n "$cronjobs" ]; then
-        mkdir -p other/cronjobs/$ns
-        for cj in $cronjobs; do
-            kubectl get cronjob $cj -n $ns -o yaml > other/cronjobs/$ns/${cj}.yaml
-        done
-    fi
-done
-
-# ServiceAccounts (non-default)
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v -E "^kube-"); do
-    sas=$(kubectl get serviceaccounts -n $ns -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -v "^default$")
-    if [ -n "$sas" ]; then
-        mkdir -p other/serviceaccounts/$ns
-        for sa in $sas; do
-            kubectl get serviceaccount $sa -n $ns -o yaml > other/serviceaccounts/$ns/${sa}.yaml
-        done
-    fi
-done
-
-# RBAC (ClusterRoles, ClusterRoleBindings, Roles, RoleBindings)
-kubectl get clusterroles -o yaml | grep -v "system:" > other/clusterroles.yaml 2>/dev/null || true
-kubectl get clusterrolebindings -o yaml | grep -v "system:" > other/clusterrolebindings.yaml 2>/dev/null || true
-```
-
-## Clean Exported Manifests
-
-Remove cluster-specific metadata that shouldn't be transferred:
-
-```bash
-# Create cleanup script
-cat <<'EOF' > /root/cluster-a-export/cleanup-manifests.sh
-#!/bin/bash
-# Remove cluster-specific fields from manifests
-
-find . -name "*.yaml" -type f | while read file; do
-    # Remove status, resourceVersion, uid, creationTimestamp, generation
-    yq eval 'del(.status) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.metadata.creationTimestamp) | del(.metadata.generation) | del(.metadata.managedFields)' -i "$file"
-done
-
-echo "Manifests cleaned"
+echo "Export complete"
 EOF
 
-chmod +x cleanup-manifests.sh
+chmod +x export-resources.sh
+./export-resources.sh
+```
 
-# Install yq if not present
+{% include alert.liquid.html type='warning' title='Secrets Security' content='
+Exported secrets contain sensitive data in base64 encoding.
+Store them securely, transfer over encrypted connections, and delete after migration.
+' %}
+
+## Cleaning Manifests
+
+Exported manifests contain cluster-specific metadata that must be removed before applying to Cluster B.
+
+### Install yq
+
+```bash
 curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq
 chmod +x /usr/local/bin/yq
-
-# Run cleanup
-./cleanup-manifests.sh
 ```
 
-## Generate Export Summary
+### Remove Cluster-Specific Fields
 
 ```bash
-# Create summary of exported resources
-cat <<'EOF' > /root/cluster-a-export/create-summary.sh
-#!/bin/bash
-echo "=== Cluster A Export Summary ===" > summary.txt
-echo "Generated: $(date)" >> summary.txt
-echo "" >> summary.txt
-
-for dir in namespaces deployments statefulsets services configmaps secrets ingress pvc networkpolicies; do
-    count=$(find $dir -name "*.yaml" 2>/dev/null | wc -l)
-    echo "$dir: $count resources" >> summary.txt
+find . -name "*.yaml" -type f | while read file; do
+    yq eval 'del(.status) |
+             del(.metadata.resourceVersion) |
+             del(.metadata.uid) |
+             del(.metadata.creationTimestamp) |
+             del(.metadata.generation) |
+             del(.metadata.managedFields)' -i "$file"
 done
-
-echo "" >> summary.txt
-echo "=== Detailed List ===" >> summary.txt
-
-for dir in namespaces deployments statefulsets services configmaps secrets ingress pvc networkpolicies; do
-    if [ -d "$dir" ]; then
-        echo "" >> summary.txt
-        echo "--- $dir ---" >> summary.txt
-        find $dir -name "*.yaml" | sort >> summary.txt
-    fi
-done
-
-cat summary.txt
-EOF
-
-chmod +x create-summary.sh
-./create-summary.sh
 ```
+
+These fields are generated by Kubernetes and will be recreated when resources are applied to the new cluster.
 
 ## Review Before Migration
 
-Review exported resources for any issues:
+Check for items that may need manual adjustment:
 
 ```bash
-# Check for hardcoded node names
-grep -r "nodeName:" . | grep -v ".git"
+# Hardcoded node names (should be removed or updated)
+grep -r "nodeName:" . --include="*.yaml"
 
-# Check for hardcoded IPs
-grep -r -E "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" . | grep -v ".git" | head -20
+# k3s-specific annotations
+grep -r "k3s" . --include="*.yaml"
 
-# Check for k3s-specific annotations
-grep -r "k3s" . | grep -v ".git"
+# Storage class references (may need to change)
+grep -r "storageClassName:" . --include="*.yaml"
 
-# Check for old cluster references
-grep -r "cluster-a" . | grep -v ".git"
+# Ingress class (k3s default vs RKE2)
+grep -r "ingressClassName:" . --include="*.yaml"
 ```
+
+Storage classes and ingress classes will be configured in subsequent lessons.
+Note any resources that reference them for later updates.
 
 ## Transfer to Cluster B
 
 ```bash
 # Create archive
-tar czvf cluster-a-export-$(date +%Y%m%d).tar.gz /root/cluster-a-export/
+tar czvf cluster-a-export.tar.gz -C /root cluster-a-export/
 
-# Transfer to one of the Cluster B nodes
-scp cluster-a-export-*.tar.gz root@10.1.1.4:/root/
+# Transfer to Cluster B
+scp cluster-a-export.tar.gz root@10.1.1.4:/root/
 
-# On Cluster B node
+# On Node 4
 ssh root@node4
-tar xzvf cluster-a-export-*.tar.gz -C /root/
+tar xzvf cluster-a-export.tar.gz
 ```
 
-## Manifest Modifications for RKE2
+## Export Checklist
 
-Some manifests may need adjustments:
-
-```bash
-# Check ingress class (k3s uses traefik, RKE2 may need adjustment)
-grep -r "ingressClassName" ingress/
-
-# Check storage class references
-grep -r "storageClassName" pvc/
-
-# These will need to match the new cluster's storage classes
-# We'll configure storage in the next lesson
-```
-
-## Exported Resources Checklist
-
-Verify you have exported:
-
-- [ ] Namespaces
-- [ ] Deployments
-- [ ] StatefulSets
-- [ ] Services
-- [ ] ConfigMaps
-- [ ] Secrets (stored securely)
-- [ ] Ingress resources
-- [ ] PersistentVolumeClaims
-- [ ] Network Policies
-- [ ] DaemonSets (non-system)
-- [ ] CronJobs
-- [ ] Custom ServiceAccounts
-- [ ] RBAC resources
+- [ ] Connected to Cluster A
+- [ ] Namespaces exported
+- [ ] Deployments exported
+- [ ] StatefulSets exported
+- [ ] Services exported
+- [ ] ConfigMaps exported
+- [ ] Secrets exported (stored securely)
+- [ ] Ingress resources exported
+- [ ] PVCs exported
+- [ ] Manifests cleaned of cluster-specific metadata
+- [ ] Reviewed for hardcoded values
+- [ ] Archive transferred to Cluster B
 
 In the next lesson, we'll set up storage on Cluster B before deploying these workloads.

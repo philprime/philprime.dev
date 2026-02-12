@@ -13,22 +13,23 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-12.md
 ---
 
-This lesson covers the critical 2-node transition phase. We will drain Node 3 from Cluster A and prepare it for
-migration to Cluster B.
+This lesson covers the critical 2-node transition phase.
+We will drain Node 3 from Cluster A and prepare it for migration to Cluster B.
 
 {% include guide-overview-link.liquid.html %}
 
 {% include alert.liquid.html type='warning' title='Critical Phase' content='
-This is a high-risk operation. Ensure you have completed all preparation steps from the previous lesson before proceeding. Have your rollback procedure ready.
+This is a high-risk operation.
+Ensure you have completed all preparation steps from the previous lesson before proceeding.
 ' %}
 
 ## Understanding the Drain Process
 
-When we drain a node, Kubernetes:
+When draining a node, Kubernetes performs three steps:
 
-1. **Cordons** the node (marks it unschedulable)
-2. **Evicts** all pods (respecting PDBs)
-3. **Reschedules** pods on remaining nodes
+1. **Cordon** - marks the node as unschedulable so no new pods land on it
+2. **Evict** - sends termination signals to all pods, respecting Pod Disruption Budgets
+3. **Reschedule** - controllers recreate evicted pods on remaining nodes
 
 ```mermaid!
 flowchart LR
@@ -57,200 +58,140 @@ flowchart LR
   class A3 drained
 ```
 
+DaemonSet pods are a special case.
+The `--ignore-daemonsets` flag tells the drain to skip them since they're meant to run on every node and will be cleaned up when the node is removed.
+
 ## Pre-Drain Verification
 
-### Final Health Check
-
 ```bash
-# Connect to Cluster A
 export KUBECONFIG=/path/to/cluster-a-kubeconfig
 
 # Verify all nodes are Ready
 kubectl get nodes
 
-# Check for problematic pods
+# Check for problematic pods (should be empty or only show Completed jobs)
 kubectl get pods -A | grep -v Running | grep -v Completed
 
 # Verify PDBs won't block the drain
 kubectl get pdb -A
 ```
 
-### Record Current State
+## Executing the Drain
+
+### Cordon the Node
+
+Mark Node 3 as unschedulable:
 
 ```bash
-# Save current pod distribution
-kubectl get pods -A -o wide > /root/pre-drain-pods.txt
-
-# Save node status
-kubectl get nodes -o yaml > /root/pre-drain-nodes.yaml
-
-# Save events
-kubectl get events -A --sort-by='.lastTimestamp' > /root/pre-drain-events.txt
-```
-
-## Cordon Node 3
-
-First, mark Node 3 as unschedulable to prevent new pods from being scheduled:
-
-```bash
-# Cordon the node
 kubectl cordon node3
-
-# Verify
 kubectl get nodes
-
-# Expected output:
-# NAME    STATUS                     ROLES    AGE   VERSION
-# node1   Ready                      master   ...   ...
-# node2   Ready                      <none>   ...   ...
-# node3   Ready,SchedulingDisabled   <none>   ...   ...
 ```
 
-## Monitor During Drain
+Expected output shows `SchedulingDisabled`:
 
-Open a separate terminal to monitor the drain process:
-
-```bash
-# Terminal 2: Watch pod status
-watch -n 2 'kubectl get pods -A -o wide | grep -E "Terminating|Pending|ContainerCreating"'
-
-# Terminal 3: Watch node status
-watch -n 2 'kubectl get nodes'
-
-# Terminal 4: Watch events
-kubectl get events -A --watch
+```
+NAME    STATUS                     ROLES    AGE   VERSION
+node1   Ready                      master   30d   v1.28.5+k3s1
+node2   Ready                      <none>   30d   v1.28.5+k3s1
+node3   Ready,SchedulingDisabled   <none>   30d   v1.28.5+k3s1
 ```
 
-## Execute the Drain
+### Monitor the Drain
 
-Now drain the node:
+In a separate terminal, watch for pod transitions:
 
 ```bash
-# Drain with safeguards
+watch -n 2 'kubectl get pods -A -o wide | grep -E "node3|Terminating|Pending|ContainerCreating"'
+```
+
+### Drain the Node
+
+```bash
 kubectl drain node3 \
   --ignore-daemonsets \
   --delete-emptydir-data \
   --grace-period=300 \
   --timeout=600s
-
-# Explanation:
-# --ignore-daemonsets: DaemonSet pods will be recreated on other nodes
-# --delete-emptydir-data: Allow eviction of pods using emptyDir
-# --grace-period=300: Give pods 5 minutes to shut down gracefully
-# --timeout=600s: Fail if drain doesn't complete in 10 minutes
 ```
 
-### Handling Drain Issues
+| Flag                     | Purpose                                                |
+| ------------------------ | ------------------------------------------------------ |
+| `--ignore-daemonsets`    | Skip DaemonSet pods (they'll be removed with the node) |
+| `--delete-emptydir-data` | Allow eviction of pods using emptyDir volumes          |
+| `--grace-period=300`     | Give pods 5 minutes to shut down gracefully            |
+| `--timeout=600s`         | Fail if drain doesn't complete in 10 minutes           |
 
-If the drain is blocked:
+### Handling Blocked Drains
 
-#### PDB Blocking Eviction
+**PDB blocking eviction:**
 
 ```bash
 # Check which PDB is blocking
 kubectl get pdb -A
 
-# Temporarily adjust PDB if safe (be careful!)
-# kubectl patch pdb <name> -n <namespace> -p '{"spec":{"minAvailable":0}}'
-
-# Or force drain (DANGEROUS - may cause downtime)
-# kubectl drain node3 --ignore-daemonsets --delete-emptydir-data --force
+# If safe, temporarily reduce the minimum (restore after drain!)
+kubectl patch pdb <name> -n <namespace> -p '{"spec":{"minAvailable":0}}'
 ```
 
-#### Stuck Terminating Pods
+**Stuck terminating pods:**
 
 ```bash
 # Find stuck pods
 kubectl get pods -A --field-selector spec.nodeName=node3 | grep Terminating
 
-# Force delete if necessary (data may be lost!)
-# kubectl delete pod <pod-name> -n <namespace> --grace-period=0 --force
+# Force delete if necessary (may lose in-flight data)
+kubectl delete pod <pod-name> -n <namespace> --grace-period=0 --force
 ```
 
-#### Local Storage Issues
+**Local storage preventing eviction:**
+
+Pods with hostPath or local-path-provisioner volumes may block the drain.
+Back up any important data, then use `--force` or delete the pod manually.
+
+## Removing Node 3
+
+### Verify Drain Success
 
 ```bash
-# Find pods with local storage
+# Should show only DaemonSet pods or be empty
 kubectl get pods -A -o wide --field-selector spec.nodeName=node3
 
-# For pods using local-path-provisioner or hostPath:
-# 1. Backup the data first
-# 2. Use --force or handle the PVC migration separately
-```
-
-## Verify Drain Success
-
-```bash
-# Check no pods remain on Node 3 (except DaemonSets)
-kubectl get pods -A -o wide --field-selector spec.nodeName=node3
-
-# Verify workloads are running on other nodes
+# Verify workloads are running elsewhere
 kubectl get pods -A | grep -v Running | grep -v Completed
-
-# Check node status
-kubectl get nodes
 ```
 
-## Remove Node from k3s Cluster
-
-Once drained, remove Node 3 from the cluster:
+### Delete from Cluster
 
 ```bash
-# Delete the node from cluster
 kubectl delete node node3
-
-# Verify
 kubectl get nodes
-
-# Expected: Only node1 and node2 remain
 ```
 
-## On Node 3: Stop k3s
-
-SSH to Node 3 and stop the k3s agent:
+### Stop k3s on Node 3
 
 ```bash
-# SSH to Node 3
 ssh root@node3
 
-# Stop k3s agent
-systemctl stop k3s-agent
-
-# Disable k3s agent
-systemctl disable k3s-agent
-
-# Verify
-systemctl status k3s-agent
+sudo systemctl stop k3s-agent
+sudo systemctl disable k3s-agent
 ```
 
-## Verify Cluster A Stability
+## Verification
 
-Before proceeding with the OS reinstall, verify Cluster A is stable:
+### Cluster A Stability
 
 ```bash
-# Back on your workstation, connected to Cluster A
-
-# Check node status
+# Check remaining nodes
 kubectl get nodes
 
-# Expected:
-# NAME    STATUS   ROLES    AGE   VERSION
-# node1   Ready    master   ...   ...
-# node2   Ready    <none>   ...   ...
-
-# Check all pods are running
+# Verify all pods are running
 kubectl get pods -A | grep -v Running | grep -v Completed
 
-# Check for any resource pressure
-kubectl describe nodes | grep -A 5 "Allocated resources"
-
-# Verify critical services are responding
-# (Test your actual services here)
+# Check resource pressure
+kubectl top nodes
 ```
 
-## Current State
-
-After successful drain:
+### Current State
 
 ```mermaid!
 flowchart LR
@@ -274,53 +215,23 @@ flowchart LR
   class N3 drained
 ```
 
-Node 3 is drained, stopped, and ready for OS reinstall.
+## Rollback Procedure
 
-## Document the Transition
-
-```bash
-# Record the transition
-cat <<EOF >> /root/migration-log.txt
-=== Node 3 Drain Complete ===
-Timestamp: $(date)
-Cluster A nodes: $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}')
-Pod count: $(kubectl get pods -A --no-headers | wc -l)
-Pods not Running: $(kubectl get pods -A --no-headers | grep -v Running | grep -v Completed | wc -l)
-EOF
-```
-
-## Rollback Point
-
-If issues arise at this stage:
+If issues arise and you need Node 3 back in Cluster A:
 
 ```bash
-# Rollback procedure:
+# On Node 3
+ssh root@node3
+sudo systemctl start k3s-agent
 
-# 1. On Node 3, restart k3s agent
-ssh root@node3 "systemctl start k3s-agent"
-
-# 2. Wait for node to rejoin (may need token)
+# On your workstation (may need to wait for node to rejoin)
 kubectl get nodes
-
-# 3. Uncordon if needed
 kubectl uncordon node3
-
-# 4. Verify workloads redistribute
-kubectl get pods -A -o wide
 ```
-
-## Ready for OS Installation
-
-Node 3 is now:
-
-- Drained of all pods
-- Removed from Cluster A
-- k3s agent stopped
-- Ready for Rocky Linux installation
-
-In the next lesson, we'll install Rocky Linux 10 and RKE2 on Node 3, joining it to Cluster B as the second control
-plane node.
 
 {% include alert.liquid.html type='info' title='Proceed Promptly' content='
-With Node 3 drained, Cluster A is running at reduced capacity. Proceed with the OS installation without unnecessary delay to minimize this window.
+With Node 3 drained, Cluster A is running at reduced capacity.
+Proceed with the OS installation without unnecessary delay.
 ' %}
+
+In the next lesson, we'll install Rocky Linux 10 and RKE2 on Node 3, joining it to Cluster B as the second control plane.

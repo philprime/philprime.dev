@@ -7,15 +7,14 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 3
 guide_lesson_id: 11
 guide_lesson_abstract: >
-  Prepare Node 3 for migration by analyzing workloads, planning the drain, and ensuring Cluster A can handle
-  reduced capacity.
+  Prepare Node 3 for migration by analyzing workloads, verifying cluster capacity, and creating backups.
 guide_lesson_conclusion: >
-  Node 3 is prepared for migration with all workloads identified and Cluster A ready to absorb the capacity reduction.
+  Node 3 is prepared for migration with workloads identified, backups created, and Cluster A ready for reduced capacity.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-11.md
 ---
 
-We're now entering the critical phase of the migration. In this lesson, we'll prepare Node 3 for migration from
-Cluster A (k3s) to Cluster B (RKE2).
+We're entering the critical phase of the migration.
+In this lesson, we'll prepare Node 3 for migration from Cluster A (k3s) to Cluster B (RKE2).
 
 {% include guide-overview-link.liquid.html %}
 
@@ -42,247 +41,204 @@ flowchart LR
   class B clusterB
 ```
 
-## Pre-Migration Analysis
+## Understanding the Drain Process
 
-### Analyze Workloads on Node 3
+When you drain a node, Kubernetes evicts all pods and marks the node as unschedulable.
+Pods managed by controllers (Deployments, StatefulSets, DaemonSets) will be recreated on other nodes.
+Standalone pods without controllers will be deleted permanently.
 
-First, understand what's running on Node 3:
+Before draining, you need to understand:
+
+- Which workloads are running on Node 3
+- Whether remaining nodes have capacity for those workloads
+- Which pods have local storage that won't migrate automatically
+- What Pod Disruption Budgets might block the drain
+
+## Analyzing Workloads
+
+Every cluster is different.
+The workloads running on your Node 3 will depend on your specific applications, scheduling constraints, and how pods were distributed.
+The commands below provide general guidance for discovering what needs attention before draining.
+
+### Pods on Node 3
 
 ```bash
-# Connect to Cluster A
 export KUBECONFIG=/path/to/cluster-a-kubeconfig
 
-# List all pods on Node 3
 kubectl get pods -A -o wide --field-selector spec.nodeName=node3
-
-# Get a summary by namespace
-kubectl get pods -A --field-selector spec.nodeName=node3 -o jsonpath='{range .items[*]}{.metadata.namespace}{"\n"}{end}' | sort | uniq -c
-
-# Check for DaemonSet pods (will be recreated on other nodes)
-kubectl get pods -A -o wide --field-selector spec.nodeName=node3 | grep -v "DaemonSet"
 ```
 
-### Identify Critical Workloads
+Example output:
+
+```
+NAMESPACE     NAME                      READY   STATUS    NODE
+default       web-app-7d4b8c6f9-x2k9p   1/1     Running   node3
+monitoring    prometheus-0              1/1     Running   node3
+kube-system   cilium-agent-node3        1/1     Running   node3
+```
+
+DaemonSet pods (like `cilium-agent`) will be recreated automatically on other nodes.
+Application pods need to be rescheduled, which happens automatically if they're managed by a Deployment or StatefulSet.
+
+### Critical Workloads
+
+**StatefulSets** may have ordered shutdown requirements:
 
 ```bash
-# Check for StatefulSets
 kubectl get statefulsets -A
+```
 
-# Check for pods with local storage
+```
+NAMESPACE    NAME         READY   AGE
+database     postgres     1/1     30d
+monitoring   prometheus   1/1     15d
+```
+
+If a StatefulSet pod runs on Node 3, it will be recreated on another node.
+For databases, verify replication is healthy before proceeding.
+
+**Pods with local storage** won't migrate automatically:
+
+```bash
 kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}: {.spec.volumes[*].name}{"\n"}{end}' | grep -E "local|hostPath"
+```
 
-# Check Pod Disruption Budgets
+```
+monitoring/prometheus-0: data local-storage config
+```
+
+These pods use node-local data that won't follow them to another node.
+Back up any important data before draining.
+
+**Pod Disruption Budgets** may block the drain:
+
+```bash
 kubectl get pdb -A
 ```
 
-### Verify Cluster A Can Handle Reduced Capacity
-
-```bash
-# Check current resource usage
-kubectl top nodes
-
-# Calculate total resources vs. used
-kubectl describe nodes | grep -A 5 "Allocated resources"
-
-# Verify Node 2 has capacity for Node 3's workloads
-TOTAL_PODS_NODE3=$(kubectl get pods -A --field-selector spec.nodeName=node3 --no-headers | wc -l)
-echo "Total pods on Node 3: $TOTAL_PODS_NODE3"
+```
+NAMESPACE   NAME         MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS
+default     web-app      2               N/A               1
+database    postgres     1               N/A               0
 ```
 
-## Prepare for Workload Migration
+If `ALLOWED DISRUPTIONS` is 0, the drain will wait or fail.
+You may need to temporarily relax the PDB or ensure enough replicas are running elsewhere.
 
-### Check Replica Counts
-
-Ensure critical deployments have enough replicas:
+**Single-replica deployments** will cause brief unavailability:
 
 ```bash
-# List deployments and their replica counts
-kubectl get deployments -A
-
-# Identify single-replica deployments
 kubectl get deployments -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}: {.spec.replicas}{"\n"}{end}' | grep ": 1$"
 ```
 
-### Scale Up Critical Deployments (If Needed)
-
-For deployments that must remain available during the drain:
-
-```bash
-# Example: Scale up a critical deployment temporarily
-# kubectl scale deployment <name> -n <namespace> --replicas=2
-
-# Note: Only do this if resources allow
+```
+default/backend-api: 1
+tools/cron-runner: 1
 ```
 
-### Check Persistent Volumes
+These workloads will be unavailable between eviction and rescheduling (typically seconds to minutes).
+
+### Capacity Verification
 
 ```bash
-# List PVCs on Node 3
-kubectl get pvc -A
-
-# Check PV affinity (some PVs may be node-specific)
-kubectl get pv -o jsonpath='{range .items[*]}{.metadata.name}: {.spec.nodeAffinity}{"\n"}{end}'
+kubectl top nodes
 ```
 
-## Backup Critical Data
+```
+NAME    CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
+node1   450m         11%    2100Mi          26%
+node2   380m         9%     1800Mi          22%
+node3   520m         13%    2400Mi          30%
+```
 
-### Backup k3s etcd
+After draining Node 3, its workloads move to Nodes 1-2.
+Verify the remaining nodes have enough headroom (CPU% and MEMORY% should stay below 80% after absorbing Node 3's load).
+
+## Creating Backups
+
+### k3s etcd Backup
 
 ```bash
 # On Node 1 (k3s control plane)
 ssh root@node1
 
-# Create backup
 sudo k3s etcd-snapshot save --name pre-node3-migration-$(date +%Y%m%d-%H%M%S)
-
-# Verify backup
 sudo k3s etcd-snapshot ls
 ```
 
-### Backup Application Data
+### Application Data
 
-For each critical application with persistent data:
+For applications with persistent data, create application-level backups:
 
 ```bash
-# Example: Backup a database
+# Example: PostgreSQL database
 kubectl exec -n <namespace> <pod-name> -- pg_dump -U postgres > backup.sql
 
-# Or use your backup solution
-# velero backup create pre-migration-backup
+# Or use Velero if available
+velero backup create pre-migration-backup
 ```
 
-## Create Migration Runbook
+## Verifying Cluster B Readiness
 
-Document the specific steps for your environment:
+Before proceeding, confirm Cluster B is ready to receive Node 3:
 
 ```bash
-cat <<'EOF' > /root/node3-migration-runbook.md
-# Node 3 Migration Runbook
-
-## Pre-Migration Checklist
-- [ ] All critical workloads identified
-- [ ] Cluster A capacity verified
-- [ ] k3s etcd backup created
-- [ ] Application data backed up
-- [ ] Stakeholders notified
-
-## Pods Currently on Node 3
-$(kubectl get pods -A --field-selector spec.nodeName=node3 -o wide)
-
-## Critical Workloads
-- List your critical workloads here
-
-## Rollback Procedure
-1. Reinstall original OS on Node 3
-2. Rejoin Node 3 to k3s cluster
-3. Restore workloads if needed
-
-## Contact Information
-- On-call: <contact>
-- Escalation: <contact>
-EOF
-```
-
-## Communication Preparation
-
-### Notify Stakeholders
-
-Prepare a communication for affected parties:
-
-```
-Subject: Kubernetes Cluster Migration - Node 3 Transition
-
-Dear Team,
-
-We are performing a planned migration of Node 3 from our k3s cluster to a new RKE2 cluster.
-
-Timeline: [DATE/TIME]
-Expected Duration: [DURATION]
-Impact: Minimal - workloads will be redistributed to remaining nodes
-
-What to expect:
-- Brief pod restarts as workloads are rescheduled
-- No service downtime expected due to replica distribution
-
-Actions Required: None
-
-Please contact [NAME] with any questions.
-```
-
-## Verify Cluster B Readiness
-
-Before proceeding, confirm Cluster B is ready:
-
-```bash
-# Switch to Cluster B
 export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
 
-# Run verification
-/root/verify-cluster.sh
-
-# Confirm all checks pass
+kubectl get nodes
+cilium status
 ```
 
-## Prepare Rocky Linux Installation
+### Prepare RKE2 Configuration
 
-Have the Rocky Linux installation ready:
+Save the configuration Node 3 will use when joining Cluster B:
 
 ```bash
-# On Node 3, prepare for reinstallation:
-# 1. Access Hetzner Robot console
-# 2. Enable Rescue System
-# 3. Have installimage configuration ready
-
-# Save the RKE2 configuration that will be used:
 cat <<'EOF' > /root/node3-rke2-config.yaml
 server: https://10.1.1.4:9345
 token: <your-token-from-node4>
 tls-san:
   - node3
-  - node3.k8s.example.com
+  - node3.k8s.local
   - 10.1.1.3
+  - fd00:1::3
 cni: none
-node-ip: 10.1.1.3
-advertise-address: 10.1.1.3
+node-ip: 10.1.1.3,fd00:1::3
 EOF
 ```
 
-## Pre-Migration Verification Checklist
-
-Complete this checklist before proceeding to the drain:
+## Pre-Migration Checklist
 
 ### Cluster A Health
 
 - [ ] All nodes are Ready
-- [ ] No pods in Error/CrashLoopBackOff state
+- [ ] No pods in Error or CrashLoopBackOff state
 - [ ] etcd backup created and verified
 - [ ] Application backups completed
 
 ### Capacity Planning
 
 - [ ] Node 2 has sufficient capacity for Node 3's workloads
-- [ ] PDB configurations reviewed
-- [ ] Single-replica deployments identified
+- [ ] Pod Disruption Budgets reviewed
+- [ ] Single-replica deployments identified and acceptable
 
 ### Cluster B Health
 
 - [ ] Node 4 is Ready
 - [ ] All system pods running
 - [ ] Cilium healthy
-- [ ] Prepared RKE2 config for Node 3
+- [ ] RKE2 config prepared for Node 3
 
 ### External Dependencies
 
-- [ ] Rocky Linux installation media ready
+- [ ] Rocky Linux installation ready (if reinstalling OS)
 - [ ] IPMI/Rescue system access verified
 - [ ] Network configuration documented
-- [ ] Stakeholders notified
-
-## Ready to Proceed
-
-With preparation complete, we're ready for the critical 2-node transition. In the next lesson, we'll drain Node 3
-from Cluster A.
+- [ ] DNS not pointing to Node 3
 
 {% include alert.liquid.html type='warning' title='Point of No Return' content='
-After draining Node 3, you should proceed with the OS reinstallation promptly. Extended delays in the drained state may cause workload issues on the remaining nodes.
+After draining Node 3, proceed with the OS reinstallation promptly.
+Extended delays in the drained state may cause workload issues on remaining nodes due to reduced capacity.
 ' %}
+
+In the next lesson, we'll drain Node 3 from Cluster A.

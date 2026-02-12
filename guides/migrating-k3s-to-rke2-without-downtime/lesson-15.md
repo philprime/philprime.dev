@@ -13,345 +13,188 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-15.md
 ---
 
-With all three control plane nodes running, we need to thoroughly verify the cluster's high availability before
-migrating production workloads.
+With all three control plane nodes running, we need to verify the cluster's high availability before migrating production workloads.
 
 {% include guide-overview-link.liquid.html %}
 
-## HA Verification Overview
+## What Makes a Cluster HA
 
-We'll verify:
+A highly available Kubernetes cluster requires:
 
-1. etcd cluster health and quorum
-2. Control plane component distribution
-3. Failover capability
-4. Network connectivity between all nodes
-5. System pod distribution
+| Component          | Requirement                     | Our Setup   |
+| ------------------ | ------------------------------- | ----------- |
+| etcd               | 3+ members for quorum tolerance | 3 members   |
+| API Server         | Multiple endpoints              | 3 endpoints |
+| Controller Manager | Leader election across nodes    | Enabled     |
+| Scheduler          | Leader election across nodes    | Enabled     |
 
-## 1. etcd Cluster Verification
+If any single node fails, the remaining two maintain quorum and continue serving requests.
 
-### Check Member Status
+## Verifying etcd
+
+### Member Status
 
 ```bash
-# List all etcd members
 etcdctl member list --write-out=table
-
-# Expected output:
-# +------------------+---------+-------------+------------------------+------------------------+------------+
-# |        ID        | STATUS  |    NAME     |       PEER ADDRS       |      CLIENT ADDRS      | IS LEARNER |
-# +------------------+---------+-------------+------------------------+------------------------+------------+
-# | xxxxxxxxxxxxx    | started | node2-xxxxx | https://10.1.1.2:2380  | https://10.1.1.2:2379  |      false |
-# | yyyyyyyyyyyyy    | started | node3-xxxxx | https://10.1.1.3:2380  | https://10.1.1.3:2379  |      false |
-# | zzzzzzzzzzzzz    | started | node4-xxxxx | https://10.1.1.4:2380  | https://10.1.1.4:2379  |      false |
-# +------------------+---------+-------------+------------------------+------------------------+------------+
 ```
 
-### Check Endpoint Health
+Should show 3 members, all started:
+
+```
++------------------+---------+-------------+-----------------------+-----------------------+
+|        ID        | STATUS  |    NAME     |      PEER ADDRS       |     CLIENT ADDRS      |
++------------------+---------+-------------+-----------------------+-----------------------+
+| xxxxxxxxxxxx     | started | node2-xxxxx | https://10.1.1.2:2380 | https://10.1.1.2:2379 |
+| yyyyyyyyyyyy     | started | node3-xxxxx | https://10.1.1.3:2380 | https://10.1.1.3:2379 |
+| zzzzzzzzzzzz     | started | node4-xxxxx | https://10.1.1.4:2380 | https://10.1.1.4:2379 |
++------------------+---------+-------------+-----------------------+-----------------------+
+```
+
+### Endpoint Health
 
 ```bash
-# Check all endpoints
 etcdctl endpoint health --cluster
-
-# Expected:
-# https://10.1.1.2:2379 is healthy: successfully committed proposal: took = 5.123ms
-# https://10.1.1.3:2379 is healthy: successfully committed proposal: took = 4.567ms
-# https://10.1.1.4:2379 is healthy: successfully committed proposal: took = 5.789ms
 ```
 
-### Check Leader Status
+All three endpoints should report healthy:
+
+```
+https://10.1.1.2:2379 is healthy: successfully committed proposal: took = 5.1ms
+https://10.1.1.3:2379 is healthy: successfully committed proposal: took = 4.8ms
+https://10.1.1.4:2379 is healthy: successfully committed proposal: took = 5.2ms
+```
+
+### Leader Status
 
 ```bash
-# Get detailed endpoint status
 etcdctl endpoint status --cluster --write-out=table
-
-# Expected: One node shows IS LEADER = true
-# +------------------------+------------------+---------+---------+-----------+------------+-----------+...+----------+
-# |        ENDPOINT        |        ID        | VERSION | DB SIZE | IS LEADER | IS LEARNER | RAFT TERM | ..| RAFT IDX |
-# +------------------------+------------------+---------+---------+-----------+------------+-----------+...+----------+
-# | https://10.1.1.2:2379  | xxxx             | 3.5.x   | 6.1 MB  | false     | false      | 3         | ..| 12345    |
-# | https://10.1.1.3:2379  | yyyy             | 3.5.x   | 6.1 MB  | false     | false      | 3         | ..| 12345    |
-# | https://10.1.1.4:2379  | zzzz             | 3.5.x   | 6.1 MB  | true      | false      | 3         | ..| 12345    |
-# +------------------------+------------------+---------+---------+-----------+------------+-----------+...+----------+
 ```
 
-## 2. Test Failover Capability
+One node should show `IS LEADER = true`.
+The other two show `false`, indicating they're followers ready to take over if needed.
 
-### Simulate Node Failure (Non-Destructive)
+## Verifying Control Plane Components
 
-Test that the cluster remains operational if one node's etcd is temporarily unavailable:
+### API Server Endpoints
 
 ```bash
-# On Node 4, temporarily stop RKE2 (or use any node except the leader)
-# Note: This will cause temporary disruption to THIS node only
-# The cluster should remain functional
+kubectl get endpoints -n default kubernetes
+```
 
-# From your workstation, monitor cluster
+Should list all three control plane IPs:
+
+```
+NAME         ENDPOINTS                                      AGE
+kubernetes   10.1.1.2:6443,10.1.1.3:6443,10.1.1.4:6443     4h
+```
+
+Clients can connect to any of these endpoints.
+If one fails, they automatically failover to another.
+
+### Controller Manager and Scheduler
+
+These components use leader election—only one instance is active at a time:
+
+```bash
+kubectl get leases -n kube-system kube-controller-manager -o jsonpath='{.spec.holderIdentity}'
+echo
+kubectl get leases -n kube-system kube-scheduler -o jsonpath='{.spec.holderIdentity}'
+echo
+```
+
+Each shows which node currently holds the lease.
+If that node fails, another node acquires the lease within seconds.
+
+## Testing Failover (Optional)
+
+To verify the cluster survives a node failure, you can temporarily stop one node:
+
+```bash
+# Monitor from your workstation
 watch kubectl get nodes
 
-# In another terminal, on Node 4:
-ssh root@node4 "systemctl stop rke2-server"
+# Stop one node (not the etcd leader for faster recovery)
+ssh root@node2 "sudo systemctl stop rke2-server"
+```
 
-# Wait 30 seconds and observe:
-# - Node 4 should become NotReady
-# - etcd should elect new leader
-# - kubectl commands should still work (might be slow briefly)
+Within 30-60 seconds:
 
-# Check etcd (from Node 2 or 3)
-ssh root@node3 "etcdctl member list"
-ssh root@node3 "etcdctl endpoint health --cluster"
+- Node 2 becomes `NotReady`
+- etcd elects a new leader if needed
+- `kubectl` commands continue working via the other nodes
 
-# One endpoint will be unhealthy, but cluster functions
+Restore the node:
 
-# Restart Node 4
-ssh root@node4 "systemctl start rke2-server"
-
-# Wait for recovery
-watch kubectl get nodes
+```bash
+ssh root@node2 "sudo systemctl start rke2-server"
 ```
 
 {% include alert.liquid.html type='info' title='Test Carefully' content='
-Only perform this test if you are confident in your ability to recover. The cluster should handle single-node failure gracefully, but always have rollback plans ready.
+Only perform this test if you are comfortable with cluster recovery procedures.
+The cluster should handle single-node failure gracefully.
 ' %}
 
-### Verify Leader Election
+## Verifying Networking and Pods
+
+### Cilium Status
 
 ```bash
-# After restart, check leader status
-etcdctl endpoint status --cluster --write-out=table
-
-# A new leader may have been elected (or the same node if it recovered quickly)
+kubectl get pods -n kube-system -l k8s-app=cilium -o wide
+cilium status
 ```
 
-## 3. Control Plane Component Verification
+Should show one Cilium pod per node, all Running.
 
-### Check API Server Endpoints
-
-```bash
-# List API server endpoints
-kubectl get endpoints -n default kubernetes
-
-# Should show all 3 control plane IPs:
-# NAME         ENDPOINTS                                         AGE
-# kubernetes   10.1.1.2:6443,10.1.1.3:6443,10.1.1.4:6443        3h
-```
-
-### Verify Controller Manager and Scheduler
-
-These run as leader-elected singletons:
+### System Pods
 
 ```bash
-# Check controller-manager leader
-kubectl get leases -n kube-system kube-controller-manager -o yaml | grep holderIdentity
-
-# Check scheduler leader
-kubectl get leases -n kube-system kube-scheduler -o yaml | grep holderIdentity
-
-# Both should show one of the nodes as the holder
-```
-
-## 4. Network Connectivity Matrix
-
-### Test Node-to-Node Connectivity
-
-```bash
-# Create a connectivity test script
-cat <<'SCRIPT' > /root/test-connectivity.sh
-#!/bin/bash
-NODES="10.1.1.2 10.1.1.3 10.1.1.4"
-
-echo "=== Connectivity Matrix ==="
-for from in $NODES; do
-    for to in $NODES; do
-        if [ "$from" != "$to" ]; then
-            result=$(ssh -o ConnectTimeout=2 root@$from "ping -c 1 -W 1 $to > /dev/null 2>&1 && echo OK || echo FAIL")
-            echo "$from -> $to: $result"
-        fi
-    done
-done
-
-echo ""
-echo "=== API Server Accessibility ==="
-for node in $NODES; do
-    for api in $NODES; do
-        result=$(ssh -o ConnectTimeout=2 root@$node "nc -zv -w 2 $api 6443 2>&1 | grep -q succeeded && echo OK || echo FAIL")
-        echo "$node -> $api:6443: $result"
-    done
-done
-SCRIPT
-
-chmod +x /root/test-connectivity.sh
-/root/test-connectivity.sh
-```
-
-### Verify Cilium Connectivity
-
-```bash
-# Run Cilium connectivity test
-cilium connectivity test
-
-# This performs comprehensive network tests
-# Some tests may be skipped on control-plane-only clusters
-```
-
-## 5. System Pod Distribution
-
-### Check Pod Distribution
-
-```bash
-# Get pods with node assignment
 kubectl get pods -n kube-system -o wide
-
-# Verify pods are distributed:
-# - Cilium: one per node
-# - CoreDNS: distributed (usually 2 replicas)
-# - Other components: appropriately placed
 ```
 
-### Check for Pending Pods
+Verify pods are distributed across nodes:
+
+- Cilium agent on each node
+- CoreDNS replicas on different nodes
+- No pods in Pending or Error state
+
+### Resource Availability
 
 ```bash
-# Ensure no pods are stuck
-kubectl get pods -A | grep -v Running | grep -v Completed
-
-# Should be empty or show only completed jobs
-```
-
-## 6. Resource Availability
-
-### Check Node Resources
-
-```bash
-# View resource usage
 kubectl top nodes
-
-# Example output:
-# NAME    CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
-# node2   150m         3%     1200Mi          15%
-# node3   140m         3%     1150Mi          14%
-# node4   160m         4%     1250Mi          16%
-
-# Check allocatable resources
-kubectl describe nodes | grep -A 5 "Allocatable:"
 ```
 
-### Verify Sufficient Capacity for Workloads
+Check that nodes have headroom for workloads:
 
-```bash
-# Calculate available resources
-for node in node2 node3 node4; do
-    echo "=== $node ==="
-    kubectl describe node $node | grep -A 10 "Allocated resources:"
-done
+```
+NAME    CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
+node2   150m         3%     1200Mi          15%
+node3   140m         3%     1150Mi          14%
+node4   160m         4%     1250Mi          16%
 ```
 
-## 7. Create HA Verification Report
-
-```bash
-cat <<'EOF' > /root/ha-verification-report.sh
-#!/bin/bash
-echo "================================================================"
-echo "           RKE2 Cluster HA Verification Report"
-echo "           Generated: $(date)"
-echo "================================================================"
-echo ""
-
-echo "=== Nodes ==="
-kubectl get nodes -o wide
-echo ""
-
-echo "=== etcd Members ==="
-etcdctl member list --write-out=table
-echo ""
-
-echo "=== etcd Health ==="
-etcdctl endpoint health --cluster
-echo ""
-
-echo "=== etcd Status ==="
-etcdctl endpoint status --cluster --write-out=table
-echo ""
-
-echo "=== API Server Endpoints ==="
-kubectl get endpoints -n default kubernetes
-echo ""
-
-echo "=== Controller Manager Leader ==="
-kubectl get leases -n kube-system kube-controller-manager -o jsonpath='{.spec.holderIdentity}'
-echo ""
-
-echo "=== Scheduler Leader ==="
-kubectl get leases -n kube-system kube-scheduler -o jsonpath='{.spec.holderIdentity}'
-echo ""
-
-echo "=== System Pods ==="
-kubectl get pods -n kube-system -o wide
-echo ""
-
-echo "=== Node Resources ==="
-kubectl top nodes
-echo ""
-
-echo "=== Cilium Status ==="
-cilium status --brief
-echo ""
-
-echo "================================================================"
-echo "                    Verification Complete"
-echo "================================================================"
-EOF
-
-chmod +x /root/ha-verification-report.sh
-/root/ha-verification-report.sh | tee /root/ha-verification-$(date +%Y%m%d).txt
-```
-
-## HA Verification Checklist
-
-Complete this checklist before proceeding:
+## Verification Checklist
 
 ### etcd
 
-- [ ] 3 members in the cluster
+- [ ] 3 members listed and started
 - [ ] All endpoints healthy
-- [ ] Leader election working
-- [ ] Can survive single node failure
+- [ ] One leader elected
 
 ### Control Plane
 
-- [ ] API server accessible on all nodes
-- [ ] Controller manager leader election working
-- [ ] Scheduler leader election working
+- [ ] API server accessible on all 3 nodes
+- [ ] Controller manager lease held
+- [ ] Scheduler lease held
 
 ### Networking
 
-- [ ] All nodes can reach each other
 - [ ] Cilium running on all nodes
-- [ ] DNS resolution working
+- [ ] `cilium status` shows healthy
 
 ### Resources
 
 - [ ] All nodes Ready
-- [ ] Sufficient capacity for workloads
 - [ ] No pods in error state
+- [ ] Sufficient CPU/memory headroom
 
-## Summary
-
-Cluster B now provides:
-
-| Feature                | Status               |
-| ---------------------- | -------------------- |
-| Control Plane Nodes    | 3 (HA)               |
-| etcd Members           | 3 (quorum tolerant)  |
-| Node Failure Tolerance | 1                    |
-| API Availability       | Multi-endpoint       |
-| Networking             | Cilium (distributed) |
-
-## Ready for Workload Migration
-
-The cluster is verified and ready for:
-
-1. Storage setup (Longhorn + local-path)
-2. Ingress configuration (Traefik + Hetzner LB)
-3. Workload migration from Cluster A
-
-In the next section, we'll set up the infrastructure needed for workloads and migrate applications from the k3s
-cluster.
+With verification complete, the cluster is ready for storage setup and workload migration.

@@ -13,8 +13,8 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-14.md
 ---
 
-In this lesson, we'll migrate Node 2 from Cluster A to Cluster B. After this migration, Cluster B will have full
-high availability with 3 control plane nodes.
+In this lesson, we'll migrate Node 2 from Cluster A to Cluster B.
+After this migration, Cluster B will have full high availability with 3 control plane nodes.
 
 {% include guide-overview-link.liquid.html %}
 
@@ -41,57 +41,40 @@ flowchart LR
   class B clusterB
 ```
 
-## Risk Assessment
+This migration reduces Cluster A to a single node temporarily, but completes Cluster B's HA setup.
 
-This migration has moderate risk:
+## Understanding etcd Quorum
 
-- Cluster A will be reduced to a single node (Node 1 only)
-- After completion, Cluster B achieves HA (3 control planes)
-- All workloads remain on Cluster A during this process
+etcd uses the Raft consensus algorithm, which requires a majority of nodes to agree on any change.
+This majority is called quorum.
 
-## Prepare Node 2 for Migration
+| Nodes | Quorum Needed | Can Lose | HA Status |
+| ----- | ------------- | -------- | --------- |
+| 1     | 1             | 0        | None      |
+| 2     | 2             | 0        | None      |
+| 3     | 2             | 1        | HA        |
+| 5     | 3             | 2        | Better HA |
 
-### Verify Cluster A Can Run on Single Node
+With 2 nodes, losing either one breaks quorum.
+With 3 nodes, the cluster continues operating if one node fails.
+This is why achieving 3 control planes is a critical milestone.
 
-```bash
-# Connect to Cluster A
-export KUBECONFIG=/path/to/cluster-a-kubeconfig
+## Draining Node 2 from Cluster A
 
-# Check current pod distribution
-kubectl get pods -A -o wide
+The process is identical to Node 3.
+Create a k3s backup first, then drain and remove the node.
 
-# List pods on Node 2
-kubectl get pods -A --field-selector spec.nodeName=node2
-
-# Verify Node 1 can handle remaining workloads
-kubectl top node node1
-kubectl describe node node1 | grep -A 10 "Allocatable:"
-```
-
-### Backup k3s Data
+### Backup and Drain
 
 ```bash
-# On Node 1 (k3s control plane)
+# On Node 1
 ssh root@node1
 sudo k3s etcd-snapshot save --name pre-node2-migration-$(date +%Y%m%d-%H%M%S)
-```
 
-## Drain and Remove Node 2
+# From your workstation
+export KUBECONFIG=/path/to/cluster-a-kubeconfig
 
-### Cordon Node 2
-
-```bash
-# Cordon the node
 kubectl cordon node2
-
-# Verify
-kubectl get nodes
-```
-
-### Drain Node 2
-
-```bash
-# Drain with same safeguards as Node 3
 kubectl drain node2 \
   --ignore-daemonsets \
   --delete-emptydir-data \
@@ -99,165 +82,120 @@ kubectl drain node2 \
   --timeout=600s
 ```
 
-### Verify Workloads Moved to Node 1
+### Remove from Cluster
 
 ```bash
-# Check all pods are running on Node 1
-kubectl get pods -A -o wide
-
-# Verify no critical pods failed
-kubectl get pods -A | grep -v Running | grep -v Completed
-```
-
-### Remove Node 2 from k3s
-
-```bash
-# Delete node from cluster
 kubectl delete node node2
 
-# On Node 2, stop k3s
-ssh root@node2 "systemctl stop k3s-agent && systemctl disable k3s-agent"
+ssh root@node2 "sudo systemctl stop k3s-agent && sudo systemctl disable k3s-agent"
 ```
-
-## Cluster A Status
-
-Cluster A is now running on a single node, which makes it vulnerable to failure.
 
 {% include alert.liquid.html type='warning' title='Single Point of Failure' content='
-Cluster A is now extremely vulnerable. Any issue with Node 1 will cause complete cluster failure. Proceed with Node 2 installation promptly.
+Cluster A is now running on Node 1 only.
+Any issue with Node 1 will cause complete cluster failure.
+Proceed with Node 2 installation promptly.
 ' %}
 
-## Install Rocky Linux and RKE2 on Node 2
+## Installing RKE2 on Node 2
 
-### Prepare Node 2
+Follow the same process as Node 3 ([Lesson 13](/guides/migrating-k3s-to-rke2-without-downtime/lesson-13)):
 
-Follow the same setup process as previous nodes:
+1. Install Rocky Linux 10 ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
+2. Configure dual-stack networking with `10.1.1.2` and `fd00:1::2` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
+3. Configure firewall ([Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7))
 
-1. **Install Rocky Linux 10** using Hetzner Rescue System ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
-2. **Configure dual-stack vSwitch networking** with IP `10.1.1.2` and `fd00:1::2` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
-3. **Configure firewall** for control plane ports ([Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7))
-
-Set the hostname after installation:
+### Install and Configure RKE2
 
 ```bash
-hostnamectl set-hostname node2.k8s.example.com
-```
+sudo hostnamectl set-hostname node2
 
-Verify connectivity to existing cluster nodes:
+curl -sfL https://get.rke2.io | sudo sh -
+sudo systemctl enable rke2-server.service
 
-```bash
-ping -c 3 10.1.1.3    # IPv4 to Node 3
-ping -c 3 10.1.1.4    # IPv4 to Node 4
-ping6 -c 3 fd00:1::3  # IPv6 to Node 3
-ping6 -c 3 fd00:1::4  # IPv6 to Node 4
-```
-
-### Install RKE2
-
-```bash
-curl -sfL https://get.rke2.io | sh -
-systemctl enable rke2-server.service
-```
-
-### Configure RKE2 to Join Cluster
-
-```bash
-mkdir -p /etc/rancher/rke2
+sudo mkdir -p /etc/rancher/rke2
 
 TOKEN="<your-cluster-token>"
 
-cat <<EOF > /etc/rancher/rke2/config.yaml
-# Join existing cluster (can use any existing control plane)
+sudo tee /etc/rancher/rke2/config.yaml <<EOF
 server: https://10.1.1.4:9345
-
 token: ${TOKEN}
 
-# TLS SANs for this node (include both IPv4 and IPv6)
 tls-san:
   - node2
-  - node2.k8s.example.com
+  - node2.k8s.local
   - 10.1.1.2
   - fd00:1::2
 
 cni: none
-
-# Dual-stack node IPs
 node-ip: 10.1.1.2,fd00:1::2
 
-# Dual-stack cluster configuration (must match other nodes)
 cluster-cidr: 10.42.0.0/16,fd00:42::/56
 service-cidr: 10.43.0.0/16,fd00:43::/112
 cluster-dns: 10.43.0.10
 EOF
+
+sudo systemctl start rke2-server.service
+sudo journalctl -u rke2-server -f
 ```
 
-### Start RKE2
+## Verification
 
-```bash
-systemctl start rke2-server.service
-journalctl -u rke2-server -f
-```
-
-Wait for the node to join. This completes the etcd cluster with 3 members.
-
-## Verify 3-Node Control Plane
-
-### Check Nodes
+### Configure kubectl
 
 ```bash
 mkdir -p ~/.kube
-cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
-chmod 600 ~/.kube/config
+sudo cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
+sudo chown $(id -u):$(id -g) ~/.kube/config
+echo 'export PATH=$PATH:/var/lib/rancher/rke2/bin' >> ~/.bashrc
 export PATH=$PATH:/var/lib/rancher/rke2/bin
+```
 
+### Check 3-Node Control Plane
+
+```bash
 kubectl get nodes -o wide
+```
 
-# Expected output (note both IPs in INTERNAL-IP):
-# NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
-# node2   Ready    control-plane,etcd,master   1m    v1.28.x+rke2r1   10.1.1.2,fd00:1::2
-# node3   Ready    control-plane,etcd,master   1h    v1.28.x+rke2r1   10.1.1.3,fd00:1::3
-# node4   Ready    control-plane,etcd,master   3h    v1.28.x+rke2r1   10.1.1.4,fd00:1::4
+Expected output:
+
+```
+NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
+node2   Ready    control-plane,etcd,master   2m    v1.31.x+rke2r1   10.1.1.2,fd00:1::2
+node3   Ready    control-plane,etcd,master   2h    v1.31.x+rke2r1   10.1.1.3,fd00:1::3
+node4   Ready    control-plane,etcd,master   4h    v1.31.x+rke2r1   10.1.1.4,fd00:1::4
 ```
 
 ### Verify etcd HA
 
 ```bash
-# Check etcd member list
 etcdctl member list
-
-# Expected: 3 members
-# xxxx, started, node2-xxxx, https://10.1.1.2:2380, https://10.1.1.2:2379, false
-# yyyy, started, node3-xxxx, https://10.1.1.3:2380, https://10.1.1.3:2379, false
-# zzzz, started, node4-xxxx, https://10.1.1.4:2380, https://10.1.1.4:2379, true
-
-# Check cluster health
-etcdctl endpoint health --cluster
-
-# All 3 endpoints should be healthy
 ```
 
-### Verify HA Capability
+Should show 3 members:
 
-With 3 etcd members, the cluster can tolerate 1 node failure:
+```
+xxxx, started, node2-xxxx, https://10.1.1.2:2380, https://10.1.1.2:2379, false
+yyyy, started, node3-xxxx, https://10.1.1.3:2380, https://10.1.1.3:2379, false
+zzzz, started, node4-xxxx, https://10.1.1.4:2380, https://10.1.1.4:2379, true
+```
+
+Check cluster health:
 
 ```bash
-# Formula: (n/2)+1 for quorum
-# 3 nodes: need 2 for quorum (can lose 1)
-# 2 nodes: need 2 for quorum (can lose 0) - not HA!
-# 1 node: need 1 for quorum (can lose 0) - single point of failure
-
-# Check leader
+etcdctl endpoint health --cluster
 etcdctl endpoint status --cluster --write-out=table
 ```
+
+All 3 endpoints should be healthy, with one showing as leader.
 
 ### Verify Cilium
 
 ```bash
 kubectl get pods -n kube-system -l k8s-app=cilium -o wide
-
-# Should show 3 Cilium pods, one per node
 cilium status
 ```
+
+Should show 3 Cilium pods, one per node.
 
 ## Current State
 
@@ -267,10 +205,10 @@ flowchart LR
     A1["🧠 Node 1<br/><small>all workloads</small>"]
   end
 
-  subgraph B["Cluster B · RKE2 ✓"]
-    B2["🧠 Node 2 ✓"]
-    B3["🧠 Node 3 ✓"]
-    B4["🧠 Node 4 ✓"]
+  subgraph B["Cluster B · RKE2 ✓ HA"]
+    B2["🧠 Node 2"]
+    B3["🧠 Node 3"]
+    B4["🧠 Node 4"]
   end
 
   classDef clusterA fill:#2563eb,color:#fff,stroke:#1e40af
@@ -280,40 +218,7 @@ flowchart LR
   class B clusterB
 ```
 
-Cluster A has 1 node (minimal) while Cluster B now has **3 nodes with full HA**.
+Cluster B now has **3 control plane nodes with full HA**.
+The cluster can tolerate one node failure while maintaining quorum.
 
-## Critical Milestone Achieved
-
-Cluster B now has:
-
-- **3 control plane nodes** - full high availability
-- **3 etcd members** - can tolerate 1 node failure
-- **Cilium networking** - running on all nodes
-- **Ready for workloads** - can accept production traffic
-
-This is the point where Cluster B becomes production-ready.
-
-## Record Progress
-
-```bash
-cat <<EOF >> /root/migration-log.txt
-=== Cluster B Achieved HA ===
-Timestamp: $(date)
-Cluster B nodes: $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}')
-etcd members: 3
-HA Status: FULL - can tolerate 1 node failure
-Ready for workload migration: YES
-EOF
-```
-
-## Next Steps
-
-With Cluster B now fully HA, we can safely:
-
-1. Set up storage (Longhorn + local-path)
-2. Configure ingress (Traefik + Hetzner LB)
-3. Migrate workloads from Cluster A
-4. Switch DNS to Cluster B
-5. Decommission Cluster A
-
-In the next lesson, we'll verify the complete 3-node control plane setup before proceeding with workload migration.
+With the control plane complete, we can proceed to set up storage and ingress, then migrate workloads from Cluster A.

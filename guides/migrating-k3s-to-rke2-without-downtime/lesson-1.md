@@ -7,51 +7,49 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 1
 guide_lesson_id: 1
 guide_lesson_abstract: >
-  Understand the migration challenge, develop a comprehensive migration strategy with phased execution, and learn the
-  risk considerations for each phase.
+  Understand the migration challenge, develop a phased migration strategy, and learn the risk considerations for each phase.
 guide_lesson_conclusion: >
-  You now have a detailed migration strategy with clear phases, understand the current and target cluster states, and
-  know the risk levels for each step of the migration.
+  You now have a detailed migration strategy with clear phases and understand the risk levels for each step.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-1.md
 ---
 
 A successful zero-downtime migration requires meticulous planning.
-In this lesson, we'll establish the context for our migration, develop our complete migration strategy, and understand the risks involved.
+In this lesson, we'll establish the context for our migration, develop the complete strategy, and understand the risks involved.
 
 {% include guide-overview-link.liquid.html %}
 
 ## The Migration Challenge
 
 Migrating a production Kubernetes cluster is one of the most complex operations in infrastructure management.
-The challenge multiplies when you need to:
+Our migration must accomplish several goals simultaneously:
 
-1. Maintain zero downtime while keeping services available throughout
-2. Change the underlying distribution from k3s to RKE2
-3. Reconfigure the node topology from 1 control plane + 2 workers to 3 control planes + 1 worker
-4. Replace the operating system with Rocky Linux 10
-5. Upgrade networking and storage by implementing Cilium and Longhorn
+- Maintain zero downtime with services available throughout
+- Change the underlying distribution from k3s to RKE2
+- Reconfigure topology from 1 control plane + 2 workers to 3 control planes + 1 worker
+- Replace the operating system with Rocky Linux 10
+- Upgrade networking and storage with Cilium and Longhorn
 
 {% include alert.liquid.html type='tip' title='Why not 5 nodes?' content='
-A 5-node setup would make this migration significantly easier as you could build a full 3-node HA control plane by only removing a single node from the original cluster, while keeping 2 nodes running workloads.
+A 5-node setup would make this migration significantly easier.
+You could build a full 3-node HA control plane by removing only a single node from the original cluster while keeping 2 nodes running workloads.
 With only 4 nodes, we must navigate a critical phase where both clusters run with reduced redundancy.
-This constraint makes the migration more challenging, but also more representative of real-world scenarios where resources are limited.
 ' %}
 
 ## Current State vs Target State
 
-Our starting point is a 3-node k3s cluster with critical limitations:
+**Current state** - 3-node k3s cluster with critical limitations:
 
-- Node 1 is a single point of failure as the only control plane node
-- No distributed or replicated storage solution, relying on local storage on each node
-- Flannel CNI provides basic networking but external ingress is routed directly to fixed node IPs
+- Node 1 is a single point of failure as the only control plane
+- No replicated storage, relying on local storage per node
+- Flannel CNI with external ingress routed directly to fixed node IPs
 
-Our target is a 4-node RKE2 cluster providing:
+**Target state** - 4-node RKE2 cluster providing:
 
-- 3 control plane nodes for high availability and resilience
-- Extensibility to add more worker nodes in the future
-- Robust storage options using Longhorn for replicated volumes and local-path for performance-sensitive workloads
-- Advanced networking with Cilium for better performance and observability
-- High-availability ingress with Traefik DaemonSet and Hetzner Cloud Load Balancer
+- 3 control plane nodes for high availability
+- Extensibility to add more worker nodes
+- Longhorn for replicated volumes and local-path for performance workloads
+- Cilium for advanced networking and observability
+- HA ingress with Traefik DaemonSet and Hetzner Cloud Load Balancer
 
 ## Phase 1: Bootstrap Cluster B
 
@@ -90,18 +88,17 @@ class aB clusterB
 class bU unassigned
 ```
 
-We start with our existing k3s cluster using Node 1 as the control plane and Nodes 2 and 3 as workers.
-Our objective is creating a new RKE2 cluster using Node 4 as the first control plane.
+Create a new RKE2 cluster on Node 4 while Cluster A remains fully operational.
 
-The steps we will take are:
+**Steps:**
 
-1. Install Rocky Linux 10 on Node 4
-2. Configure Hetzner vSwitch networking
-3. Install RKE2 with first control plane
-4. Deploy Cilium CNI
-5. Verify cluster functionality
+- Install Rocky Linux 10 on Node 4
+- Configure Hetzner vSwitch networking
+- Install RKE2 as first control plane
+- Deploy Cilium CNI
+- Verify cluster functionality
 
-At the end of this phase we will have a single-node RKE2 cluster running on Node 4, while Cluster A remains fully operational with Nodes 1-3.
+**Result:** Single-node RKE2 cluster on Node 4, Cluster A unchanged with Nodes 1-3.
 
 ## Phase 2: First Node Migration
 
@@ -142,27 +139,23 @@ class bB,aB clusterB
 class after critical
 ```
 
-In this phase we will remove Node 3 from Cluster A and add it as a control plane node to Cluster B.
-This phase is critical because achieving control plane quorum requires an odd number of nodes.
+Remove Node 3 from Cluster A and add it as a control plane to Cluster B.
 
 {% include alert.liquid.html type='warning' title='etcd Quorum with 2 Nodes' content='
-etcd requires a strict majority for quorum, and there is no mechanism to bias voting or force quorum with 2 nodes.
-However, 2 nodes have the same fault tolerance as 1 node (zero), so this phase is not more dangerous than the initial single-node bootstrap.
-Mitigate by minimizing time in this state and ensuring both nodes are stable before proceeding to Phase 3.
+etcd requires a strict majority for quorum.
+Two nodes have the same fault tolerance as one node (zero), so this phase is not more dangerous than the initial single-node bootstrap.
+Mitigate by minimizing time in this state and ensuring both nodes are stable before proceeding.
 ' %}
 
-The actions we will take are:
+**Steps:**
 
-1. Cordon and drain Node 3 from Cluster A
-2. Remove Node 3 from Cluster A
-3. (Optional) Reinstall OS with Rocky Linux 10
-4. Join as RKE2 control plane node
-5. Verify etcd cluster health
+- Cordon and drain Node 3 from Cluster A
+- Remove Node 3 from Cluster A
+- Reinstall OS with Rocky Linux 10 (optional)
+- Join as RKE2 control plane
+- Verify etcd cluster health
 
-Before draining the nodes, ensure that all workloads are running on Node 1 and Node 2, and that Node 3 is not hosting any critical services.
-Furthermore, ensure all DNS records are not pointing to Node 3, and that any external traffic is routed to Nodes 1 and 2.
-
-This will reduce compute capacity from Cluster A, so make sure that Node 1 is healthy and can handle the load.
+**Prerequisites:** All workloads running on Nodes 1-2, DNS not pointing to Node 3, external traffic routed elsewhere.
 
 ## Phase 3: Second Node Migration
 
@@ -203,19 +196,17 @@ class bB,aB clusterB
 class after success
 ```
 
-In this phase we will remove Node 2 from Cluster A and add it as a control plane node to Cluster B.
-This is important because it allows us to achieve high availability in Cluster B with 3 control plane nodes.
+Remove Node 2 from Cluster A and add it as a control plane to Cluster B, achieving high availability.
 
-The steps we will take are:
+**Steps:**
 
-1. Cordon and drain Node 2 from Cluster A
-2. Remove Node 2 from cluster and uninstall k3s
-3. (Optional) Reinstall with Rocky Linux 10
-4. Join as RKE2 control plane
-5. Verify 3-node etcd quorum
+- Cordon and drain Node 2 from Cluster A
+- Remove Node 2 and uninstall k3s
+- Reinstall with Rocky Linux 10 (optional)
+- Join as RKE2 control plane
+- Verify 3-node etcd quorum
 
-Once again we need to ensure that all workloads are running on Node 1.
-At this point we can start switching workloads to Cluster B if needed, as it will have a healthy control plane with 3 nodes.
+**Result:** Cluster B has 3 control planes with full HA. Workload migration can begin.
 
 ## Phase 4: Workload Migration
 
@@ -256,23 +247,18 @@ class bB,aB clusterB
 class after success
 ```
 
-**Risk Level: LOW** - Both clusters are operational and we can switch DNS back if issues arise.
+**Risk Level: LOW** - Both clusters operational, DNS can be switched back if issues arise.
 
-Now that we have a fully operational RKE2 cluster with 3 control plane nodes, we can proceed to migrate workloads from Cluster A to Cluster B.
+**Steps:**
 
-The steps we will take are:
+- Set up storage on Cluster B (Longhorn + local-path)
+- Configure ingress (Traefik + Hetzner LB)
+- Export workload manifests from Cluster A
+- Migrate persistent data if needed
+- Deploy workloads to Cluster B
+- Switch DNS to Cluster B ingress
 
-1. Set up storage on Cluster B (Longhorn + local-path)
-2. Configure ingress (Traefik + Hetzner LB)
-3. Export workload manifests from Cluster A
-4. Migrate persistent data (if needed)
-5. Deploy workloads to Cluster B
-6. Verify workload health
-7. Switch DNS to Cluster B ingress
-8. Monitor and validate
-
-At the end of this phase, all workloads will be running on Cluster B, and external traffic will be routed to it.
-Cluster A will still have Node 1 running but it will not be serving any production workloads.
+**Result:** All workloads running on Cluster B, Cluster A idle with only Node 1.
 
 ## Phase 5: Cleanup and Consolidation
 
@@ -307,24 +293,25 @@ class bB,aB clusterB
 class after success
 ```
 
-Now that the migration is complete and all workloads are running on Cluster B, we can decommission Cluster A and finalize our new RKE2 cluster.
+Decommission Cluster A and complete the RKE2 cluster.
 
-The steps we will take are:
+**Steps:**
 
-1. Verify Cluster B stability (24-48 hour soak)
-2. Drain and remove Node 1 from Cluster A
-3. Stop and uninstall k3s on Node 1
-4. (Optional) Reinstall with Rocky Linux 10
-5. Join as RKE2 agent (worker)
+- Verify Cluster B stability (24-48 hour soak)
+- Drain and remove Node 1 from Cluster A
+- Uninstall k3s on Node 1
+- Reinstall with Rocky Linux 10 (optional)
+- Join as RKE2 agent (worker)
 
-## Time and Risk Considerations
+**Result:** Complete 4-node RKE2 cluster with 3 control planes and 1 worker.
 
-This migration requires careful execution.
-While the actual migration can be completed in a single maintenance window, I recommend:
+## Risk Considerations
 
-- Thoroughly review all lessons before starting
+The highest-risk phase is Phase 2 when both clusters run at minimum viable capacity.
+Never proceed to workload migration until Cluster B achieves full HA with 3 control plane nodes.
+
+Before starting:
+
+- Review all lessons thoroughly
 - Practice the node installation process on a test system if possible
-- Ensure you have complete backups of all persistent data
-
-The highest-risk phase occurs during Phase 2 when both clusters are at minimum viable capacity.
-Never proceed to workload migration until Cluster B has achieved full HA with 3 control plane nodes.
+- Ensure complete backups of all persistent data
