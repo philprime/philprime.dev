@@ -18,9 +18,11 @@ In this lesson, we'll install Cilium with dual-stack support on our RKE2 cluster
 
 {% include guide-overview-link.liquid.html %}
 
-## Why Cilium for Dual-Stack?
+## Understanding Cilium
 
-Cilium has excellent dual-stack support and offers significant advantages:
+### Why Cilium for Dual-Stack
+
+Cilium provides native dual-stack support with significant advantages over traditional CNI plugins:
 
 | Feature          | Cilium            | Traditional CNI           |
 | ---------------- | ----------------- | ------------------------- |
@@ -31,55 +33,122 @@ Cilium has excellent dual-stack support and offers significant advantages:
 | Network Policies | L3-L7             | L3-L4 only                |
 | Load Balancing   | eBPF-based        | kube-proxy/iptables       |
 
-## Install Helm
+### Key Components
 
-Cilium is best installed using Helm:
+| Component       | Purpose                                  |
+| --------------- | ---------------------------------------- |
+| cilium-agent    | Runs on each node, manages eBPF programs |
+| cilium-operator | Cluster-wide operations and IPAM         |
+| hubble-relay    | Aggregates flow data from agents         |
+| hubble-ui       | Web interface for network visibility     |
+
+### What is eBPF?
+
+eBPF (extended Berkeley Packet Filter) is a technology that allows running sandboxed programs inside the Linux kernel without changing kernel source code or loading kernel modules.
+Originally designed for packet filtering, eBPF has evolved into a general-purpose execution engine for kernel-level programming.
+
+eBPF programs are:
+
+- Verified by the kernel for safety before execution
+- JIT-compiled to native machine code for performance
+- Attached to kernel hooks (network, tracing, security)
+- Able to share data with userspace through maps
+
+### Why eBPF for Networking?
+
+Traditional Kubernetes networking uses iptables, which processes packets through a chain of rules.
+As clusters grow, iptables rules multiply and performance degrades.
+Each Service adds rules, and with dual-stack, the rule count doubles.
+
+Cilium replaces iptables with eBPF programs that:
+
+- Process packets at the earliest possible point in the network stack
+- Use hash maps for O(1) lookups instead of linear rule chains
+- Handle both IPv4 and IPv6 in the same code path
+- Provide load balancing, masquerading, and policy enforcement without context switches
+
+For dual-stack specifically, eBPF programs can inspect packet headers and route IPv4 and IPv6 traffic using unified logic, rather than maintaining separate iptables rule sets for each protocol.
+
+### IPAM (IP Address Management)
+
+IPAM controls how pod IP addresses are allocated.
+Cilium supports several IPAM modes:
+
+| Mode         | Description                                             |
+| ------------ | ------------------------------------------------------- |
+| kubernetes   | Delegates to Kubernetes, uses node's PodCIDR allocation |
+| cluster-pool | Cilium manages a cluster-wide pool of IPs               |
+| multi-pool   | Multiple pools with different CIDRs per node            |
+
+We use `kubernetes` mode because RKE2 already configures the pod CIDRs and assigns ranges to each node.
+Cilium simply uses the addresses that Kubernetes provides, ensuring consistency with the cluster configuration from lesson 8.
+
+For dual-stack, Kubernetes allocates both an IPv4 and IPv6 CIDR range to each node.
+When a pod starts, it receives one address from each range.
+
+### kube-proxy Replacement
+
+Cilium can fully replace kube-proxy, handling Kubernetes Service load balancing using eBPF instead of iptables.
+This provides better performance and native dual-stack support without the complexity of managing iptables rules for both IPv4 and IPv6.
+
+## Configuration Planning
+
+### Key Options
+
+| Option                  | Value        | Purpose                               |
+| ----------------------- | ------------ | ------------------------------------- |
+| `ipv6.enabled`          | true         | Enable IPv6 support                   |
+| `kubeProxyReplacement`  | true         | Replace kube-proxy with eBPF          |
+| `routingMode`           | native       | Use native routing instead of overlay |
+| `ipv4NativeRoutingCIDR` | 10.42.0.0/16 | IPv4 pod CIDR for native routing      |
+| `ipv6NativeRoutingCIDR` | fd00:42::/56 | IPv6 pod CIDR for native routing      |
+| `enableIPv4Masquerade`  | true         | SNAT for IPv4 traffic leaving cluster |
+| `enableIPv6Masquerade`  | true         | SNAT for IPv6 traffic leaving cluster |
+
+### Native Routing vs Overlay
+
+Cilium supports two routing modes:
+
+**Native routing** sends packets directly between nodes without encapsulation.
+This provides better performance but requires the underlying network to route pod CIDRs.
+On a vSwitch where all nodes are Layer 2 adjacent, native routing works well.
+
+**Overlay (VXLAN/Geneve)** encapsulates packets to tunnel them between nodes.
+This works on any network but adds overhead.
+
+We use native routing since our vSwitch provides direct Layer 2 connectivity.
+
+## Installing Cilium
+
+### Install Helm
 
 ```bash
-# Install Helm
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-# Verify installation
 helm version
 ```
 
-## Add Cilium Helm Repository
+### Add Cilium Repository
 
 ```bash
-# Add the Cilium Helm repository
 helm repo add cilium https://helm.cilium.io/
-
-# Update repository cache
 helm repo update
-
-# Search for available versions
-helm search repo cilium/cilium --versions | head -10
 ```
 
-## Prepare Dual-Stack Cilium Configuration
-
-Create a values file for Cilium with dual-stack networking:
+### Create Configuration
 
 ```bash
 cat <<'EOF' > /root/cilium-values.yaml
-# Cilium Dual-Stack Configuration for RKE2
-
-# Enable IPv6 support
 ipv6:
   enabled: true
 
-# Use kube-proxy replacement (recommended for RKE2)
 kubeProxyReplacement: true
 
-# Kubernetes API server details (use IPv4 for stability)
 k8sServiceHost: 10.1.1.4
 k8sServicePort: 6443
 
-# IPAM configuration for dual-stack
 ipam:
   mode: kubernetes
 
-# Enable Hubble for observability
 hubble:
   enabled: true
   relay:
@@ -87,250 +156,186 @@ hubble:
   ui:
     enabled: true
 
-# Operator configuration
 operator:
-  replicas: 1  # Increase when more nodes join
+  replicas: 1
 
-# BPF settings
 bpf:
   masquerade: true
-  clockProbe: true
   preallocateMaps: true
 
-# Enable native routing for both stacks
 routingMode: native
 ipv4NativeRoutingCIDR: 10.42.0.0/16
 ipv6NativeRoutingCIDR: fd00:42::/56
 autoDirectNodeRoutes: true
 
-# Enable bandwidth manager for better QoS
 bandwidthManager:
   enabled: true
   bbr: true
 
-# Enable local redirect policy
-localRedirectPolicy: true
-
-# Container runtime (RKE2 uses k3s containerd path)
 containerRuntime:
   integration: containerd
   socketPath: /run/k3s/containerd/containerd.sock
 
-# Roll out Cilium without disruption
-rollOutCiliumPods: true
-
-# Mount BPF filesystem
-bpf:
-  root: /sys/fs/bpf
-  autoMount:
-    enabled: true
-
-# Enable endpoint health checking
-endpointHealthChecking:
-  enabled: true
-
-# Enable IPv4 and IPv6 masquerading
 enableIPv4Masquerade: true
 enableIPv6Masquerade: true
 EOF
 ```
 
 {% include alert.liquid.html type='note' title='RKE2 Socket Path' content='
-RKE2 uses the same containerd socket path as k3s: /run/k3s/containerd/containerd.sock.
-This is intentional for compatibility.
+RKE2 uses the same containerd socket path as k3s: /run/k3s/containerd/containerd.sock
 ' %}
 
-## Install Cilium
-
-Install Cilium using Helm:
+### Install Cilium
 
 ```bash
-# Set KUBECONFIG
 export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
 
-# Install Cilium with dual-stack configuration
 helm install cilium cilium/cilium \
   --namespace kube-system \
   --values /root/cilium-values.yaml \
   --wait
+```
 
-# Watch the installation progress
+Watch the installation:
+
+```bash
 kubectl get pods -n kube-system -l k8s-app=cilium -w
 ```
 
-Wait for all Cilium pods to be running:
+Wait until all Cilium pods show `Running` status, then press `Ctrl+C`.
 
-```
-NAME           READY   STATUS    RESTARTS   AGE
-cilium-xxxxx   1/1     Running   0          2m
-```
+### Install Cilium CLI
 
-Press `Ctrl+C` to exit the watch.
-
-## Verify Cilium Installation
-
-### Check Cilium Status
+The Cilium CLI provides useful status and connectivity testing commands:
 
 ```bash
-# Check all Cilium components
-kubectl get pods -n kube-system | grep cilium
-
-# Expected output:
-# cilium-xxxxx                          1/1     Running   0          3m
-# cilium-operator-xxxxx                 1/1     Running   0          3m
-# hubble-relay-xxxxx                    1/1     Running   0          3m
-# hubble-ui-xxxxx                       2/2     Running   0          3m
-```
-
-### Install Cilium CLI (Recommended)
-
-```bash
-# Download Cilium CLI
 CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
-CLI_ARCH=amd64
-curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz
-tar xzf cilium-linux-${CLI_ARCH}.tar.gz -C /usr/local/bin
-rm cilium-linux-${CLI_ARCH}.tar.gz
+curl -L --fail --remote-name-all \
+  https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-amd64.tar.gz
+sudo tar xzf cilium-linux-amd64.tar.gz -C /usr/local/bin
+rm cilium-linux-amd64.tar.gz
 
-# Verify installation
 cilium version
+```
 
-# Check Cilium status (should show IPv4 and IPv6 enabled)
+## Verification
+
+### Cilium Status
+
+```bash
 cilium status --wait
 ```
 
-### Verify Dual-Stack Configuration
+The output should show IPv4 and IPv6 enabled:
 
-```bash
-# Check Cilium status for dual-stack
-cilium status | grep -E "IPv4|IPv6"
+```
+    /¯¯\
+ /¯¯\__/¯¯\    Cilium:          OK
+ \__/¯¯\__/    Operator:        OK
+ /¯¯\__/¯¯\    Hubble Relay:    OK
+ \__/¯¯\__/
+    \__/
 
-# Expected output should show both:
-# IPv4 BPF NodePort:   Enabled
-# IPv6 BPF NodePort:   Enabled
-# IPv4 Masquerade:     Enabled
-# IPv6 Masquerade:     Enabled
-
-# Verify Cilium config
-kubectl -n kube-system get configmap cilium-config -o yaml | grep -E "enable-ipv6|ipv6"
+KubeProxyReplacement:    True
+IPv4 BPF NodePort:       Enabled
+IPv6 BPF NodePort:       Enabled
+IPv4 Masquerade:         Enabled
+IPv6 Masquerade:         Enabled
 ```
 
-### Run Connectivity Test
+### Node Status
 
-```bash
-# Run Cilium connectivity test (includes dual-stack tests)
-cilium connectivity test
-
-# This tests:
-# - Pod-to-pod connectivity (IPv4 and IPv6)
-# - Pod-to-service connectivity (IPv4 and IPv6)
-# - External connectivity
-# - Network policy enforcement
-```
-
-{% include alert.liquid.html type='info' title='Connectivity Test' content='
-The connectivity test deploys test pods and runs various network tests.
-On a single-node cluster, some tests may be skipped.
-Full dual-stack testing will be possible once we have multiple nodes.
-' %}
-
-## Check Node Status
-
-With Cilium installed, the node should now be Ready:
+The node should now be Ready:
 
 ```bash
 kubectl get nodes -o wide
-
-# Expected output (note both IPs in INTERNAL-IP):
-# NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
-# node4   Ready    control-plane,etcd,master   15m   v1.28.x+rke2r1   10.1.1.4,fd00:1::4
 ```
 
-## Verify kube-proxy Replacement
+Expected output showing both IPs:
 
-Confirm Cilium is handling service load balancing for both protocols:
-
-```bash
-# Check if kube-proxy is replaced
-cilium status | grep KubeProxyReplacement
-
-# Verify no kube-proxy pods are running
-kubectl get pods -n kube-system | grep kube-proxy
-
-# Check Cilium's service handling
-kubectl get ciliumendpoints -n kube-system
+```
+NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
+node4   Ready    control-plane,etcd,master   20m   v1.31.x+rke2r1   10.1.1.4,fd00:1::4
 ```
 
-## Test Dual-Stack Pod Networking
-
-Deploy a test pod to verify dual-stack networking:
+### Dual-Stack Pod Test
 
 ```bash
-# Create a test pod
 kubectl run dual-stack-test --image=busybox:1.36 --restart=Never -- sleep 3600
-
-# Wait for pod to be ready
 kubectl wait --for=condition=Ready pod/dual-stack-test --timeout=60s
 
-# Check pod IPs (should have both IPv4 and IPv6)
+# Check pod has both IPv4 and IPv6 addresses
 kubectl get pod dual-stack-test -o jsonpath='{.status.podIPs}' | jq .
+```
 
-# Expected output:
-# [
-#   { "ip": "10.42.x.x" },
-#   { "ip": "fd00:42:x:x::x" }
-# ]
+Expected output:
 
-# Test connectivity from inside the pod
+```json
+[
+  { "ip": "10.42.x.x" },
+  { "ip": "fd00:42:x:x::x" }
+]
+```
+
+Test connectivity:
+
+```bash
 kubectl exec dual-stack-test -- ping -c 2 10.1.1.4
 kubectl exec dual-stack-test -- ping6 -c 2 fd00:1::4
 
-# Clean up
 kubectl delete pod dual-stack-test
 ```
 
-## Access Hubble UI (Optional)
+### Connectivity Test
 
-Hubble provides real-time visibility into network flows for both protocols:
+Run the full Cilium connectivity test:
 
 ```bash
-# Port-forward Hubble UI (from your local machine)
-kubectl port-forward -n kube-system svc/hubble-ui 12000:80
-
-# Then access http://localhost:12000 in your browser
+cilium connectivity test
 ```
 
-## Troubleshooting Cilium Dual-Stack
+This deploys test pods and validates pod-to-pod, pod-to-service, and external connectivity for both IPv4 and IPv6.
+
+{% include alert.liquid.html type='info' title='Single Node Limitations' content='
+Some tests may be skipped on a single-node cluster.
+Full dual-stack testing will be possible once additional nodes join.
+' %}
+
+## Hubble UI
+
+Hubble provides real-time network flow visibility:
+
+```bash
+kubectl port-forward -n kube-system svc/hubble-ui 12000:80
+```
+
+Access `http://localhost:12000` in your browser.
+
+## Troubleshooting
 
 ### Cilium Pod Not Starting
 
 ```bash
-# Check Cilium pod logs
 kubectl logs -n kube-system -l k8s-app=cilium --tail=100
-
-# Common issues:
-# - BPF filesystem not mounted
-# - containerd socket not accessible
-# - Kernel version too old (need 4.19+ for IPv6 eBPF)
-
-# Check kernel version
-uname -r
 ```
 
-### IPv6 Not Working in Pods
+Common issues:
+
+- BPF filesystem not mounted
+- containerd socket not accessible
+- Kernel version too old (need 4.19+ for IPv6 eBPF)
+
+### IPv6 Not Working
 
 ```bash
-# Verify IPv6 is enabled in Cilium
+# Verify IPv6 is enabled in config
 kubectl -n kube-system get configmap cilium-config -o yaml | grep enable-ipv6
-
-# Check Cilium agent logs for IPv6 errors
-kubectl logs -n kube-system -l k8s-app=cilium | grep -i ipv6
-
-# Verify node has IPv6 forwarding enabled
-sysctl net.ipv6.conf.all.forwarding
 
 # Check if pods are getting IPv6 addresses
 kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.podIPs}{"\n"}{end}'
+
+# Verify node has IPv6 forwarding
+sysctl net.ipv6.conf.all.forwarding
 ```
 
 ### BPF Issues
@@ -339,73 +344,23 @@ kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status
 # Verify BPF filesystem is mounted
 mount | grep bpf
 
-# If not mounted:
-mount -t bpf bpf /sys/fs/bpf
-
-# Check BPF features (including IPv6)
-bpftool feature probe | grep -i ipv6
+# If not mounted
+sudo mount -t bpf bpf /sys/fs/bpf
 ```
 
 ### Connectivity Issues
 
 ```bash
-# Check Cilium agent logs
-kubectl logs -n kube-system -l k8s-app=cilium
-
-# Check endpoint status (should show IPv4 and IPv6)
-kubectl exec -n kube-system -l k8s-app=cilium -- cilium endpoint list
-
-# Debug connectivity
 kubectl exec -n kube-system -l k8s-app=cilium -- cilium-health status
+kubectl exec -n kube-system -l k8s-app=cilium -- cilium endpoint list
 ```
 
-## Save Cilium Configuration
-
-Back up the Cilium configuration:
+## Backup Configuration
 
 ```bash
-# Save Helm values
 cp /root/cilium-values.yaml /root/rke2-backup/
-
-# Get current Cilium version
-helm list -n kube-system | grep cilium >> /root/rke2-backup/installed-versions.txt
-
-# Export current Cilium config
 kubectl -n kube-system get configmap cilium-config -o yaml > /root/rke2-backup/cilium-config.yaml
 ```
 
-## Performance Tuning (Optional)
-
-For optimal dual-stack performance, consider these kernel parameters:
-
-```bash
-cat <<EOF > /etc/sysctl.d/99-cilium.conf
-# Increase BPF JIT limit
-net.core.bpf_jit_limit = 1000000000
-
-# Increase socket buffer sizes
-net.core.rmem_max = 16777216
-net.core.wmem_max = 16777216
-
-# Increase conntrack table size (for both IPv4 and IPv6)
-net.netfilter.nf_conntrack_max = 262144
-
-# IPv6 specific tuning
-net.ipv6.conf.all.forwarding = 1
-net.ipv6.conf.default.forwarding = 1
-EOF
-
-sysctl --system
-```
-
-## Summary
-
-Cilium is now installed and providing:
-
-- Dual-stack eBPF-based pod networking (IPv4 and IPv6)
-- kube-proxy replacement for efficient service load balancing on both protocols
-- Hubble for network observability
-- Foundation for advanced L3-L7 network policies
-
 The node is now fully Ready with dual-stack networking.
-With Cluster B operational, we can begin the critical phase of migrating nodes from Cluster A in the next section.
+In the next section, we'll begin migrating nodes from the k3s cluster to RKE2.

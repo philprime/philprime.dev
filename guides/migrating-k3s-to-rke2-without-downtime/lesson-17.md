@@ -7,16 +7,41 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 4
 guide_lesson_id: 17
 guide_lesson_abstract: >
-  Install and configure Longhorn for replicated storage and local-path-provisioner for fast local storage on Cluster B.
+  Plan storage requirements and configure Longhorn for replicated storage and local-path-provisioner for fast local storage.
 guide_lesson_conclusion: >
   Both Longhorn and local-path storage classes are configured and ready for workload deployment.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-17.md
 ---
 
-Before deploying workloads, we need to set up persistent storage. We'll configure two storage classes: Longhorn for
-replicated storage and local-path-provisioner for fast local storage.
+Before deploying workloads, we need to set up persistent storage.
+We'll configure two storage classes: Longhorn for replicated storage and local-path-provisioner for fast local storage.
 
 {% include guide-overview-link.liquid.html %}
+
+## Storage Planning
+
+### Disk Space Requirements
+
+Longhorn stores volume replicas on each node's local disk.
+With the default replica count of 2, a 10GB volume consumes 20GB of total cluster storage.
+Plan your disk space accordingly:
+
+| Component        | Minimum | Recommended | Notes                                 |
+| ---------------- | ------- | ----------- | ------------------------------------- |
+| OS and RKE2      | 20GB    | 40GB        | Container images, logs, etcd data     |
+| Longhorn storage | 50GB    | 100GB+      | Per-node, depends on workload volumes |
+| local-path       | 10GB    | 20GB        | Fast local storage for caching        |
+
+For simple partition layouts (`/boot` + `/`), all storage shares the root partition.
+If you have large storage requirements, consider a dedicated partition or disk for `/var/lib/longhorn`.
+
+### Backup Target
+
+Longhorn supports backup to S3 or NFS.
+If you plan to use backups (recommended for production), ensure you have:
+
+- S3-compatible storage (AWS S3, MinIO, Hetzner Object Storage)
+- Or an NFS server accessible from all nodes
 
 ## Storage Strategy
 
