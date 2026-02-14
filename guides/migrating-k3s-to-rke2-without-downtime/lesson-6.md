@@ -1,6 +1,6 @@
 ---
 layout: guide-lesson.liquid
-title: Configuring Hetzner vSwitch Networking (Dual-Stack)
+title: Configuring Hetzner vSwitch Networking
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
@@ -13,8 +13,8 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-6.md
 ---
 
-Hetzner's vSwitch provides Layer 2 private networking between dedicated servers.
-In this lesson, we'll configure dual-stack networking (IPv4 + IPv6) to future-proof our cluster while maintaining compatibility with IPv4-only services.
+Hetzner's vSwitch provides Layer 2 private networking between dedicated servers, allowing cluster nodes to communicate without traversing the public internet.
+Before we can use this private network for Kubernetes, we need to make an important architectural decision: should we configure IPv4 only, or invest the extra effort now to support both IPv4 and IPv6?
 
 {% include guide-overview-link.liquid.html %}
 
@@ -22,20 +22,22 @@ In this lesson, we'll configure dual-stack networking (IPv4 + IPv6) to future-pr
 
 ### Why Dual-Stack Matters
 
-Kubernetes cluster networking CIDRs are embedded in certificates, etcd data, and running workloads.
-Changing from single-stack to dual-stack later requires a complete cluster rebuild.
-Since we're building a new cluster anyway, this is the perfect opportunity to future-proof it.
+Kubernetes networking configuration is deeply embedded in your cluster's DNA.
+The CIDR ranges you choose become part of certificates, etcd data, and running workloads, making them nearly impossible to change without rebuilding the entire cluster.
+This permanence means that adding IPv6 support later isn't a simple configuration change—it requires migrating to a completely new cluster.
 
-Dual-stack networking provides:
-
-- IPv4 compatibility with existing services and external APIs
-- IPv6 readiness as IPv4 addresses become scarcer
-- Larger address space for pods and services
-- No NAT required for IPv6 traffic
+Since we're already building a new cluster to migrate from k3s to RKE2, this is the ideal time to future-proof our networking.
+Dual-stack gives us IPv4 compatibility for existing services while preparing for the gradual transition to IPv6 as addresses become scarcer and more services adopt the newer protocol.
+The additional configuration effort is minimal compared to the cost of rebuilding later.
 
 ### Kubernetes Network Architecture
 
-A Kubernetes cluster uses three distinct network ranges that must not overlap:
+Every Kubernetes cluster operates across three distinct network ranges, each serving a specific purpose and requiring its own CIDR allocation.
+The node network consists of the actual IP addresses assigned to your physical or virtual machines—in our case, the vSwitch addresses we'll configure in this lesson.
+The pod network provides addresses for individual containers, with each node receiving a subnet from which it allocates IPs to pods it runs.
+Finally, the service network gives stable virtual IPs to Kubernetes Services, allowing pods to discover and communicate with each other through consistent addresses even as the underlying pods come and go.
+
+These three networks must never overlap, and in a dual-stack cluster, each one needs both an IPv4 and IPv6 CIDR range.
 
 | Network         | Purpose                                            |
 | --------------- | -------------------------------------------------- |
@@ -43,48 +45,98 @@ A Kubernetes cluster uses three distinct network ranges that must not overlap:
 | Pod Network     | Virtual IPs assigned to individual pods            |
 | Service Network | Virtual IPs for Kubernetes Services (ClusterIP/LB) |
 
-In a dual-stack cluster, each network has both IPv4 and IPv6 CIDR ranges.
-The node network uses the vSwitch addresses we configure in this lesson.
-The pod and service networks are configured during RKE2 installation.
+**Example:**
+
+```mermaid!
+flowchart TB
+    %% =========================
+    %% Service Network Layer
+    %% =========================
+    subgraph SVC["Service Network 10.43.0.0/16 · fd00:43::/112"]
+        S1["App Service<br/>ClusterIP: 10.43.0.10<br/>fd00:43::10"]
+    end
+
+    %% =========================
+    %% Node Network Layer
+    %% =========================
+    subgraph NODE["Node Network 10.0.0.0/24 · fd00::/64"]
+
+        subgraph N1["Node 1 · 10.0.0.1 · fd00::1"]
+            subgraph POD1["Pod CIDR 10.42.0.0/24"]
+                P1["Pod A<br/>10.42.0.5<br/>fd00:42::5"]
+                P2["Pod B<br/>10.42.0.6<br/>fd00:42::6"]
+            end
+        end
+
+        subgraph N2["Node 2 · 10.0.0.2 · fd00::2"]
+            subgraph POD2["Pod CIDR 10.42.1.0/24"]
+                P3["Pod C<br/>10.42.1.3<br/>fd00:42:1::3"]
+            end
+        end
+
+    end
+
+    %% =========================
+    %% Traffic Flow
+    %% =========================
+    S1 -->|Load-balanced| P1
+    S1 -->|Load-balanced| P3
+
+    %% =========================
+    %% Styling (softer, modern palette)
+    %% =========================
+    classDef service fill:#ede9fe,color:#4c1d95,stroke:#c4b5fd,stroke-width:1.5px
+    classDef node fill:#eff6ff,color:#1e3a8a,stroke:#bfdbfe,stroke-width:1.5px
+    classDef pod fill:#ecfdf5,color:#065f46,stroke:#a7f3d0,stroke-width:1.5px
+    classDef podnet fill:#f0fdf4,color:#065f46,stroke:#bbf7d0,stroke-dasharray: 4 4
+    classDef network fill:#f8fafc,color:#0f172a,stroke:#e2e8f0,stroke-width:1.5px
+
+    class SVC service
+    class S1 service
+    class NODE network
+    class N1,N2 node
+    class P1,P2,P3 pod
+    class POD1,POD2 podnet
+```
+
+The diagram illustrates how these networks interact: each node receives a subnet from the pod CIDR (Node 1 uses 10.42.0.x while Node 2 uses 10.42.1.x), and the CNI plugin assigns individual pod addresses from that per-node range.
+Services sit above this layer, providing stable virtual IPs that load-balance traffic across pods regardless of which node they're running on.
 
 ### CNI and Dual-Stack Support
 
-The Container Network Interface (CNI) plugin manages pod networking.
-Not all CNIs support dual-stack equally:
+The Container Network Interface (CNI) plugin is responsible for all pod networking—assigning addresses, configuring routes, and handling network policies.
+Your choice of CNI directly impacts how well dual-stack works in practice, as not all plugins implement both address families equally well.
 
-- Cilium has excellent dual-stack support with eBPF, native routing, and WireGuard encryption
-- Calico supports dual-stack but requires more configuration
-- Flannel has limited dual-stack support
+[Cilium](https://cilium.io/) stands out with its eBPF-based architecture that provides native dual-stack routing and built-in WireGuard encryption.
+[Calico](https://www.projectcalico.org/) also supports dual-stack but requires more manual configuration to get both families working correctly.
+[Flannel](https://github.com/flannel-io/flannel), while simpler, has limited dual-stack support that may not meet production requirements.
 
-We'll use Cilium for its superior dual-stack implementation and observability features.
+We'll use Cilium throughout this guide, both for its mature dual-stack implementation and its excellent observability features that help debug networking issues.
 
 ### IP Family Preference
 
-Kubernetes supports three IP family policies for Services:
+When you create a Kubernetes Service in a dual-stack cluster, you need to decide how it handles the two address families.
+Kubernetes offers three policies: `SingleStack` assigns only one family (IPv4 or IPv6), `RequireDualStack` demands both families and fails if either is unavailable, and `PreferDualStack` requests both but gracefully falls back if one isn't available.
 
-- `SingleStack` - Services get only IPv4 or only IPv6
-- `PreferDualStack` - Services get both families, preferring the first listed
-- `RequireDualStack` - Services must have both families or fail
-
-With `PreferDualStack` and IPv4 listed first, services get both addresses with IPv4 as primary.
-This provides maximum compatibility while enabling IPv6 where supported.
+For maximum compatibility, we'll configure our cluster with `PreferDualStack` and list IPv4 first.
+This means services receive both addresses with IPv4 as the primary, ensuring existing IPv4-only clients continue working while IPv6-capable clients can use the newer protocol.
 
 ### NAT64 Considerations
 
-You might wonder if you need NAT64/DNS64 to reach IPv4-only external services from IPv6 pods.
-In a true dual-stack cluster, pods have both IPv4 and IPv6 addresses.
-When a pod needs to reach an IPv4-only service, it uses its IPv4 address automatically.
-The kernel handles address family selection based on DNS resolution.
+A common question when planning dual-stack is whether you need NAT64 or DNS64 to reach IPv4-only external services like `github.com` from pods that might prefer IPv6.
+The answer, in a true dual-stack environment, is no—every pod has both an IPv4 and an IPv6 address, so when DNS resolution returns only an A record (IPv4), the pod simply uses its IPv4 address to make the connection.
+The kernel handles this address family selection automatically based on what DNS returns.
 
-NAT64 is only needed in IPv6-only environments where nodes lack IPv4 connectivity entirely.
-Since Hetzner dedicated servers have both IPv4 and IPv6 public addresses, this isn't a concern.
+NAT64 becomes necessary only in pure IPv6 environments where nodes have no IPv4 connectivity at all.
+Since our Hetzner dedicated servers have both IPv4 and IPv6 on the public interface and we're configuring dual-stack on the vSwitch, this complexity doesn't apply to us.
 
 ## Hetzner vSwitch Architecture
 
 ### How vSwitch Works
 
-Hetzner's vSwitch creates a Layer 2 network segment between dedicated servers in the same datacenter.
-Traffic flows directly between servers without routing through the public internet.
+Hetzner's vSwitch service creates a private Layer 2 network segment connecting dedicated servers within the same datacenter.
+Unlike traffic over the public internet, communication through the vSwitch flows directly between servers at wire speed, never leaving Hetzner's internal infrastructure.
+This makes it ideal for Kubernetes cluster traffic where nodes need to exchange large volumes of data with minimal latency.
 
 ```mermaid!
 flowchart TB
@@ -92,19 +144,23 @@ flowchart TB
         subgraph VS["vSwitch · VLAN 4000"]
             direction TB
             subgraph addrs["Dual-Stack Addresses"]
-                N1["Node 1<br/>10.1.1.1 · fd00:1::1"]
-                N2["Node 2<br/>10.1.1.2 · fd00:1::2"]
-                N3["Node 3<br/>10.1.1.3 · fd00:1::3"]
-                N4["Node 4<br/>10.1.1.4 · fd00:1::4"]
+                N1["Node 1<br/>10.0.0.1 · fd00::1"]
+                N2["Node 2<br/>10.0.0.2 · fd00::2"]
+                N3["Node 3<br/>10.0.0.3 · fd00::3"]
+                N4["Node 4<br/>10.0.0.4 · fd00::4"]
             end
         end
         PN["Physical Network · Public Internet"]
     end
 
-    N1 --- PN
-    N2 --- PN
-    N3 --- PN
-    N4 --- PN
+    N1 <---> PN
+    N2 <---> PN
+    N3 <---> PN
+    N4 <---> PN
+
+    N1 <---> N2
+    N2 <---> N3
+    N3 <---> N4
 
     classDef vswitch fill:#16a34a,color:#fff,stroke:#166534
     classDef node fill:#2563eb,color:#fff,stroke:#1e40af
@@ -115,242 +171,250 @@ flowchart TB
     class PN network
 ```
 
-Each server maintains two network paths: the public internet connection and the private vSwitch.
-The vSwitch uses VLAN tagging to isolate traffic, requiring a VLAN subinterface on each node.
+The diagram shows how each server maintains two distinct network paths: a connection to the public internet for external traffic, and the private vSwitch for inter-node communication.
+Since vSwitch uses VLAN tagging to separate traffic from other customers, you'll need to create a VLAN subinterface on each node to access it.
 
 ### Security Characteristics
 
-The vSwitch provides Layer 2 isolation, but traffic is not encrypted by default.
-Other Hetzner customers may share the same physical switches, though VLAN isolation prevents direct access.
-For defense in depth, RKE2 and Cilium will encrypt cluster traffic using WireGuard in later lessons.
+While the vSwitch provides logical isolation through VLAN tagging, it's important to understand what this means for security.
+The physical network infrastructure is shared across Hetzner customers, with VLAN segmentation preventing direct access between tenants—but the traffic itself travels unencrypted over the shared switches.
+This is generally acceptable for a private datacenter network, but for defense in depth we'll add encryption at the cluster level using Cilium's WireGuard support in a later lesson.
 
 ### ULA Addresses for IPv6
 
-We use Unique Local Addresses (ULA) from the `fd00::/8` range for IPv6.
-ULA addresses are the IPv6 equivalent of private IPv4 ranges like `10.0.0.0/8`.
-They are not routable on the public internet, making them ideal for internal cluster communication.
+For our private IPv6 addresses, we'll use Unique Local Addresses (ULA) from the `fd00::/8` range.
+Think of ULA as the IPv6 equivalent of familiar private IPv4 ranges like `10.0.0.0/8` or `192.168.0.0/16`—they're guaranteed not to be routable on the public internet, making them safe to use for internal cluster communication without worrying about conflicts with globally routable addresses.
 
 ## Planning Your Network
 
 ### CIDR Allocation
 
-Before configuring anything, document your chosen CIDR ranges:
+Before touching any configuration files, take time to document your chosen CIDR ranges.
+These values will appear in multiple places throughout the cluster setup—the vSwitch configuration, RKE2 settings, Cilium helm values, and firewall rules—and inconsistencies between them are a common source of subtle networking failures that can be difficult to debug.
 
 | Network         | IPv4 CIDR    | IPv6 CIDR     | Purpose                  |
 | --------------- | ------------ | ------------- | ------------------------ |
-| Node Network    | 10.1.1.0/24  | fd00:1::/64   | vSwitch inter-node comms |
+| Node Network    | 10.0.0.0/24  | fd00::/64     | vSwitch inter-node comms |
 | Pod Network     | 10.42.0.0/16 | fd00:42::/56  | IP addresses for pods    |
 | Service Network | 10.43.0.0/16 | fd00:43::/112 | ClusterIP services       |
 
-The IPv6 CIDR sizes follow common conventions: `/56` for pods allows 256 `/64` subnets per node, and `/112` for services provides 65536 IPs matching the IPv4 service range.
+#### Understanding IPv6 CIDR Sizing
 
-{% include alert.liquid.html type='warning' title='Document Your Choices' content='
-Write down your chosen CIDR ranges before proceeding.
-You will use these values in this lesson, lesson 8 (RKE2), and lesson 9 (Cilium).
-Inconsistent values between lessons will cause networking failures.
-' %}
+Kubernetes allocates each node a `/64` subnet from the cluster's pod CIDR, and a `/64` contains 2^64 addresses, which is a number so vast that even running 10,000 pods on a single node would use a negligible fraction.
+The practical limit on pods per node comes from CPU, memory, and kubelet configuration, not from address space.
+
+The real constraint is how many `/64` subnets fit within your cluster's pod CIDR:
+
+| Cluster Pod CIDR | Max Nodes (with /64 per node) |
+| ---------------- | ----------------------------- |
+| `/56`            | 256                           |
+| `/52`            | 4,096                         |
+| `/48`            | 65,536                        |
+
+We've chosen `/56` for this guide because 256 nodes comfortably exceeds what most organizations need, even accounting for growth.
+If you're building infrastructure that might eventually scale beyond that, consider using `/48` instead - there's no practical downside to the larger range, just a longer prefix to type.
+
+For the service network, `/112` provides 65,536 addresses, deliberately matching the capacity of our IPv4 `/16` service range.
+Most clusters use only a few hundred services at most, so this is more than sufficient.
 
 ### Node Address Assignment
 
-Assign consistent addresses to each node across both address families:
+For clarity and easier troubleshooting, assign each node a consistent address across both address families.
+Using the same final octet/segment (node1 gets .1 and ::1, node2 gets .2 and ::2) makes it obvious which addresses belong to which node when you're debugging network issues at 2 AM.
 
 | Node  | IPv4 Address | IPv6 Address |
 | ----- | ------------ | ------------ |
-| node1 | 10.1.1.1     | fd00:1::1    |
-| node2 | 10.1.1.2     | fd00:1::2    |
-| node3 | 10.1.1.3     | fd00:1::3    |
-| node4 | 10.1.1.4     | fd00:1::4    |
+| node1 | 10.0.0.1     | fd00::1      |
+| node2 | 10.0.0.2     | fd00::2      |
+| node3 | 10.0.0.3     | fd00::3      |
+| node4 | 10.0.0.4     | fd00::4      |
 
 ### Ingress Planning
 
-Your ingress controller and load balancer must support dual-stack from day one:
+Whatever ingress controller and load balancer you choose must support dual-stack from day one—retrofitting this later creates the same migration headaches we discussed earlier.
+Traefik handles dual-stack natively without special configuration, and Hetzner's Cloud Load Balancer can target both IPv4 and IPv6 backends.
+If you prefer MetalLB for bare-metal load balancing, be aware that it requires separate address pools for each address family.
 
-- Traefik supports dual-stack natively
-- Hetzner Cloud Load Balancer supports both IPv4 and IPv6 targets
-- MetalLB requires separate address pools for each family
+We'll configure Traefik with the Hetzner Cloud Load Balancer in later lessons, but keep these requirements in mind if you plan to substitute different components.
 
-We'll configure Traefik with the Hetzner Cloud Load Balancer in later lessons.
+### Existing Infrastructure
+
+If you're following this guide with an existing k3s cluster, your nodes likely already have IPv4 addresses on the vSwitch but no IPv6.
+That's expected—we'll configure node4 with dual-stack from the start, and add IPv6 to the existing nodes when we migrate each one to RKE2 in later lessons.
+This approach avoids touching the running k3s cluster's networking until we're ready to migrate each node.
 
 ## Prerequisites
 
-Before proceeding, ensure:
-
-- vSwitch is created in the Hetzner Robot console
-- All servers are added to the vSwitch
-- You have noted the VLAN ID (we use 4000 in this guide)
-- IP ranges are documented as shown above
+Before proceeding with the configuration, verify that your Hetzner infrastructure is ready.
+You should have already created a vSwitch in the Hetzner Robot console, added all your servers to it, and noted the VLAN ID it uses (we're using 4000 throughout this guide, but yours may differ).
+Make sure you've documented your chosen IP ranges as shown in the tables above—you'll reference them repeatedly throughout the configuration process.
 
 ## Configuring the vSwitch Interface
 
+With the planning complete, we can now configure the actual network interface.
+The vSwitch appears as a VLAN on your server's physical network interface, so the first step is identifying which interface to use.
+
 ### Identifying the Network Interface
 
-First, identify the network interfaces on your server:
+List the network interfaces on your server to see what's available:
 
 ```bash
-$ ip link show
-1: lo: <LOOPBACK,UP,LOWER_UP> ...
-2: enp5s0f3u2u2c2: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
-3: enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
-4: tailscale0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> ...
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: enp5s0f3u2u2c2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN mode DEFAULT group default qlen 1000
+    link/ether 4a:d7:b5:34:aa:ce brd ff:ff:ff:ff:ff:ff
+    altname enx4ad7b534aace
+3: enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000
+    link/ether d4:5d:64:08:e8:30 brd ff:ff:ff:ff:ff:ff
+    altname enxd45d6408e830
+4: tailscale0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1280 qdisc fq_codel state UNKNOWN mode DEFAULT group default qlen 500
+    link/none
 ```
 
-Check which interface has the public IP assigned:
+The interface names vary depending on your server's hardware, but you're looking for the one carrying your public IP address.
+Run `ip addr show` and find the interface with an address like `135.181.x.x` - that's your main network interface, and the vSwitch VLAN will be created as a subinterface on it.
 
 ```bash
 $ ip addr show
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute
+       valid_lft forever preferred_lft forever
+2: enp5s0f3u2u2c2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
+    link/ether 4a:d7:b5:34:aa:ce brd ff:ff:ff:ff:ff:ff
+    altname enx4ad7b534aace
+    inet6 fe80::d9e6:c53b:7c65:ca8c/64 scope link noprefixroute
+       valid_lft forever preferred_lft forever
+3: enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether d4:5d:64:08:e8:30 brd ff:ff:ff:ff:ff:ff
+    altname enxd45d6408e830
+    inet 135.181.1.252/26 brd 135.181.1.255 scope global dynamic noprefixroute enp195s0
+       valid_lft 31318sec preferred_lft 31318sec
+    inet6 fe80::81d8:8f88:4416:3876/64 scope link noprefixroute
+       valid_lft forever preferred_lft forever
+4: tailscale0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1280 qdisc fq_codel state UNKNOWN group default qlen 500
+    link/none
+    inet 100.122.121.38/32 scope global tailscale0
+       valid_lft forever preferred_lft forever
+    inet6 fd7a:115c:a1e0::e332:7926/128 scope global
+       valid_lft forever preferred_lft forever
+    inet6 fe80::4b3c:4678:6c60:e7b1/64 scope link stable-privacy proto kernel_ll
+       valid_lft forever preferred_lft forever
 ```
-
-The interface with your public IP (like `135.181.x.x`) is your main interface.
-The vSwitch VLAN will be created as a subinterface on this interface.
 
 ### Creating the VLAN Interface
 
-Rocky Linux 10 uses NetworkManager for network configuration.
-Create a VLAN interface with both IPv4 and IPv6 addresses:
+Rocky Linux 10 uses NetworkManager for all network configuration, which makes creating VLAN interfaces straightforward.
+The following command creates a new VLAN subinterface with both IPv4 and IPv6 addresses configured:
 
 ```bash
 # Replace enp195s0 with your actual interface name
 # Replace 4000 with your VLAN ID
 # Replace addresses with your node's assigned IPs
 
-sudo nmcli connection add \
+$ sudo nmcli connection add \
     type vlan \
     con-name vswitch \
     dev enp195s0 \
     id 4000 \
     ipv4.method manual \
-    ipv4.addresses 10.1.1.4/24 \
+    ipv4.addresses 10.0.0.4/24 \
     ipv6.method manual \
-    ipv6.addresses fd00:1::4/64
+    ipv6.addresses fd00::4/64
+Connection 'vswitch' (2ecf2e01-122a-4ce2-b786-f4d41fe459cf) successfully added.
 
-sudo nmcli connection up vswitch
+$ sudo nmcli connection up vswitch
+Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/1997)
 ```
 
-Verify the interface has both addresses:
+After bringing up the connection, verify that both addresses are properly assigned:
 
 ```bash
 $ ip addr show enp195s0.4000
-5: enp195s0.4000@enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
-    inet 10.1.1.4/24 brd 10.1.1.255 scope global noprefixroute enp195s0.4000
-    inet6 fd00:1::4/64 scope global noprefixroute
+5: enp195s0.4000@enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether d4:5d:64:08:e8:30 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.0.4/24 brd 10.0.0.255 scope global noprefixroute enp195s0.4000
+       valid_lft forever preferred_lft forever
+    inet6 fd00::4/64 scope global noprefixroute
+       valid_lft forever preferred_lft forever
+    inet6 fe80::cad:c5f2:6cc4:d67b/64 scope link noprefixroute
+       valid_lft forever preferred_lft forever
 ```
+
+You should see both an `inet` line with your IPv4 address and an `inet6` line with your IPv6 ULA address.
+If either is missing, check the nmcli command for typos before proceeding.
 
 ### Enabling IPv6 Forwarding
 
-For Kubernetes to route IPv6 traffic between pods, enable IPv6 forwarding:
+By default, Linux doesn't forward IPv6 packets between interfaces—it only handles traffic destined for itself.
+Kubernetes needs forwarding enabled so that pod traffic can flow between nodes:
 
 ```bash
-sudo tee /etc/sysctl.d/99-ipv6-forward.conf <<EOF
+$ sudo tee /etc/sysctl.d/99-ipv6-forward.conf <<EOF
 net.ipv6.conf.all.forwarding = 1
 net.ipv6.conf.default.forwarding = 1
 EOF
-
-sudo sysctl -p /etc/sysctl.d/99-ipv6-forward.conf
-```
-
-### Configuring Host Resolution
-
-Add entries for all cluster nodes to `/etc/hosts`:
-
-```bash
-sudo tee -a /etc/hosts <<EOF
-
-# Kubernetes Cluster Nodes (IPv4)
-10.1.1.1  node1 node1.k8s.local
-10.1.1.2  node2 node2.k8s.local
-10.1.1.3  node3 node3.k8s.local
-10.1.1.4  node4 node4.k8s.local
-
-# Kubernetes Cluster Nodes (IPv6)
-fd00:1::1  node1-v6 node1-v6.k8s.local
-fd00:1::2  node2-v6 node2-v6.k8s.local
-fd00:1::3  node3-v6 node3-v6.k8s.local
-fd00:1::4  node4-v6 node4-v6.k8s.local
-EOF
+$ sudo sysctl -p /etc/sysctl.d/99-ipv6-forward.conf
+net.ipv6.conf.all.forwarding = 1
+net.ipv6.conf.default.forwarding = 1
 ```
 
 ## Verifying Connectivity
 
+Before moving on to firewall configuration, verify that the vSwitch is working correctly.
+These tests should be run from node4 (the node we just configured) to confirm it can reach the existing nodes.
+
 ### Testing IPv4
 
+Start with IPv4 to confirm node4 can communicate with the existing cluster nodes over the vSwitch:
+
 ```bash
-ping -c 3 10.1.1.1  # Node 1
-ping -c 3 10.1.1.2  # Node 2
-ping -c 3 10.1.1.3  # Node 3
+$ ping -c 3 10.0.0.1 # Node 1
+PING 10.0.0.1 (10.0.0.1) 56(84) bytes of data.
+64 bytes from 10.0.0.1: icmp_seq=1 ttl=64 time=0.351 ms
+64 bytes from 10.0.0.1: icmp_seq=2 ttl=64 time=0.182 ms
+64 bytes from 10.0.0.1: icmp_seq=3 ttl=64 time=0.175 ms
+
+--- 10.0.0.1 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2027ms
+rtt min/avg/max/mdev = 0.175/0.236/0.351/0.081 ms
+$ ping -c 3 10.0.0.2 # Node 2
+PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+64 bytes from 10.0.0.2: icmp_seq=1 ttl=64 time=2.70 ms
+64 bytes from 10.0.0.2: icmp_seq=2 ttl=64 time=0.215 ms
+64 bytes from 10.0.0.2: icmp_seq=3 ttl=64 time=0.195 ms
+
+--- 10.0.0.2 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2043ms
+rtt min/avg/max/mdev = 0.195/1.036/2.700/1.176 ms
+
+$ ping -c 3 10.0.0.3 # Node 3
+PING 10.0.0.3 (10.0.0.3) 56(84) bytes of data.
+64 bytes from 10.0.0.3: icmp_seq=1 ttl=64 time=0.437 ms
+64 bytes from 10.0.0.3: icmp_seq=2 ttl=64 time=0.421 ms
+64 bytes from 10.0.0.3: icmp_seq=3 ttl=64 time=0.585 ms
+
+--- 10.0.0.3 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2087ms
+rtt min/avg/max/mdev = 0.421/0.481/0.585/0.073 ms
 ```
+
+All three should succeed since the existing nodes already have IPv4 configured on the vSwitch.
 
 ### Testing IPv6
 
-```bash
-ping6 -c 3 fd00:1::1  # Node 1
-ping6 -c 3 fd00:1::2  # Node 2
-ping6 -c 3 fd00:1::3  # Node 3
-```
-
-If IPv4 works but IPv6 fails, verify that all nodes have IPv6 addresses configured on their vSwitch interfaces.
-
-### Testing Host Resolution
+Since the existing nodes don't have IPv6 on their vSwitch interfaces yet, you can only verify that node4's IPv6 configuration is correct by checking the interface:
 
 ```bash
-ping -c 1 node1
-ping6 -c 1 node1-v6
+$ ip -6 addr show enp195s0.4000
+7: enp195s0.4000@enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    inet6 fd00::4/64 scope global noprefixroute
+       valid_lft forever preferred_lft forever
+    inet6 fe80::cad:c5f2:6cc4:d67b/64 scope link noprefixroute
+       valid_lft forever preferred_lft forever
 ```
 
-## Troubleshooting
-
-### Interface Not Coming Up
-
-```bash
-# Check interface status
-nmcli device status
-
-# Check for errors
-journalctl -u NetworkManager | tail -20
-
-# Verify VLAN module is loaded
-lsmod | grep 8021q
-sudo modprobe 8021q
-```
-
-### IPv6 Not Working
-
-```bash
-# Verify IPv6 is enabled on the interface
-ip -6 addr show
-
-# Check if IPv6 forwarding is enabled
-sysctl net.ipv6.conf.all.forwarding
-
-# Verify no firewall is blocking ICMPv6
-sudo firewall-cmd --list-all
-
-# Check for IPv6 neighbor discovery
-ip -6 neigh show
-```
-
-### Cannot Ping Other Nodes
-
-```bash
-# Verify interface has both IPs
-ip addr show
-
-# Check if interface is in correct VLAN
-ip -d link show enp195s0.4000
-```
-
-Also verify in Hetzner Robot that the vSwitch exists, all servers are added, and the VLAN ID matches your configuration.
-
-### MTU Issues
-
-If you experience packet loss with large packets:
-
-```bash
-# Check current MTU
-ip link show enp195s0.4000 | grep mtu
-
-# Set MTU (Hetzner vSwitch typically supports 1400)
-sudo nmcli connection modify vswitch ethernet.mtu 1400
-sudo nmcli connection up vswitch
-```
-
-In the next lesson, we'll configure firewalld to allow the necessary Kubernetes traffic over both IPv4 and IPv6.
+You should see your ULA address (`fd00::4/64`) listed.
+Full IPv6 connectivity testing will become possible as we migrate each node and add IPv6 to their vSwitch interfaces in later lessons.
