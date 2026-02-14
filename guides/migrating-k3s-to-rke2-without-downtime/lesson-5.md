@@ -13,9 +13,9 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-5.md
 ---
 
-In this lesson, we'll install Rocky Linux 10 on Node 4 and configure it for Kubernetes workloads.
+Node 4 needs a fresh operating system before it can serve as the first RKE2 control plane.
 Rocky Linux is a community-driven, enterprise-grade Linux distribution that is fully compatible with Red Hat Enterprise Linux.
-We chose Rocky Linux for its open source nature, stability, and first-class support by Hetzner.
+We chose it for its open source nature, stability, and first-class support by Hetzner.
 
 {% include guide-overview-link.liquid.html %}
 
@@ -62,7 +62,7 @@ $ reboot
 ```
 
 When reconnecting via SSH, you'll see a host key warning because the server's SSH keys changed with the new OS installation.
-This is expected behavior - remove the old entries from `~/.ssh/known_hosts` on your local machine and accept the new key when prompted.
+This is expected—remove the old entries from `~/.ssh/known_hosts` on your local machine and accept the new key when prompted.
 
 ## Essential Security Configuration
 
@@ -98,8 +98,8 @@ $ dnf update -y
 Running commands as root is dangerous as it provides unrestricted access to the system.
 We create a dedicated admin account that requires explicit `sudo` for privileged operations, providing both safety and accountability.
 
-For the username, choose something that indicates the account's purpose, but ultimately it's up to you.
-I recommend using a consistent naming convention across all cluster nodes, such as `k8sadmin` for Kubernetes administration:
+Choose a username that indicates the account's purpose and remains consistent across all cluster nodes.
+We use `k8sadmin` throughout this guide for Kubernetes administration:
 
 ```bash
 $ useradd k8sadmin
@@ -110,7 +110,7 @@ passwd: password updated successfully
 $ usermod -aG wheel k8sadmin
 ```
 
-We add the user to the `wheel` group, as it is the standard group for granting sudo privileges on RHEL-based systems.
+Adding the user to the `wheel` group grants sudo privileges on RHEL-based systems.
 
 Test that the new user account works by opening a new SSH session from your local machine:
 
@@ -120,10 +120,10 @@ $ ssh k8sadmin@<node4-public-ip>
 
 ### Set Up SSH Key Authentication
 
-Password authentication is vulnerable to brute-force attacks and requires typing the password every time you connect.
-SSH key authentication is both more secure (keys are much harder to crack than passwords) and more convenient (no password prompts).
+Password authentication is vulnerable to brute-force attacks and requires typing credentials on every connection.
+SSH key authentication eliminates both problems—keys are far harder to crack and connect without password prompts.
 
-Generate an ED25519 key pair on your local machine, as it offers better security and performance than RSA:
+Generate an ED25519 key pair on your local machine, which offers better security and performance than RSA:
 
 ```bash
 $ ssh-keygen -t ed25519 -f ~/.ssh/node4_k8sadmin_ed25519
@@ -160,8 +160,7 @@ $ sudo systemctl restart sshd
 ```
 
 From this point forward, only the `k8sadmin` account can be used to access the server, and all administrative tasks require explicit `sudo` elevation.
-
-Using `sudo` will also log all privileged commands to the system journal, providing an audit trail of who did what and when.
+Using `sudo` also logs all privileged commands to the system journal, providing an audit trail of who did what and when.
 
 ## Optional: Set Up Tailscale
 
@@ -185,13 +184,15 @@ After authentication, verify the Tailscale IP address:
 $ tailscale ip -4
 ```
 
-For servers that should remain permanently accessible, consider disabling key expiry in the Tailscale admin console. While it removes the need for periodic re-authentication, it also means that if the server is compromised, the attacker could maintain access indefinitely, so use this option with caution.
+For servers that should remain permanently accessible, consider disabling key expiry in the Tailscale admin console.
+This removes the need for periodic re-authentication, but it also means a compromised server could maintain access indefinitely—use this option with caution.
 
 ## Configure Timezone and Hostname
 
-Consistent timezone configuration across all cluster nodes is important for log correlation and debugging. When investigating issues, you need timestamps to match across nodes, so all of the nodes should be set to their correct local timezone.
+Consistent timezone configuration across all cluster nodes is important for log correlation and debugging.
+When investigating issues, you need timestamps to match across nodes, so set all nodes to their correct local timezone.
 
-As our cluster nodes are located in Helsinki, we will set the timezone to `Europe/Helsinki`:
+As our cluster nodes are located in Helsinki, we set the timezone to `Europe/Helsinki`:
 
 ```bash
 $ sudo timedatectl set-timezone Europe/Helsinki
@@ -224,19 +225,17 @@ $ sudo dnf install -y \
     jq
 ```
 
-Each tool serves a specific purpose:
-
-- `git` manages configuration as code and pulls deployment scripts
-- `bash-completion` makes command-line work faster with tab completion
-- `tar` and `unzip` extract downloaded archives
-- `net-tools` and `bind-utils` provide networking diagnostics like `netstat` and `nslookup`
-- `jq` parses JSON output from kubectl and APIs
-
-For detailed setup steps and best practices, please look up the relevant documentation for each tool.
+| Tool                         | Purpose                                              |
+| ---------------------------- | ---------------------------------------------------- |
+| `git`                        | Manages configuration as code and deployment scripts |
+| `bash-completion`            | Enables tab completion for faster command-line work  |
+| `tar` and `unzip`            | Extract downloaded archives                          |
+| `net-tools` and `bind-utils` | Networking diagnostics like `netstat` and `nslookup` |
+| `jq`                         | Parses JSON output from `kubectl` and APIs           |
 
 ## Verify System Readiness
 
-Before proceeding to the next lesson, verify that the system is properly configured and can communicate with the outside world.
+Before proceeding, verify that the system is properly configured and can communicate with the outside world.
 These checks catch common issues like DNS misconfiguration or firewall problems:
 
 ```bash
@@ -277,20 +276,3 @@ Internet OK
 
 If any of these checks fail, resolve the issue before continuing.
 Network problems at this stage will cause harder-to-diagnose failures during RKE2 installation.
-
-## System Information
-
-Document the system information for your records.
-This is useful when troubleshooting issues or comparing configurations across nodes:
-
-```bash
-echo "=== Node 4 System Information ==="
-echo "Hostname: $(hostname)"
-echo "OS: $(grep PRETTY_NAME /etc/os-release | cut -d'"' -f2)"
-echo "Kernel: $(uname -r)"
-echo "Memory: $(free -h | grep Mem | awk '{print $2}')"
-echo "Disk: $(df -h / | tail -1 | awk '{print $2}')"
-```
-
-With Rocky Linux 10 installed and secured, Node 4 is ready for network configuration.
-In the next lesson, we'll set up the Hetzner vSwitch private networking that allows secure communication between cluster nodes.
