@@ -90,7 +90,7 @@ These CIDR ranges were planned in [Lesson 6](/guides/migrating-k3s-to-rke2-witho
 
 | Network         | IPv4 CIDR    | IPv6 CIDR     |
 | --------------- | ------------ | ------------- |
-| Node Network    | 10.1.1.0/24  | fd00:1::/64   |
+| Node Network    | 10.0.0.0/24  | fd00::/64     |
 | Pod Network     | 10.42.0.0/16 | fd00:42::/56  |
 | Service Network | 10.43.0.0/16 | fd00:43::/112 |
 | Cluster DNS     | 10.43.0.10   | fd00:43::a    |
@@ -157,14 +157,14 @@ token: ${TOKEN}
 tls-san:
   - node4
   - node4.k8s.local
-  - 10.1.1.4
-  - fd00:1::4
+  - 10.0.0.4
+  - fd00::4
 
 cni: none
 disable:
   - rke2-ingress-nginx
 
-node-ip: 10.1.1.4,fd00:1::4
+node-ip: 10.0.0.4,fd00::4
 bind-address: 0.0.0.0
 write-kubeconfig-mode: "0644"
 

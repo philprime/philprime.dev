@@ -121,11 +121,6 @@ For each stateful application:
 6. **Deploy** the application on Cluster B
 7. **Verify** data integrity and functionality
 
-{% include alert.liquid.html type='info' title='Application-Specific' content='
-Data migration is highly specific to your applications.
-The exported manifests from Lesson 16 provide the structure, but data transfer requires understanding each application'\''s storage needs.
-' %}
-
 ## Verification
 
 After migrating each application:

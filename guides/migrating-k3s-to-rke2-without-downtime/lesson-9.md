@@ -143,7 +143,7 @@ ipv6:
 
 kubeProxyReplacement: true
 
-k8sServiceHost: 10.1.1.4
+k8sServiceHost: 10.0.0.4
 k8sServicePort: 6443
 
 ipam:
@@ -255,7 +255,7 @@ Expected output showing both IPs:
 
 ```
 NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
-node4   Ready    control-plane,etcd,master   20m   v1.31.x+rke2r1   10.1.1.4,fd00:1::4
+node4   Ready    control-plane,etcd,master   20m   v1.31.x+rke2r1   10.0.0.4,fd00::4
 ```
 
 ### Dual-Stack Pod Test
@@ -280,8 +280,8 @@ Expected output:
 Test connectivity:
 
 ```bash
-kubectl exec dual-stack-test -- ping -c 2 10.1.1.4
-kubectl exec dual-stack-test -- ping6 -c 2 fd00:1::4
+kubectl exec dual-stack-test -- ping -c 2 10.0.0.4
+kubectl exec dual-stack-test -- ping6 -c 2 fd00::4
 
 kubectl delete pod dual-stack-test
 ```

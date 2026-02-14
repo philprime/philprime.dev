@@ -101,7 +101,7 @@ Proceed with Node 2 installation promptly.
 Follow the same process as Node 3 ([Lesson 13](/guides/migrating-k3s-to-rke2-without-downtime/lesson-13)):
 
 1. Install Rocky Linux 10 ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
-2. Configure dual-stack networking with `10.1.1.2` and `fd00:1::2` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
+2. Configure dual-stack networking with `10.0.0.2` and `fd00::2` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
 3. Configure firewall ([Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7))
 
 ### Install and Configure RKE2
@@ -117,17 +117,17 @@ sudo mkdir -p /etc/rancher/rke2
 TOKEN="<your-cluster-token>"
 
 sudo tee /etc/rancher/rke2/config.yaml <<EOF
-server: https://10.1.1.4:9345
+server: https://10.0.0.4:9345
 token: ${TOKEN}
 
 tls-san:
   - node2
   - node2.k8s.local
-  - 10.1.1.2
-  - fd00:1::2
+  - 10.0.0.2
+  - fd00::2
 
 cni: none
-node-ip: 10.1.1.2,fd00:1::2
+node-ip: 10.0.0.2,fd00::2
 
 cluster-cidr: 10.42.0.0/16,fd00:42::/56
 service-cidr: 10.43.0.0/16,fd00:43::/112
@@ -160,9 +160,9 @@ Expected output:
 
 ```
 NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
-node2   Ready    control-plane,etcd,master   2m    v1.31.x+rke2r1   10.1.1.2,fd00:1::2
-node3   Ready    control-plane,etcd,master   2h    v1.31.x+rke2r1   10.1.1.3,fd00:1::3
-node4   Ready    control-plane,etcd,master   4h    v1.31.x+rke2r1   10.1.1.4,fd00:1::4
+node2   Ready    control-plane,etcd,master   2m    v1.31.x+rke2r1   10.0.0.2,fd00::2
+node3   Ready    control-plane,etcd,master   2h    v1.31.x+rke2r1   10.0.0.3,fd00::3
+node4   Ready    control-plane,etcd,master   4h    v1.31.x+rke2r1   10.0.0.4,fd00::4
 ```
 
 ### Verify etcd HA
@@ -174,9 +174,9 @@ etcdctl member list
 Should show 3 members:
 
 ```
-xxxx, started, node2-xxxx, https://10.1.1.2:2380, https://10.1.1.2:2379, false
-yyyy, started, node3-xxxx, https://10.1.1.3:2380, https://10.1.1.3:2379, false
-zzzz, started, node4-xxxx, https://10.1.1.4:2380, https://10.1.1.4:2379, true
+xxxx, started, node2-xxxx, https://10.0.0.2:2380, https://10.0.0.2:2379, false
+yyyy, started, node3-xxxx, https://10.0.0.3:2380, https://10.0.0.3:2379, false
+zzzz, started, node4-xxxx, https://10.0.0.4:2380, https://10.0.0.4:2379, true
 ```
 
 Check cluster health:
