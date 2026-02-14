@@ -181,21 +181,114 @@ Changes typically propagate within 30-60 seconds.
 
 ## Verification
 
-Test that the vSwitch connectivity works through the firewall by pinging another node over the private network:
+### vSwitch Connectivity
+
+Test that nodes can communicate over the private network using both IPv4 and IPv6.
+
+From node1, ping node4:
+
+```bash
+$ ping -c 3 10.0.0.4
+64 bytes from 10.0.0.4: icmp_seq=1 ttl=64 time=0.351 ms
+...
+3 packets transmitted, 3 received, 0% packet loss
+```
+
+From node4, ping node1:
 
 ```bash
 $ ping -c 3 10.0.0.1
-PING 10.0.0.1 (10.0.0.1) 56(84) bytes of data.
-64 bytes from 10.0.0.1: icmp_seq=1 ttl=64 time=0.351 ms
-64 bytes from 10.0.0.1: icmp_seq=2 ttl=64 time=0.182 ms
-64 bytes from 10.0.0.1: icmp_seq=3 ttl=64 time=0.175 ms
+64 bytes from 10.0.0.1: icmp_seq=1 ttl=64 time=0.348 ms
+...
+3 packets transmitted, 3 received, 0% packet loss
 ```
 
 This works because Rule #1 allows all traffic from the vSwitch subnet, including ICMP.
 If pings fail, verify that Rule #1 has the correct source IP (`10.0.0.0/24`) and is set to `accept`.
+IPv6 connectivity over the vSwitch is not configured on the existing nodes yet, so we only test IPv4 here.
 
-External ping (from the public internet) will not work since we don't have an ICMP rule for public traffic.
-This is intentional—ICMP is useful for diagnostics but not required for cluster operation.
+### Port Scan from vSwitch
+
+Install nmap on node1 if it's not already available:
+
+```bash
+dnf install -y nmap
+```
+
+Verify that the vSwitch rule allows unrestricted access by scanning node4 from node1:
+
+```bash
+# Scan all ports on node4's private IP from node1
+$ nmap -sT 10.0.0.4 -p-
+Nmap scan report for 10.0.0.4
+Host is up (0.00018s latency).
+Not shown: 65534 closed tcp ports (conn-refused)
+
+PORT   STATE SERVICE
+22/tcp open  ssh
+
+Nmap done: 1 IP address (1 host up) scanned in 1.33 seconds
+```
+
+Only SSH (port 22) is open since it's the only service running on the fresh server.
+The remaining 65534 ports show as `closed` (reachable but no service listening), and none show as `filtered`.
+This confirms Rule #1 permits all traffic from the vSwitch subnet regardless of port or protocol.
+
+### Port Scan from Public Internet
+
+From a machine outside the vSwitch, scan node4's public IP to verify the firewall boundaries:
+
+```bash
+# From an external machine, scan node4's public IP for relevant ports
+$ nmap -Pn -sT -v -T4 --min-rate 5000 <node4-public-ip> -p 21,22,443,587,588,6443,6444,29999,30000,32767,32768
+
+PORT      STATE    SERVICE
+21/tcp    filtered ftp
+22/tcp    open     ssh
+443/tcp   closed   https
+587/tcp   closed   submission
+588/tcp   filtered cal
+6443/tcp  closed   sun-sr-https
+6444/tcp  filtered sge_qmaster
+29999/tcp filtered bingbang
+30000/tcp closed   ndmps
+32767/tcp closed   filenet-powsrm
+32768/tcp filtered filenet-tms
+```
+
+The results confirm each firewall zone:
+
+| Port  | State    | Reason                                            |
+| ----- | -------- | ------------------------------------------------- |
+| 21    | filtered | Below well-known range, blocked by firewall       |
+| 22    | open     | In well-known range (`22-587`), SSH is listening  |
+| 443   | closed   | In well-known range, allowed but no service yet   |
+| 587   | closed   | End of well-known range, allowed but no service   |
+| 588   | filtered | Above well-known range, blocked                   |
+| 6443  | closed   | k8s-api rule, allowed but RKE2 not installed yet  |
+| 6444  | filtered | Not in any allowed range, blocked                 |
+| 29999 | filtered | Below nodeport range, blocked                     |
+| 30000 | closed   | Start of nodeport range, allowed but no service   |
+| 32767 | closed   | End of nodeport range, allowed but no service     |
+| 32768 | filtered | Ephemeral range requires ACK flag, SYN is blocked |
+
+The `-Pn` flag skips host discovery since there is no public ICMP rule.
+Ports showing `closed` are reachable through the firewall but have no service listening.
+Ports showing `filtered` are blocked by the firewall and never reach the server.
+
+### Full Port Scan
+
+To scan all 65535 ports from the public internet, use `--min-rate` to prevent nmap from slowing down on filtered ports:
+
+```bash
+nmap -Pn -sT -v --min-rate 1000 <node4-public-ip> -p-
+```
+
+{% include alert.liquid.html type='warning' title='Long Running Scan' content='
+A full port scan against a firewalled host can take 30 minutes or more, even with --min-rate.
+Filtered ports cause timeouts that slow the scan significantly.
+The targeted scan above covers all firewall zone boundaries and is sufficient for verification.
+' %}
 
 ## What's Next
 
