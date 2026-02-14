@@ -74,10 +74,10 @@ Example output:
 NAMESPACE     NAME                      READY   STATUS    NODE
 default       web-app-7d4b8c6f9-x2k9p   1/1     Running   node3
 monitoring    prometheus-0              1/1     Running   node3
-kube-system   cilium-agent-node3        1/1     Running   node3
+kube-system   canal-node3               1/1     Running   node3
 ```
 
-DaemonSet pods (like `cilium-agent`) will be recreated automatically on other nodes.
+DaemonSet pods (like `canal`) will be recreated automatically on other nodes.
 Application pods need to be rescheduled, which happens automatically if they're managed by a Deployment or StatefulSet.
 
 ### Critical Workloads
@@ -186,7 +186,7 @@ Before proceeding, confirm Cluster B is ready to receive Node 3:
 export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
 
 kubectl get nodes
-cilium status
+kubectl get pods -n kube-system -l k8s-app=canal
 ```
 
 ### Prepare RKE2 Configuration
@@ -226,7 +226,7 @@ EOF
 
 - [ ] Node 4 is Ready
 - [ ] All system pods running
-- [ ] Cilium healthy
+- [ ] Canal healthy
 - [ ] RKE2 config prepared for Node 3
 
 ### External Dependencies

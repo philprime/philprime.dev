@@ -155,13 +155,12 @@ xxxx, started, node3-xxxx, https://10.0.0.3:2380, https://10.0.0.3:2379, false
 yyyy, started, node4-xxxx, https://10.0.0.4:2380, https://10.0.0.4:2379, true
 ```
 
-### Check Cilium
+### Check Canal
 
-Cilium automatically deploys to new nodes:
+Canal automatically deploys to new nodes:
 
 ```bash
-kubectl get pods -n kube-system -l k8s-app=cilium -o wide
-cilium status
+kubectl get pods -n kube-system -l k8s-app=canal -o wide
 ```
 
 ## Current State

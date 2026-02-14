@@ -136,14 +136,13 @@ The cluster should handle single-node failure gracefully.
 
 ## Verifying Networking and Pods
 
-### Cilium Status
+### Canal Status
 
 ```bash
-kubectl get pods -n kube-system -l k8s-app=cilium -o wide
-cilium status
+kubectl get pods -n kube-system -l k8s-app=canal -o wide
 ```
 
-Should show one Cilium pod per node, all Running.
+Should show one Canal pod per node, all Running.
 
 ### System Pods
 
@@ -153,7 +152,7 @@ kubectl get pods -n kube-system -o wide
 
 Verify pods are distributed across nodes:
 
-- Cilium agent on each node
+- Canal agent on each node
 - CoreDNS replicas on different nodes
 - No pods in Pending or Error state
 
@@ -188,8 +187,8 @@ node4   160m         4%     1250Mi          16%
 
 ### Networking
 
-- [ ] Cilium running on all nodes
-- [ ] `cilium status` shows healthy
+- [ ] Canal running on all nodes
+- [ ] All Canal pods show Running
 
 ### Resources
 

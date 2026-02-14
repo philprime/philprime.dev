@@ -22,7 +22,7 @@ This lesson establishes the context for our migration, develops a phased strateg
 
 Migrating a production Kubernetes cluster is one of the most complex operations in infrastructure management.
 Our migration must maintain zero downtime while keeping services available, change the underlying distribution from k3s to RKE2, and reconfigure the topology from a single control plane with two workers to three control planes with one worker—all at the same time.
-We're also replacing the operating system with Rocky Linux 10 and upgrading to Cilium for networking and Longhorn for storage.
+We're also replacing the operating system with Rocky Linux 10 and upgrading to Canal for networking and Longhorn for storage.
 
 {% include alert.liquid.html type='tip' title='Why not 5 nodes?' content='
 A 5-node setup would make this migration significantly easier.
@@ -42,7 +42,7 @@ The target RKE2 cluster addresses each of these limitations:
 | Control Plane | Node 1 only (single point of failure) | Nodes 2, 3, 4 (HA with etcd quorum)  |
 | Workers       | Nodes 2, 3                            | Node 1 (extensible to more)          |
 | Storage       | Local storage per node                | Longhorn replicated + local-path     |
-| CNI           | Flannel                               | Cilium with eBPF                     |
+| CNI           | Flannel                               | Canal (Flannel + Calico)             |
 | Ingress       | Fixed node IPs                        | Traefik DaemonSet + Hetzner Cloud LB |
 
 The migration happens in five phases, each moving one step closer to the target architecture while preserving service availability.
@@ -85,7 +85,7 @@ class bU unassigned
 ```
 
 This phase creates a new RKE2 cluster on Node 4 while Cluster A remains fully operational with all three nodes.
-We install Rocky Linux 10 on Node 4, configure the Hetzner vSwitch networking, install RKE2 as the first control plane, and deploy Cilium as the CNI plugin.
+We install Rocky Linux 10 on Node 4, configure the Hetzner vSwitch networking, and install RKE2 as the first control plane with Canal as the bundled CNI plugin.
 After verifying cluster functionality, Node 4 runs as a single-node RKE2 cluster while Nodes 1-3 continue serving workloads unchanged.
 
 ## Phase 2: First Node Migration

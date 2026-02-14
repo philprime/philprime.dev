@@ -1,6 +1,6 @@
 ---
 layout: guide-lesson.liquid
-title: Installing Cilium CNI with Dual-Stack
+title: Installing the Cilium CNI
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime

@@ -143,12 +143,12 @@ node4   Ready    control-plane,etcd,master   3d    v1.31.x+rke2r1   10.1.1.4,fd0
 kubectl label node node1 node-role.kubernetes.io/worker=true
 ```
 
-### Verify Cilium and Traefik
+### Verify Canal and Traefik
 
 Both should automatically deploy to the new node:
 
 ```bash
-kubectl get pods -n kube-system -l k8s-app=cilium -o wide
+kubectl get pods -n kube-system -l k8s-app=canal -o wide
 kubectl get pods -n traefik -o wide
 ```
 

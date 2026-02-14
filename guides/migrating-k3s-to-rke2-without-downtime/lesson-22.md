@@ -102,8 +102,8 @@ kubectl get pods -n longhorn-system
 Check networking and ingress:
 
 ```bash
-# Cilium healthy
-cilium status
+# Canal healthy
+kubectl get pods -n kube-system -l k8s-app=canal
 
 # Traefik running on all nodes
 kubectl get pods -n traefik -o wide
@@ -153,7 +153,7 @@ Run application-specific tests:
 
 ### Networking
 
-- [ ] Cilium healthy
+- [ ] Canal healthy
 - [ ] Ingress working
 - [ ] Load balancer healthy
 

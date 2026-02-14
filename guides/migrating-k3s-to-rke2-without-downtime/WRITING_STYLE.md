@@ -102,12 +102,12 @@ Use descriptive text that reads naturally in the sentence:
 ```markdown
 <!-- Correct -->
 
-[Cilium](https://cilium.io/) stands out with its eBPF-based architecture.
+[Canal](https://docs.rke2.io/networking/basic_network_options) is the default CNI for RKE2.
 Navigate to the [Hetzner Robot](https://robot.hetzner.com/server) interface.
 
 <!-- Wrong: generic link text -->
 
-Click [here](https://cilium.io/) to learn about Cilium.
+Click [here](https://docs.rke2.io/networking/basic_network_options) to learn about Canal.
 ```
 
 ### Em-Dashes
@@ -231,12 +231,12 @@ Reference other lessons naturally within prose:
 ```markdown
 <!-- Correct -->
 
-We'll configure Cilium Host Policies in Lesson 9 to close this gap.
+We'll configure Calico Network Policies in Lesson 9 to close this gap.
 Since we're already building a new cluster to migrate from k3s to RKE2, this is the ideal time.
 
 <!-- Wrong: parenthetical lesson references -->
 
-We'll configure Cilium Host Policies (see Lesson 9) to close this gap.
+We'll configure Calico Network Policies (see Lesson 9) to close this gap.
 ```
 
 ## Transitions

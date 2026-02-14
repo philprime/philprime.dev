@@ -54,7 +54,7 @@ flowchart TB
 | Component    | Technology                      |
 | ------------ | ------------------------------- |
 | Distribution | RKE2                            |
-| CNI          | Cilium (eBPF, dual-stack)       |
+| CNI          | Canal (dual-stack)              |
 | Storage      | Longhorn (default), local-path  |
 | Ingress      | Traefik + Hetzner Load Balancer |
 
@@ -146,7 +146,7 @@ Securely share:
 1. **Planned** a comprehensive zero-downtime migration strategy
 2. **Built** a new RKE2 cluster with 3-node HA control plane
 3. **Migrated** nodes one by one without service interruption
-4. **Deployed** Cilium for advanced eBPF networking with dual-stack
+4. **Configured** Canal CNI for dual-stack networking
 5. **Configured** Longhorn for replicated storage
 6. **Implemented** HA ingress with Traefik and Hetzner Load Balancer
 7. **Migrated** all workloads and data

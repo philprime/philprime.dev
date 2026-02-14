@@ -25,7 +25,7 @@ We use a layered approach to network security, with each layer serving a specifi
 | Layer | Component                  | Purpose                                                          |
 | ----- | -------------------------- | ---------------------------------------------------------------- |
 | 1     | Hetzner Firewall           | Coarse network-level filtering before traffic reaches the server |
-| 2     | Cilium Host Policies       | Fine-grained port control on the host using eBPF                 |
+| 2     | Calico Network Policies    | Fine-grained port control on the host                            |
 | 3     | Kubernetes NetworkPolicies | Pod-to-pod isolation and service-level access control            |
 
 This architecture provides defense-in-depth: if one layer fails or is misconfigured, the others still provide protection.
@@ -35,10 +35,10 @@ This architecture provides defense-in-depth: if one layer fails or is misconfigu
 Hetzner's firewall has a 10-rule limit, which forces us to use broad port ranges.
 For example, opening ports `22-587` allows SSH, SMTP, HTTP, and HTTPS, but also opens unused ports like `23-24` and `81-442`.
 
-Cilium Host Policies (configured in Lesson 9) close this gap by explicitly allowing only the specific ports we need.
-Even though Hetzner permits the range, Cilium blocks everything except SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`).
+Calico Network Policies (configured in Lesson 9) close this gap by explicitly allowing only the specific ports we need.
+Even though Hetzner permits the range, Calico blocks everything except SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`).
 
-If Cilium fails, the system falls back to Hetzner rules only, which are broader but still reasonably secure.
+If Calico fails, the system falls back to Hetzner rules only, which are broader but still reasonably secure.
 
 ## Understanding Hetzner's Firewall
 
@@ -97,7 +97,7 @@ Some ports are dictated by protocol standards and must use specific numbers:
 Services without protocol-mandated ports must use the Kubernetes NodePort range (`30000-32767`).
 For example, PostgreSQL can run on port `30432` instead of `5432`, and Redis on `30379` instead of `6379`.
 Ports outside this range (like `35432`) won't be accessible through the firewall.
-Cilium Host Policies control which specific ports within this range are actually accessible.
+Calico Network Policies control which specific ports within this range are actually accessible.
 
 ### IPv6 Considerations
 
@@ -137,7 +137,7 @@ Most rules are mirrored for IPv4 and IPv6 to provide full dual-stack coverage.
 | #9 | nodeports          | *       | *        |             |             | 30000-32767 |           | accept |
 
 Rule #10 is available for future use.
-Cilium Host Policies (Layer 2) handle fine-grained filtering within these ranges.
+Calico Network Policies (Layer 2) handle fine-grained filtering within these ranges.
 
 ### Rules (outgoing)
 
@@ -148,7 +148,7 @@ Cilium Host Policies (Layer 2) handle fine-grained filtering within these ranges
 ### Rule Explanations
 
 **Rule #1 (vswitch)** is the most critical rule for cluster operation.
-It allows all traffic from the private vSwitch network, enabling Kubernetes API communication between nodes, etcd cluster synchronization, Cilium's pod networking, and kubelet communication.
+It allows all traffic from the private vSwitch network, enabling Kubernetes API communication between nodes, etcd cluster synchronization, Calico's pod networking, and kubelet communication.
 Without this rule, your cluster cannot function.
 
 **Rules #2-3 (tcp established)** handle return traffic for outbound TCP connections.
@@ -160,7 +160,7 @@ DNS queries go out on a random high port, and responses come back from port `53`
 This rule ensures those responses reach your server.
 
 **Rules #5-6 (well-known)** cover SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`) for both IPv4 and IPv6.
-This opens some unused ports (`23-24`, `26-79`, `81-442`, `444-586`), but Cilium Host Policies block those at Layer 2.
+This opens some unused ports (`23-24`, `26-79`, `81-442`, `444-586`), but Calico Network Policies block those at Layer 2.
 
 **Rules #7-8 (k8s-api)** open port `6443` for Kubernetes API access over both IPv4 and IPv6.
 This allows `kubectl` commands and other API clients to reach your cluster from outside the vSwitch network.
@@ -168,7 +168,7 @@ This allows `kubectl` commands and other API clients to reach your cluster from 
 **Rule #9 (nodeports)** opens the standard Kubernetes NodePort range (`30000-32767`) for both IPv4 and IPv6.
 It uses wildcard version (`*`) and protocol (`*`) to cover both address families in a single rule.
 PostgreSQL (`30432`), Redis (`30379`), and other services can use ports in this range.
-Cilium Host Policies control which specific ports are accessible.
+Calico Network Policies control which specific ports are accessible.
 
 Tailscale is not listed because it uses NAT traversal with outbound connections.
 Since we allow all outbound traffic, Tailscale works without an inbound rule.
@@ -293,6 +293,6 @@ The targeted scan above covers all firewall zone boundaries and is sufficient fo
 ## What's Next
 
 The Hetzner firewall provides coarse filtering at Layer 1.
-In Lesson 9, we'll configure Cilium Host Policies (Layer 2) to provide fine-grained port control, blocking the unused ports within the ranges we opened here.
+In Lesson 9, we'll configure Calico Network Policies (Layer 2) to provide fine-grained port control, blocking the unused ports within the ranges we opened here.
 
 With the network-level firewall configured, we're ready to install RKE2 in the next lesson.

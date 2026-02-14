@@ -188,14 +188,13 @@ etcdctl endpoint status --cluster --write-out=table
 
 All 3 endpoints should be healthy, with one showing as leader.
 
-### Verify Cilium
+### Verify Canal
 
 ```bash
-kubectl get pods -n kube-system -l k8s-app=cilium -o wide
-cilium status
+kubectl get pods -n kube-system -l k8s-app=canal -o wide
 ```
 
-Should show 3 Cilium pods, one per node.
+Should show 3 Canal pods, one per node.
 
 ## Current State
 

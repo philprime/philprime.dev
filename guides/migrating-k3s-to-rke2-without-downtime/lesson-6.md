@@ -107,11 +107,10 @@ Services sit above this layer, providing stable virtual IPs that load-balance tr
 The Container Network Interface (CNI) plugin is responsible for all pod networking—assigning addresses, configuring routes, and handling network policies.
 Your choice of CNI directly impacts how well dual-stack works in practice, as not all plugins implement both address families equally well.
 
-[Cilium](https://cilium.io/) stands out with its eBPF-based architecture that provides native dual-stack routing and built-in WireGuard encryption.
-[Calico](https://www.projectcalico.org/) also supports dual-stack but requires more manual configuration to get both families working correctly.
-[Flannel](https://github.com/flannel-io/flannel), while simpler, has limited dual-stack support that may not meet production requirements.
+RKE2 bundles [Canal](https://docs.rke2.io/networking/basic_network_options) as its default CNI, which combines Flannel for inter-node traffic with Calico for intra-node traffic and network policies.
+Canal auto-detects dual-stack from the cluster CIDRs and requires no additional configuration.
 
-We'll use Cilium throughout this guide, both for its mature dual-stack implementation and its excellent observability features that help debug networking issues.
+We'll use Canal throughout this guide since it is the RKE2 default, supports dual-stack out of the box, and provides Calico's network policy engine for L3-L4 security.
 
 ### IP Family Preference
 
@@ -178,7 +177,7 @@ Since vSwitch uses VLAN tagging to separate traffic from other customers, you'll
 
 While the vSwitch provides logical isolation through VLAN tagging, it's important to understand what this means for security.
 The physical network infrastructure is shared across Hetzner customers, with VLAN segmentation preventing direct access between tenants—but the traffic itself travels unencrypted over the shared switches.
-This is generally acceptable for a private datacenter network, but for defense in depth we'll add encryption at the cluster level using Cilium's WireGuard support in a later lesson.
+This is generally acceptable for a private datacenter network, but for defense in depth we'll add encryption at the cluster level using Canal's WireGuard support in a later lesson.
 
 ### ULA Addresses for IPv6
 
@@ -190,7 +189,7 @@ Think of ULA as the IPv6 equivalent of familiar private IPv4 ranges like `10.0.0
 ### CIDR Allocation
 
 Before touching any configuration files, take time to document your chosen CIDR ranges.
-These values will appear in multiple places throughout the cluster setup—the vSwitch configuration, RKE2 settings, Cilium helm values, and firewall rules—and inconsistencies between them are a common source of subtle networking failures that can be difficult to debug.
+These values will appear in multiple places throughout the cluster setup—the vSwitch configuration, RKE2 settings, and firewall rules—and inconsistencies between them are a common source of subtle networking failures that can be difficult to debug.
 
 | Network         | IPv4 CIDR    | IPv6 CIDR     | Purpose                  |
 | --------------- | ------------ | ------------- | ------------------------ |
