@@ -7,9 +7,9 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 9
 guide_lesson_abstract: >
-  Install and configure Cilium as the CNI plugin with dual-stack IPv4/IPv6 support for eBPF-based networking.
+  Install and configure Cilium as the CNI plugin with dual-stack IPv4/IPv6 support, eBPF-based networking, and host-level firewall policies.
 guide_lesson_conclusion: >
-  Cilium is providing dual-stack pod networking. Node 4 is Ready and Cluster B can accept additional nodes.
+  Cilium is providing dual-stack pod networking with host-level security policies. Node 4 is Ready and Cluster B can accept additional nodes.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-9.md
 ---
 
@@ -98,6 +98,7 @@ This provides better performance and native dual-stack support without the compl
 | Option                  | Value        | Purpose                               |
 | ----------------------- | ------------ | ------------------------------------- |
 | `ipv6.enabled`          | true         | Enable IPv6 support                   |
+| `hostFirewall.enabled`  | true         | Enable host-level eBPF firewall       |
 | `kubeProxyReplacement`  | true         | Replace kube-proxy with eBPF          |
 | `routingMode`           | native       | Use native routing instead of overlay |
 | `ipv4NativeRoutingCIDR` | 10.42.0.0/16 | IPv4 pod CIDR for native routing      |
@@ -139,6 +140,9 @@ helm repo update
 ```bash
 cat <<'EOF' > /root/cilium-values.yaml
 ipv6:
+  enabled: true
+
+hostFirewall:
   enabled: true
 
 kubeProxyReplacement: true
@@ -226,7 +230,7 @@ cilium version
 cilium status --wait
 ```
 
-The output should show IPv4 and IPv6 enabled:
+The output should show IPv4 and IPv6 enabled, along with Host Firewall:
 
 ```
     /¯¯\
@@ -237,6 +241,7 @@ The output should show IPv4 and IPv6 enabled:
     \__/
 
 KubeProxyReplacement:    True
+Host Firewall:           Enabled
 IPv4 BPF NodePort:       Enabled
 IPv6 BPF NodePort:       Enabled
 IPv4 Masquerade:         Enabled
@@ -300,6 +305,174 @@ This deploys test pods and validates pod-to-pod, pod-to-service, and external co
 Some tests may be skipped on a single-node cluster.
 Full dual-stack testing will be possible once additional nodes join.
 ' %}
+
+## Host-Level Security with Cilium
+
+In Lesson 7, we configured Hetzner's firewall with port ranges to stay within the 10-rule limit.
+The `well-known` range (`22-587`) opens some unused ports, and the `nodeports` range (`30000-32767`) covers standard Kubernetes NodePorts.
+
+Cilium Host Policies provide Layer 2 security that closes these gaps.
+Using `CiliumClusterwideNetworkPolicy` resources, we can specify exactly which ports to allow on the host, blocking everything else even if Hetzner permits it.
+
+### Understanding Host Policies
+
+Host policies apply to the nodes themselves, not to pods.
+They control traffic destined for services running directly on the host, such as SSH, the Kubernetes API, and NodePort services.
+
+The key difference from regular NetworkPolicies:
+
+| Type                             | Applies to | Selector       |
+| -------------------------------- | ---------- | -------------- |
+| `NetworkPolicy`                  | Pods       | `podSelector`  |
+| `CiliumClusterwideNetworkPolicy` | Nodes      | `nodeSelector` |
+
+### Default-Deny Ingress Policy
+
+Create a policy that denies all external ingress to nodes by default, while allowing cluster-internal traffic:
+
+```bash
+cat <<'EOF' | kubectl apply -f -
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: host-default-deny-ingress
+spec:
+  description: "Default deny all external ingress to nodes"
+  nodeSelector:
+    matchLabels: {}
+  ingress:
+    - fromEntities:
+        - cluster
+EOF
+```
+
+The `cluster` entity includes all pods and nodes within the Kubernetes cluster.
+This ensures internal communication continues to work while blocking external traffic by default.
+
+### Allow Specific Services
+
+Create a policy that explicitly allows the services we need:
+
+```bash
+cat <<'EOF' | kubectl apply -f -
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: host-allow-services
+spec:
+  description: "Allow specific services to nodes"
+  nodeSelector:
+    matchLabels: {}
+  ingress:
+    # SSH
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "22"
+              protocol: TCP
+    # SMTP (receiving mail)
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "25"
+              protocol: TCP
+    # HTTP/HTTPS (Traefik)
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP
+    # SMTP submission
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "587"
+              protocol: TCP
+    # Kubernetes API
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "6443"
+              protocol: TCP
+    # PostgreSQL (NodePort)
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "30432"
+              protocol: TCP
+EOF
+```
+
+This policy explicitly allows only the ports we need.
+Even though Hetzner permits `22-587` and `30000-32767`, Cilium blocks everything except these specific ports.
+
+### Verify Host Policies
+
+Check that the policies are applied:
+
+```bash
+kubectl get ciliumclusterwidenetworkpolicies
+```
+
+Expected output:
+
+```
+NAME                        AGE
+host-default-deny-ingress   10s
+host-allow-services         5s
+```
+
+Test that blocked ports are actually blocked (from an external machine):
+
+```bash
+# This should fail (port 23 is in the 22-587 range but not explicitly allowed)
+nc -zv <your-server-ip> 23
+
+# This should succeed (port 22 is explicitly allowed)
+nc -zv <your-server-ip> 22
+```
+
+### Adding New Services
+
+To allow a new service, add an ingress rule to the `host-allow-services` policy.
+For example, to add Redis on port `30379`:
+
+```yaml
+# Redis (NodePort)
+- fromEntities:
+    - world
+  toPorts:
+    - ports:
+        - port: "30379"
+          protocol: TCP
+```
+
+No changes to Hetzner firewall rules are needed since `30379` is within the `nodeports` range.
+
+### Restricting SSH Access
+
+For production environments, consider restricting SSH to specific IP addresses:
+
+```yaml
+# SSH from admin IPs only
+- fromCIDR:
+    - 203.0.113.10/32
+    - 198.51.100.0/24
+  toPorts:
+    - ports:
+        - port: "22"
+          protocol: TCP
+```
+
+This provides an additional layer of security beyond Hetzner's firewall.
 
 ## Hubble UI
 

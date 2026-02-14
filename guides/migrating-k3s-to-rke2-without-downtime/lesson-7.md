@@ -1,251 +1,205 @@
 ---
 layout: guide-lesson.liquid
-title: Firewall Configuration for Dual-Stack
+title: Firewall Configuration
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 7
 guide_lesson_abstract: >
-  Configure firewalld on Node 4 to allow RKE2, Cilium, and Kubernetes traffic over both IPv4 and IPv6.
+  Configure Hetzner Robot firewall rules to allow RKE2 cluster traffic while maintaining security.
 guide_lesson_conclusion: >
-  The firewall is configured for dual-stack traffic, allowing Kubernetes communication over both IPv4 and IPv6.
+  The Hetzner firewall is configured to allow cluster communication over the vSwitch and necessary public services.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-7.md
 ---
 
-Proper firewall configuration is critical for a secure Kubernetes cluster.
-In this lesson, we'll configure firewalld to allow necessary traffic over both IPv4 and IPv6 while maintaining security.
+Before installing RKE2, we need to configure firewall rules that allow cluster components to communicate.
+This lesson covers the first layer of our three-layer security model: the Hetzner network firewall.
 
 {% include guide-overview-link.liquid.html %}
 
-## Understanding firewalld
+## Understanding the Three-Layer Security Model
 
-### Zones and Interfaces
+We use a layered approach to network security, with each layer serving a specific purpose:
 
-Rocky Linux 10 uses firewalld as its default firewall manager.
-Firewalld organizes rules into zones, each with different trust levels and rule sets.
-Interfaces are assigned to zones, and traffic is filtered according to that zone's rules.
+| Layer | Component                  | Purpose                                                          |
+| ----- | -------------------------- | ---------------------------------------------------------------- |
+| 1     | Hetzner Firewall           | Coarse network-level filtering before traffic reaches the server |
+| 2     | Cilium Host Policies       | Fine-grained port control on the host using eBPF                 |
+| 3     | Kubernetes NetworkPolicies | Pod-to-pod isolation and service-level access control            |
 
-For our cluster, we'll use two zones:
+This architecture provides defense-in-depth: if one layer fails or is misconfigured, the others still provide protection.
 
-| Zone       | Interface      | Purpose                               |
-| ---------- | -------------- | ------------------------------------- |
-| public     | Main interface | Internet-facing traffic (SSH, HTTP/S) |
-| kubernetes | vSwitch VLAN   | Internal cluster communication        |
+### Why Layers?
 
-This separation ensures that internal Kubernetes traffic is isolated from public internet traffic.
+Hetzner's firewall has a 10-rule limit, which forces us to use broad port ranges.
+For example, opening ports `22-587` allows SSH, SMTP, HTTP, and HTTPS, but also opens unused ports like `23-24` and `81-442`.
 
-### Dual-Stack Behavior
+Cilium Host Policies (configured in Lesson 9) close this gap by explicitly allowing only the specific ports we need.
+Even though Hetzner permits the range, Cilium blocks everything except SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`).
 
-Firewalld handles both IPv4 and IPv6 automatically.
-Port and service rules apply to both protocols by default, so you don't need to create separate rules for each address family.
+If Cilium fails, the system falls back to Hetzner rules only, which are broader but still reasonably secure.
 
-### ICMPv6 Requirements
+## Understanding Hetzner's Firewall
 
-Unlike IPv4 where ICMP is optional for basic functionality, IPv6 requires ICMPv6 for neighbor discovery.
-Neighbor discovery is how IPv6 nodes find each other on the local network segment.
-Blocking ICMPv6 will break IPv6 connectivity entirely.
+Hetzner's dedicated server firewall operates at the network level, filtering packets before they reach your server.
+This is more secure than host-based firewalls because malicious traffic never touches your machine's network stack.
+The firewall is stateless, meaning it evaluates each packet independently without tracking connection state.
 
-## Required Ports
+This stateless design has an important implication: you need explicit rules to allow return traffic from outbound connections.
+When your server makes an HTTPS request to download a container image, the response packets need a rule that permits them.
+We'll handle this with a rule that allows TCP packets with the `ACK` flag set on ephemeral ports.
 
-RKE2 with Cilium requires specific ports for cluster communication.
-All ports need to be accessible over both IPv4 and IPv6.
+### vSwitch Traffic
 
-### Control Plane Ports
+A critical point that's easy to overlook: **vSwitch traffic passes through Hetzner's firewall**.
+Even though the vSwitch is a private Layer 2 network between your servers, packets still traverse the firewall infrastructure.
+Without a rule explicitly allowing traffic from your vSwitch subnet, pod-to-pod communication across nodes will fail and your cluster won't function.
 
-| Port      | Protocol | Component       | Description                         |
-| --------- | -------- | --------------- | ----------------------------------- |
-| 6443      | TCP      | Kubernetes API  | kubectl and API access              |
-| 9345      | TCP      | RKE2 Supervisor | Node registration                   |
-| 2379-2380 | TCP      | etcd            | Cluster state (control planes only) |
-| 10250     | TCP      | Kubelet         | Pod logs, exec, metrics             |
+### Ephemeral Ports and NodePorts
 
-### Cilium CNI Ports
+When your server makes an outbound connection (downloading container images, querying APIs), the kernel assigns a temporary source port from the ephemeral port range.
+The response packets return to this port, so the firewall must allow them through.
 
-| Port | Protocol | Component     | Description                 |
-| ---- | -------- | ------------- | --------------------------- |
-| 8472 | UDP      | Cilium VXLAN  | Pod network overlay         |
-| 4240 | TCP      | Cilium Health | Cluster connectivity checks |
-| 4244 | TCP      | Hubble Relay  | Observability (optional)    |
-| 4245 | TCP      | Hubble UI     | Observability (optional)    |
+You can check your system's ephemeral port range:
 
-### Service Ports
+```bash
+cat /proc/sys/net/ipv4/ip_local_port_range
+# Output: 32768    60999
+```
 
-| Port        | Protocol | Component | Description                     |
-| ----------- | -------- | --------- | ------------------------------- |
-| 30000-32767 | TCP/UDP  | NodePort  | Kubernetes NodePort services    |
-| 30080       | TCP      | Traefik   | HTTP ingress via load balancer  |
-| 30443       | TCP      | Traefik   | HTTPS ingress via load balancer |
+Linux defaults to `32768-60999` for ephemeral ports.
+Kubernetes defaults to `30000-32767` for NodePort services.
+
+These ranges are intentionally non-overlapping:
+
+| Range         | Purpose                  | Used by      |
+| ------------- | ------------------------ | ------------ |
+| `30000-32767` | NodePort services        | Kubernetes   |
+| `32768-60999` | Ephemeral (source) ports | Linux kernel |
+
+The boundary at `32767`/`32768` is `2^15 - 1` / `2^15`, a deliberate design choice to prevent conflicts.
+Our firewall rules respect this boundary: the `tcp established` rule covers `32768-65535` for return traffic, while the `nodeports` rule covers `30000-32767` for inbound service access.
+
+### Port Strategy
+
+Some ports are dictated by protocol standards and must use specific numbers:
+
+| Port   | Service         | Reason                            |
+| ------ | --------------- | --------------------------------- |
+| `22`   | SSH             | Standard remote access            |
+| `25`   | SMTP            | Receiving mail from other servers |
+| `80`   | HTTP            | ACME challenges and redirects     |
+| `443`  | HTTPS           | Web traffic                       |
+| `587`  | SMTP submission | Sending mail                      |
+| `6443` | Kubernetes API  | RKE2 default                      |
+
+Services without protocol-mandated ports must use the Kubernetes NodePort range (`30000-32767`).
+For example, PostgreSQL can run on port `30432` instead of `5432`, and Redis on `30379` instead of `6379`.
+Ports outside this range (like `35432`) won't be accessible through the firewall.
+Cilium Host Policies control which specific ports within this range are actually accessible.
+
+### IPv6 Considerations
+
+Hetzner's firewall has some limitations with IPv6.
+ICMPv6 traffic is always allowed and cannot be filtered, which is actually helpful since IPv6 requires ICMPv6 for neighbor discovery.
+However, you cannot filter IPv6 traffic by source or destination IP address, only by protocol and port.
+For our dual-stack cluster, the vSwitch rule only applies to IPv4, but since our ULA addresses (`fd00::/64`) are not routable on the public internet, this isn't a security concern.
 
 ## Configuring the Firewall
 
-### Verify firewalld Status
+Navigate to the [Hetzner Robot](https://robot.hetzner.com/server) interface, select your server (node4), and click "Firewall" to access the rules configuration.
 
-```bash
-sudo systemctl status firewalld
+### Firewall Settings
 
-# If not running, enable and start it
-sudo systemctl enable --now firewalld
-```
+| Setting                     | Value  | Notes                                  |
+| --------------------------- | ------ | -------------------------------------- |
+| Status                      | active | Enable the firewall                    |
+| Filter IPv6 packets         | ☑      | Enable IPv6 filtering                  |
+| Hetzner Services (incoming) | ☑      | Allow rescue system, DNS, SysMon, etc. |
 
-### Create the Kubernetes Zone
+### Rules (incoming)
 
-Create a dedicated zone for internal cluster traffic and assign the vSwitch interface:
+The firewall has a **10-rule limit**.
+ICMPv6 is always allowed and cannot be blocked, so we don't need a rule for it.
+Most rules are mirrored for IPv4 and IPv6 to provide full dual-stack coverage.
 
-```bash
-# Create the zone
-sudo firewall-cmd --permanent --new-zone=kubernetes
+| ID | Name               | Version | Protocol | Source IP   | Source Port | Dest Port   | TCP Flags | Action |
+| -- | ------------------ | ------- | -------- | ----------- | ----------- | ----------- | --------- | ------ |
+| #1 | vswitch            | ipv4    | *        | 10.0.0.0/24 |             |             |           | accept |
+| #2 | tcp established    | ipv4    | tcp      |             |             | 32768-65535 | ack       | accept |
+| #3 | tcp established-v6 | ipv6    | tcp      |             |             | 32768-65535 | ack       | accept |
+| #4 | dns responses      | ipv4    | udp      |             | 53          | 32768-65535 |           | accept |
+| #5 | well-known         | ipv4    | tcp      |             |             | 22-587      |           | accept |
+| #6 | well-known-v6      | ipv6    | tcp      |             |             | 22-587      |           | accept |
+| #7 | k8s-api            | ipv4    | tcp      |             |             | 6443        |           | accept |
+| #8 | k8s-api-v6         | ipv6    | tcp      |             |             | 6443        |           | accept |
+| #9 | nodeports          | *       | *        |             |             | 30000-32767 |           | accept |
 
-# Assign the vSwitch interface (replace with your interface name)
-sudo firewall-cmd --permanent --zone=kubernetes --add-interface=enp195s0.4000
+Rule #10 is available for future use.
+Cilium Host Policies (Layer 2) handle fine-grained filtering within these ranges.
 
-# Apply the zone
-sudo firewall-cmd --reload
-```
+### Rules (outgoing)
 
-### Open Control Plane Ports
+| ID | Name      | Version | Protocol | Source IP | Dest IP | Source Port | Dest Port | TCP Flags | Action |
+| -- | --------- | ------- | -------- | --------- | ------- | ----------- | --------- | --------- | ------ |
+| #1 | allow all | *       | *        |           |         |             |           |           | accept |
 
-```bash
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=6443/tcp   # API Server
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=9345/tcp   # RKE2 Supervisor
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=2379/tcp   # etcd client
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=2380/tcp   # etcd peer
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=10250/tcp  # Kubelet
-```
+### Rule Explanations
 
-### Open Cilium Ports
+**Rule #1 (vswitch)** is the most critical rule for cluster operation.
+It allows all traffic from the private vSwitch network, enabling Kubernetes API communication between nodes, etcd cluster synchronization, Cilium's pod networking, and kubelet communication.
+Without this rule, your cluster cannot function.
 
-```bash
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=8472/udp   # VXLAN overlay
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=4240/tcp   # Health checks
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=4244/tcp   # Hubble Relay
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=4245/tcp   # Hubble UI
-```
+**Rules #2-3 (tcp established)** handle return traffic for outbound TCP connections.
+When your server connects to external services (container registries, package repositories, APIs), the responses arrive as packets with the `ACK` flag set.
+These rules allow those responses on ephemeral ports (`32768-65535`) for both IPv4 and IPv6.
 
-### Open Service Ports
+**Rule #4 (dns responses)** permits DNS reply packets.
+DNS queries go out on a random high port, and responses come back from port `53`.
+This rule ensures those responses reach your server.
 
-```bash
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=30000-32767/tcp  # NodePort TCP
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=30000-32767/udp  # NodePort UDP
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=30080/tcp        # Traefik HTTP
-sudo firewall-cmd --permanent --zone=kubernetes --add-port=30443/tcp        # Traefik HTTPS
-```
+**Rules #5-6 (well-known)** cover SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`) for both IPv4 and IPv6.
+This opens some unused ports (`23-24`, `26-79`, `81-442`, `444-586`), but Cilium Host Policies block those at Layer 2.
 
-### Enable ICMP Protocols
+**Rules #7-8 (k8s-api)** open port `6443` for Kubernetes API access over both IPv4 and IPv6.
+This allows `kubectl` commands and other API clients to reach your cluster from outside the vSwitch network.
 
-```bash
-sudo firewall-cmd --permanent --zone=kubernetes --add-protocol=icmp       # IPv4 ping
-sudo firewall-cmd --permanent --zone=kubernetes --add-protocol=ipv6-icmp  # IPv6 neighbor discovery
-```
+**Rule #9 (nodeports)** opens the standard Kubernetes NodePort range (`30000-32767`) for both IPv4 and IPv6.
+It uses wildcard version (`*`) and protocol (`*`) to cover both address families in a single rule.
+PostgreSQL (`30432`), Redis (`30379`), and other services can use ports in this range.
+Cilium Host Policies control which specific ports are accessible.
 
-{% include alert.liquid.html type='warning' title='ICMPv6 is Required' content='
-Skipping the ipv6-icmp rule will break IPv6 neighbor discovery and cause connectivity failures.
-' %}
+Tailscale is not listed because it uses NAT traversal with outbound connections.
+Since we allow all outbound traffic, Tailscale works without an inbound rule.
+ICMP is omitted to stay within the limit; you can still ping via the vSwitch since Rule #1 allows all traffic from that subnet.
 
-### Enable Masquerading
+### Applying the Rules
 
-Masquerading allows pods to communicate with external networks:
-
-```bash
-sudo firewall-cmd --permanent --zone=kubernetes --add-masquerade
-```
-
-### Configure Public Zone
-
-Ensure the public zone allows necessary services:
-
-```bash
-sudo firewall-cmd --permanent --zone=public --add-service=ssh
-sudo firewall-cmd --permanent --zone=public --add-service=http
-sudo firewall-cmd --permanent --zone=public --add-service=https
-```
-
-### Apply and Verify
-
-```bash
-sudo firewall-cmd --reload
-sudo firewall-cmd --zone=kubernetes --list-all
-```
-
-Expected output:
-
-```
-kubernetes (active)
-  target: default
-  icmp-block-inversion: no
-  interfaces: enp195s0.4000
-  sources:
-  services:
-  ports: 6443/tcp 9345/tcp 2379/tcp 2380/tcp 10250/tcp 8472/udp 4240/tcp 4244/tcp 4245/tcp 30000-32767/tcp 30000-32767/udp 30080/tcp 30443/tcp
-  protocols: icmp ipv6-icmp
-  forward: yes
-  masquerade: yes
-  forward-ports:
-  source-ports:
-  icmp-blocks:
-  rich rules:
-```
+After entering all rules, click "Save" to apply them.
+Changes typically propagate within 30-60 seconds.
 
 ## Verification
 
-Test connectivity over both protocols:
+Test that the vSwitch connectivity works through the firewall by pinging another node over the private network:
 
 ```bash
-# Test IPv4
-ping -c 3 10.1.1.1
-
-# Test IPv6
-ping6 -c 3 fd00:1::1
+$ ping -c 3 10.0.0.1
+PING 10.0.0.1 (10.0.0.1) 56(84) bytes of data.
+64 bytes from 10.0.0.1: icmp_seq=1 ttl=64 time=0.351 ms
+64 bytes from 10.0.0.1: icmp_seq=2 ttl=64 time=0.182 ms
+64 bytes from 10.0.0.1: icmp_seq=3 ttl=64 time=0.175 ms
 ```
 
-After RKE2 is installed, you can verify API server access:
+This works because Rule #1 allows all traffic from the vSwitch subnet, including ICMP.
+If pings fail, verify that Rule #1 has the correct source IP (`10.0.0.0/24`) and is set to `accept`.
 
-```bash
-nc -zv 10.1.1.4 6443
-nc -zv fd00:1::4 6443
-```
+External ping (from the public internet) will not work since we don't have an ICMP rule for public traffic.
+This is intentional—ICMP is useful for diagnostics but not required for cluster operation.
 
-## Troubleshooting
+## What's Next
 
-### Check Dropped Packets
+The Hetzner firewall provides coarse filtering at Layer 1.
+In Lesson 9, we'll configure Cilium Host Policies (Layer 2) to provide fine-grained port control, blocking the unused ports within the ranges we opened here.
 
-```bash
-# View firewalld logs
-journalctl -u firewalld -f
-
-# Check kernel drops
-dmesg | grep -i "DROPPED"
-```
-
-### IPv6 Not Working
-
-```bash
-# Verify ICMPv6 is allowed
-sudo firewall-cmd --zone=kubernetes --query-protocol=ipv6-icmp
-
-# Check neighbor discovery
-ip -6 neigh show
-```
-
-### Verify Specific Ports
-
-```bash
-# Check if a port is open
-sudo firewall-cmd --zone=kubernetes --query-port=6443/tcp
-
-# Compare runtime vs permanent config
-sudo firewall-cmd --zone=kubernetes --list-all
-sudo firewall-cmd --zone=kubernetes --list-all --permanent
-```
-
-### Temporarily Disable Firewall
-
-For debugging only:
-
-```bash
-sudo systemctl stop firewalld
-# Test connectivity
-sudo systemctl start firewalld
-```
-
-In the next lesson, we'll install and configure RKE2 with dual-stack networking.
+With the network-level firewall configured, we're ready to install RKE2 in the next lesson.
