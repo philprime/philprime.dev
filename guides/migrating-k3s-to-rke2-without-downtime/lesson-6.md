@@ -1,455 +1,464 @@
 ---
 layout: guide-lesson.liquid
-title: Configuring Hetzner vSwitch Networking
+title: Configuring Canal and Network Policies
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 6
 guide_lesson_abstract: >
-  Plan dual-stack architecture decisions and configure IPv4/IPv6 networking on the Hetzner vSwitch private network.
+  Verify the Canal CNI, enable WireGuard encryption for inter-node traffic, and configure Calico network policies for pod-level security.
 guide_lesson_conclusion: >
-  Node 4 is now connected to the vSwitch with both IPv4 and IPv6 addresses, ready for dual-stack Kubernetes networking.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-6.md
+  Canal is providing encrypted dual-stack pod networking with namespace-level network policies. Node 4 is Ready and Cluster B can accept additional nodes.
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-9.md
 ---
 
-Hetzner's vSwitch provides Layer 2 private networking between dedicated servers, allowing cluster nodes to communicate without traversing the public internet.
-Before we can use this private network for Kubernetes, we need to make an important architectural decision: should we configure IPv4 only, or invest the extra effort now to support both IPv4 and IPv6?
+Canal was installed automatically when RKE2 started in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
+This lesson verifies that dual-stack networking is working, enables WireGuard encryption for inter-node traffic, and configures Calico network policies to secure pod communication.
 
 {% include guide-overview-link.liquid.html %}
 
-## Understanding Dual-Stack Networking
+## Understanding Canal
 
-### Why Dual-Stack Matters
+### Architecture
 
-Kubernetes networking configuration is deeply embedded in your cluster's DNA.
-The CIDR ranges you choose become part of certificates, etcd data, and running workloads, making them nearly impossible to change without rebuilding the entire cluster.
-This permanence means that adding IPv6 support later isn't a simple configuration change—it requires migrating to a completely new cluster.
+Canal is a composite CNI that combines two well-established projects: [Flannel](https://github.com/flannel-io/flannel) handles inter-node traffic by creating a VXLAN overlay network, while [Calico](https://www.tigera.io/project-calico/) manages intra-node routing and enforces network policies.
+This separation of concerns gives Canal the simplicity of Flannel's overlay networking with the power of Calico's policy engine.
 
-Since we're already building a new cluster to migrate from k3s to RKE2, this is the ideal time to future-proof our networking.
-Dual-stack gives us IPv4 compatibility for existing services while preparing for the gradual transition to IPv6 as addresses become scarcer and more services adopt the newer protocol.
-The additional configuration effort is minimal compared to the cost of rebuilding later.
+| Component      | Role                  | Responsibility                                       |
+| -------------- | --------------------- | ---------------------------------------------------- |
+| Flannel        | Inter-node overlay    | VXLAN tunnels between nodes, IP masquerading         |
+| Calico (Felix) | Intra-node routing    | Local pod routing, iptables/nftables rule management |
+| Calico         | Network policy engine | L3-L4 network policy enforcement                     |
 
-### Kubernetes Network Architecture
+Each Canal pod runs both a Flannel and a Calico container as a DaemonSet, ensuring every node in the cluster participates in both the overlay network and the policy engine.
 
-Every Kubernetes cluster operates across three distinct network ranges, each serving a specific purpose and requiring its own CIDR allocation.
-The node network consists of the actual IP addresses assigned to your physical or virtual machines—in our case, the vSwitch addresses we'll configure in this lesson.
-The pod network provides addresses for individual containers, with each node receiving a subnet from which it allocates IPs to pods it runs.
-Finally, the service network gives stable virtual IPs to Kubernetes Services, allowing pods to discover and communicate with each other through consistent addresses even as the underlying pods come and go.
+### Data Plane: iptables vs eBPF
 
-These three networks must never overlap, and in a dual-stack cluster, each one needs both an IPv4 and IPv6 CIDR range.
+Traditional Kubernetes networking and Canal's default data plane rely on iptables (or its successor nftables) to process packets.
+The kernel evaluates packets against a chain of rules, and each Kubernetes Service adds entries to that chain.
+In a dual-stack cluster the rule count effectively doubles, since separate chains exist for IPv4 and IPv6.
 
-| Network         | Purpose                                            |
-| --------------- | -------------------------------------------------- |
-| Node Network    | Physical or virtual IPs assigned to cluster nodes  |
-| Pod Network     | Virtual IPs assigned to individual pods            |
-| Service Network | Virtual IPs for Kubernetes Services (ClusterIP/LB) |
+eBPF (extended Berkeley Packet Filter) is an alternative data plane technology that runs sandboxed programs directly inside the Linux kernel.
+Rather than traversing rule chains, eBPF programs use hash maps for O(1) lookups and can process both IPv4 and IPv6 in a single code path.
+CNI plugins like Cilium and newer versions of Calico support eBPF natively, replacing iptables entirely.
 
-**Example:**
+Canal does not use eBPF — it relies on the traditional iptables/nftables stack.
+For most clusters this performs well, but it's worth understanding the trade-off:
+
+| Aspect             | iptables (Canal)                  | eBPF (Cilium, Calico eBPF)         |
+| ------------------ | --------------------------------- | ---------------------------------- |
+| Rule complexity    | Linear chain, grows with Services | Hash maps, constant-time lookups   |
+| Dual-stack         | Separate rule sets per family     | Unified code path                  |
+| Policy scope       | L3-L4 (NetworkPolicy)             | L3-L7 (extended policy CRDs)       |
+| Kernel requirement | Any modern kernel                 | 4.19+ (5.8+ recommended)           |
+| Maturity           | Battle-tested, decades of use     | Rapidly maturing, production-ready |
+
+We chose Canal because it is the RKE2 default, auto-detects dual-stack, and requires no additional installation or kernel dependencies.
+If your workloads eventually need L7 policy enforcement or eBPF performance, RKE2 also bundles Cilium and Calico with eBPF support as alternative CNI options, but switching CNI requires rebuilding the cluster.
+
+### IPAM (IP Address Management)
+
+IPAM controls how pod IP addresses are allocated across the cluster.
+Different CNI plugins support different allocation strategies:
+
+| Mode         | Description                                                  |
+| ------------ | ------------------------------------------------------------ |
+| kubernetes   | Delegates to Kubernetes, uses each node's PodCIDR allocation |
+| cluster-pool | The CNI manages a cluster-wide pool of IPs                   |
+| multi-pool   | Multiple pools with different CIDRs per node                 |
+
+Canal uses the `kubernetes` mode exclusively.
+RKE2 configures the pod CIDRs at startup (we set `cluster-cidr: 10.42.0.0/16,fd00:42::/56` in Lesson 8), and the Kubernetes controller manager assigns each node a subnet from that range.
+When a pod starts, it receives one IPv4 and one IPv6 address from its node's allocated subnets.
+
+This means the CNI never makes allocation decisions itself and it simply uses the addresses that Kubernetes provides.
+You can see this in action by inspecting any running pod's IP assignments:
+
+```bash
+$ kubectl -n kube-system get pod etcd-node4 -o jsonpath='{.status.podIPs}' | jq .
+[
+  { "ip": "10.0.0.4" },
+  { "ip": "fd00::4" }
+]
+```
+
+Static pods like etcd use the node's own addresses, but regular pods receive addresses from the pod CIDR subnets allocated to their node.
+The advantage is that pod CIDR assignments stay consistent with the cluster configuration, and tools like `kubectl get nodes -o jsonpath` accurately reflect which subnets belong to which nodes.
+
+```bash
+$ kubectl -n kube-system get pod rke2-metrics-server-7b59bd8854-blsqz -o jsonpath='{.status.podIPs}' | jq .
+[
+  {
+    "ip": "10.42.0.8"
+  },
+  {
+    "ip": "fd00:42::8"
+  }
+]
+```
+
+### Overlay and Encryption
+
+VXLAN (Virtual Extensible LAN) is a network encapsulation protocol that creates a virtual Layer 2 network on top of an existing Layer 3 infrastructure.
+It works by wrapping each original Ethernet frame inside a UDP packet with a VXLAN header, effectively creating a tunnel between two endpoints.
+The outer UDP packet is routable across any IP network, while the inner frame carries the original pod-to-pod traffic unchanged.
+
+Canal uses VXLAN as its default overlay for inter-node traffic.
+When a pod on Node A sends a packet to a pod on Node B, Flannel wraps the packet in a VXLAN header addressed to Node B's IP, sends it across the vSwitch, and Flannel on Node B unwraps it and delivers the original packet to the destination pod.
 
 ```mermaid!
-flowchart TB
-    %% =========================
-    %% Service Network Layer
-    %% =========================
-    subgraph SVC["Service Network 10.43.0.0/16 · fd00:43::/112"]
-        S1["App Service<br/>ClusterIP: 10.43.0.10<br/>fd00:43::10"]
+flowchart LR
+    subgraph NodeA["Node A · 10.0.0.2"]
+        PodA["Pod A<br/><small>10.42.0.5</small>"]
+        FA["Flannel"]
     end
 
-    %% =========================
-    %% Node Network Layer
-    %% =========================
-    subgraph NODE["Node Network 10.0.0.0/24 · fd00::/64"]
-
-        subgraph N1["Node 1 · 10.0.0.1 · fd00::1"]
-            subgraph POD1["Pod CIDR 10.42.0.0/24"]
-                P1["Pod A<br/>10.42.0.5<br/>fd00:42::5"]
-                P2["Pod B<br/>10.42.0.6<br/>fd00:42::6"]
+    subgraph Wire["vSwitch · VXLAN Packet"]
+        direction TB
+        subgraph Outer["Outer: UDP · src 10.0.0.2 → dst 10.0.0.4"]
+            subgraph Inner["Inner: Pod · src 10.42.0.5 → dst 10.42.1.3"]
             end
         end
-
-        subgraph N2["Node 2 · 10.0.0.2 · fd00::2"]
-            subgraph POD2["Pod CIDR 10.42.1.0/24"]
-                P3["Pod C<br/>10.42.1.3<br/>fd00:42:1::3"]
-            end
-        end
-
     end
 
-    %% =========================
-    %% Traffic Flow
-    %% =========================
-    S1 -->|Load-balanced| P1
-    S1 -->|Load-balanced| P3
+    subgraph NodeB["Node B · 10.0.0.4"]
+        FB["Flannel"]
+        PodB["Pod B<br/><small>10.42.1.3</small>"]
+    end
 
-    %% =========================
-    %% Styling (softer, modern palette)
-    %% =========================
-    classDef service fill:#ede9fe,color:#4c1d95,stroke:#c4b5fd,stroke-width:1.5px
+    PodA -->|"original packet"| FA
+    FA -->|"encapsulate"| Wire
+    Wire -->|"decapsulate"| FB
+    FB -->|"original packet"| PodB
+
     classDef node fill:#eff6ff,color:#1e3a8a,stroke:#bfdbfe,stroke-width:1.5px
     classDef pod fill:#ecfdf5,color:#065f46,stroke:#a7f3d0,stroke-width:1.5px
-    classDef podnet fill:#f0fdf4,color:#065f46,stroke:#bbf7d0,stroke-dasharray: 4 4
-    classDef network fill:#f8fafc,color:#0f172a,stroke:#e2e8f0,stroke-width:1.5px
+    classDef flannel fill:#fef3c7,color:#92400e,stroke:#fcd34d,stroke-width:1.5px
+    classDef wire fill:#f3e8ff,color:#5b21b6,stroke:#c4b5fd,stroke-width:1.5px
+    classDef outer fill:#ede9fe,color:#4c1d95,stroke:#c4b5fd,stroke-width:1.5px
+    classDef inner fill:#fce7f3,color:#831843,stroke:#f9a8d4,stroke-width:1.5px
 
-    class SVC service
-    class S1 service
-    class NODE network
-    class N1,N2 node
-    class P1,P2,P3 pod
-    class POD1,POD2 podnet
+    class NodeA,NodeB node
+    class PodA,PodB pod
+    class FA,FB flannel
+    class Wire wire
+    class Outer outer
+    class Inner inner
 ```
 
-The diagram illustrates how these networks interact: each node receives a subnet from the pod CIDR (Node 1 uses 10.42.0.x while Node 2 uses 10.42.1.x), and the CNI plugin assigns individual pod addresses from that per-node range.
-Services sit above this layer, providing stable virtual IPs that load-balance traffic across pods regardless of which node they're running on.
+The diagram shows how the original pod-to-pod packet is nested inside VXLAN encapsulation for transit across the vSwitch.
+The underlying infrastructure only needs to route between node IPs—it never sees the pod CIDRs directly.
 
-### CNI and Dual-Stack Support
+The trade-off is a small overhead per packet (approximately 50 bytes for the VXLAN + UDP + outer IP headers) and the fact that the encapsulated traffic is unencrypted by default.
+On a private vSwitch this is generally acceptable, but for defense in depth we'll enable WireGuard encryption later in this lesson.
 
-The Container Network Interface (CNI) plugin is responsible for all pod networking—assigning addresses, configuring routes, and handling network policies.
-Your choice of CNI directly impacts how well dual-stack works in practice, as not all plugins implement both address families equally well.
+## Verification
 
-RKE2 bundles [Canal](https://docs.rke2.io/networking/basic_network_options) as its default CNI, which combines Flannel for inter-node traffic with Calico for intra-node traffic and network policies.
-Canal auto-detects dual-stack from the cluster CIDRs and requires no additional configuration.
+### Canal Pod Status
 
-We'll use Canal throughout this guide since it is the RKE2 default, supports dual-stack out of the box, and provides Calico's network policy engine for L3-L4 security.
+Verify that both containers in the Canal pod are running on every node:
 
-### IP Family Preference
+```bash
+$ kubectl get pods -n kube-system -l k8s-app=canal -o wide
+NAME               READY   STATUS    RESTARTS   AGE   IP         NODE
+rke2-canal-xxxxx   2/2     Running   0          30m   10.0.0.4   node4
+```
 
-When you create a Kubernetes Service in a dual-stack cluster, you need to decide how it handles the two address families.
-Kubernetes offers three policies: `SingleStack` assigns only one family (IPv4 or IPv6), `RequireDualStack` demands both families and fails if either is unavailable, and `PreferDualStack` requests both but gracefully falls back if one isn't available.
+Both containers must show `2/2` in the `READY` column—one for Calico and one for Flannel.
+A single-node cluster shows one pod; this grows to one per node as additional nodes join.
 
-For maximum compatibility, we'll configure our cluster with `PreferDualStack` and list IPv4 first.
-This means services receive both addresses with IPv4 as the primary, ensuring existing IPv4-only clients continue working while IPv6-capable clients can use the newer protocol.
+### Dual-Stack Pod Test
 
-### NAT64 Considerations
+Deploy a test pod and confirm it receives both an IPv4 and IPv6 address from the pod CIDRs:
 
-A common question when planning dual-stack is whether you need NAT64 or DNS64 to reach IPv4-only external services like `github.com` from pods that might prefer IPv6.
-The answer, in a true dual-stack environment, is no—every pod has both an IPv4 and an IPv6 address, so when DNS resolution returns only an A record (IPv4), the pod simply uses its IPv4 address to make the connection.
-The kernel handles this address family selection automatically based on what DNS returns.
+```bash
+$ kubectl run dual-stack-test --image=busybox:1.36 --restart=Never -- sleep 3600
+pod/dual-stack-test created
+$ kubectl wait --for=condition=Ready pod/dual-stack-test --timeout=60s
+pod/dual-stack-test condition met
+$ kubectl get pod dual-stack-test -o jsonpath='{.status.podIPs}' | jq .
+[
+  {
+    "ip": "10.42.0.10"
+  },
+  {
+    "ip": "fd00:42::a"
+  }
+]
+```
 
-NAT64 becomes necessary only in pure IPv6 environments where nodes have no IPv4 connectivity at all.
-Since our Hetzner dedicated servers have both IPv4 and IPv6 on the public interface and we're configuring dual-stack on the vSwitch, this complexity doesn't apply to us.
+The pod should have one address from `10.42.0.0/16` and one from `fd00:42::/56`.
 
-## Hetzner vSwitch Architecture
+Test that the pod can reach the node over both address families:
 
-### How vSwitch Works
+```bash
+$ kubectl exec dual-stack-test -- ping -c 2 10.0.0.4
+PING 10.0.0.4 (10.0.0.4): 56 data bytes
+64 bytes from 10.0.0.4: seq=0 ttl=64 time=0.105 ms
+64 bytes from 10.0.0.4: seq=1 ttl=64 time=0.069 ms
 
-Hetzner's vSwitch service creates a private Layer 2 network segment connecting dedicated servers within the same datacenter.
-Unlike traffic over the public internet, communication through the vSwitch flows directly between servers at wire speed, never leaving Hetzner's internal infrastructure.
-This makes it ideal for Kubernetes cluster traffic where nodes need to exchange large volumes of data with minimal latency.
+--- 10.0.0.4 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.069/0.087/0.105 ms
+
+$ kubectl exec dual-stack-test -- ping6 -c 2 fd00::4
+PING fd00::4 (fd00::4): 56 data bytes
+64 bytes from fd00::4: seq=0 ttl=64 time=0.148 ms
+64 bytes from fd00::4: seq=1 ttl=64 time=0.108 ms
+
+--- fd00::4 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.108/0.128/0.148 ms
+```
+
+Clean up the test pod:
+
+```bash
+$ kubectl delete pod dual-stack-test
+```
+
+{% include alert.liquid.html type='info' title='Single-Node Limitations' content='
+Pod-to-pod connectivity across nodes cannot be tested until additional nodes join the cluster.
+The VXLAN overlay and WireGuard encryption are only exercised for cross-node traffic.
+' %}
+
+## Enabling WireGuard Encryption
+
+### Why Encrypt Overlay Traffic
+
+VXLAN encapsulation carries pod traffic in cleartext between nodes.
+On a shared physical network like Hetzner's vSwitch — where VLAN tagging provides logical isolation but not encryption — a compromised adjacent server could theoretically capture inter-node packets.
+
+WireGuard adds an encryption layer around the VXLAN tunnel, so the packet on the wire is fully encrypted:
 
 ```mermaid!
-flowchart TB
-    subgraph DC["Hetzner Datacenter"]
-        subgraph VS["vSwitch · VLAN 4000"]
-            direction TB
-            subgraph addrs["Dual-Stack Addresses"]
-                N1["Node 1<br/>10.0.0.1 · fd00::1"]
-                N2["Node 2<br/>10.0.0.2 · fd00::2"]
-                N3["Node 3<br/>10.0.0.3 · fd00::3"]
-                N4["Node 4<br/>10.0.0.4 · fd00::4"]
-            end
-        end
-        PN["Physical Network · Public Internet"]
+flowchart LR
+    subgraph NodeA["Node A · 10.0.0.2"]
+        PodA["Pod A<br/><small>10.42.0.5</small>"]
+        FA["Flannel"]
+        WA["WireGuard"]
     end
 
-    N1 <---> PN
-    N2 <---> PN
-    N3 <---> PN
-    N4 <---> PN
+    subgraph Wire["vSwitch · Encrypted Packet"]
+        direction TB
+        subgraph WG["WireGuard · encrypted"]
+            subgraph Outer["VXLAN · src 10.0.0.2 → dst 10.0.0.4"]
+                subgraph Inner["Pod · src 10.42.0.5 → dst 10.42.1.3"]
+                end
+            end
+        end
+    end
 
-    N1 <---> N2
-    N2 <---> N3
-    N3 <---> N4
+    subgraph NodeB["Node B · 10.0.0.4"]
+        WB["WireGuard"]
+        FB["Flannel"]
+        PodB["Pod B<br/><small>10.42.1.3</small>"]
+    end
 
-    classDef vswitch fill:#16a34a,color:#fff,stroke:#166534
-    classDef node fill:#2563eb,color:#fff,stroke:#1e40af
-    classDef network fill:#9ca3af,color:#fff,stroke:#6b7280
+    PodA -->|"original"| FA
+    FA -->|"VXLAN wrap"| WA
+    WA -->|"encrypt"| Wire
+    Wire -->|"decrypt"| WB
+    WB -->|"VXLAN unwrap"| FB
+    FB -->|"original"| PodB
 
-    class VS,addrs vswitch
-    class N1,N2,N3,N4 node
-    class PN network
+    classDef node fill:#eff6ff,color:#1e3a8a,stroke:#bfdbfe,stroke-width:1.5px
+    classDef pod fill:#ecfdf5,color:#065f46,stroke:#a7f3d0,stroke-width:1.5px
+    classDef flannel fill:#fef3c7,color:#92400e,stroke:#fcd34d,stroke-width:1.5px
+    classDef wg fill:#d1fae5,color:#065f46,stroke:#6ee7b7,stroke-width:1.5px
+    classDef wire fill:#f3e8ff,color:#5b21b6,stroke:#c4b5fd,stroke-width:1.5px
+    classDef outer fill:#ede9fe,color:#4c1d95,stroke:#c4b5fd,stroke-width:1.5px
+    classDef inner fill:#fce7f3,color:#831843,stroke:#f9a8d4,stroke-width:1.5px
+    classDef encrypted fill:#d1fae5,color:#065f46,stroke:#6ee7b7,stroke-width:1.5px
+
+    class NodeA,NodeB node
+    class PodA,PodB pod
+    class FA,FB flannel
+    class WA,WB wg
+    class Wire wire
+    class WG encrypted
+    class Outer outer
+    class Inner inner
 ```
 
-The diagram shows how each server maintains two distinct network paths: a connection to the public internet for external traffic, and the private vSwitch for inter-node communication.
-Since vSwitch uses VLAN tagging to separate traffic from other customers, you'll need to create a VLAN subinterface on each node to access it.
+The diagram extends the earlier VXLAN flow with WireGuard wrapping the entire VXLAN packet in an encrypted tunnel before it hits the wire.
+Each node establishes a WireGuard tunnel to every other node, and all overlay traffic flows through these tunnels transparently.
 
-### Security Characteristics
+### Applying the Configuration
 
-While the vSwitch provides logical isolation through VLAN tagging, it's important to understand what this means for security.
-The physical network infrastructure is shared across Hetzner customers, with VLAN segmentation preventing direct access between tenants—but the traffic itself travels unencrypted over the shared switches.
-This is generally acceptable for a private datacenter network, but for defense in depth we'll add encryption at the cluster level using Canal's WireGuard support in a later lesson.
-
-### ULA Addresses for IPv6
-
-For our private IPv6 addresses, we'll use Unique Local Addresses (ULA) from the `fd00::/8` range.
-Think of ULA as the IPv6 equivalent of familiar private IPv4 ranges like `10.0.0.0/8` or `192.168.0.0/16`—they're guaranteed not to be routable on the public internet, making them safe to use for internal cluster communication without worrying about conflicts with globally routable addresses.
-
-## Planning Your Network
-
-### CIDR Allocation
-
-Before touching any configuration files, take time to document your chosen CIDR ranges.
-These values will appear in multiple places throughout the cluster setup—the vSwitch configuration, RKE2 settings, and firewall rules—and inconsistencies between them are a common source of subtle networking failures that can be difficult to debug.
-
-| Network         | IPv4 CIDR    | IPv6 CIDR     | Purpose                  |
-| --------------- | ------------ | ------------- | ------------------------ |
-| Node Network    | 10.0.0.0/24  | fd00::/64     | vSwitch inter-node comms |
-| Pod Network     | 10.42.0.0/16 | fd00:42::/56  | IP addresses for pods    |
-| Service Network | 10.43.0.0/16 | fd00:43::/112 | ClusterIP services       |
-
-#### Understanding IPv6 CIDR Sizing
-
-Kubernetes allocates each node a `/64` subnet from the cluster's pod CIDR, and a `/64` contains 2^64 addresses, which is a number so vast that even running 10,000 pods on a single node would use a negligible fraction.
-The practical limit on pods per node comes from CPU, memory, and kubelet configuration, not from address space.
-
-The real constraint is how many `/64` subnets fit within your cluster's pod CIDR:
-
-| Cluster Pod CIDR | Max Nodes (with /64 per node) |
-| ---------------- | ----------------------------- |
-| `/56`            | 256                           |
-| `/52`            | 4,096                         |
-| `/48`            | 65,536                        |
-
-We've chosen `/56` for this guide because 256 nodes comfortably exceeds what most organizations need, even accounting for growth.
-If you're building infrastructure that might eventually scale beyond that, consider using `/48` instead - there's no practical downside to the larger range, just a longer prefix to type.
-
-For the service network, `/112` provides 65,536 addresses, deliberately matching the capacity of our IPv4 `/16` service range.
-Most clusters use only a few hundred services at most, so this is more than sufficient.
-
-### Node Address Assignment
-
-For clarity and easier troubleshooting, assign each node a consistent address across both address families.
-Using the same final octet/segment (node1 gets .1 and ::1, node2 gets .2 and ::2) makes it obvious which addresses belong to which node when you're debugging network issues at 2 AM.
-
-| Node  | IPv4 Address | IPv6 Address |
-| ----- | ------------ | ------------ |
-| node1 | 10.0.0.1     | fd00::1      |
-| node2 | 10.0.0.2     | fd00::2      |
-| node3 | 10.0.0.3     | fd00::3      |
-| node4 | 10.0.0.4     | fd00::4      |
-
-### Ingress Planning
-
-Whatever ingress controller and load balancer you choose must support dual-stack from day one—retrofitting this later creates the same migration headaches we discussed earlier.
-Traefik handles dual-stack natively without special configuration, and Hetzner's Cloud Load Balancer can target both IPv4 and IPv6 backends.
-If you prefer MetalLB for bare-metal load balancing, be aware that it requires separate address pools for each address family.
-
-We'll configure Traefik with the Hetzner Cloud Load Balancer in later lessons, but keep these requirements in mind if you plan to substitute different components.
-
-### Existing Infrastructure
-
-If you're following this guide with an existing k3s cluster, your nodes likely already have IPv4 addresses on the vSwitch but no IPv6.
-That's expected—we'll configure node4 with dual-stack from the start, and add IPv6 to the existing nodes when we migrate each one to RKE2 in later lessons.
-This approach avoids touching the running k3s cluster's networking until we're ready to migrate each node.
-
-## Prerequisites
-
-Before proceeding with the configuration, verify that your Hetzner infrastructure is ready.
-You should have already created a vSwitch in the Hetzner Robot console, added all your servers to it, and noted the VLAN ID it uses (we're using 4000 throughout this guide, but yours may differ).
-Make sure you've documented your chosen IP ranges as shown in the tables above—you'll reference them repeatedly throughout the configuration process.
-
-## Configuring the vSwitch Interface
-
-With the planning complete, we can now configure the actual network interface.
-The vSwitch appears as a VLAN on your server's physical network interface, so the first step is identifying which interface to use.
-
-### Identifying the Network Interface
-
-List the network interfaces on your server to see what's available:
+WireGuard requires kernel module support.
+Before applying the configuration, verify the module loads correctly:
 
 ```bash
-1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-2: enp5s0f3u2u2c2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN mode DEFAULT group default qlen 1000
-    link/ether 4a:d7:b5:34:aa:ce brd ff:ff:ff:ff:ff:ff
-    altname enx4ad7b534aace
-3: enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000
-    link/ether d4:5d:64:08:e8:30 brd ff:ff:ff:ff:ff:ff
-    altname enxd45d6408e830
-4: tailscale0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1280 qdisc fq_codel state UNKNOWN mode DEFAULT group default qlen 500
-    link/none
+$ modprobe wireguard
+$ lsmod | grep wireguard
+wireguard             118784  0
 ```
 
-The interface names vary depending on your server's hardware, but you're looking for the one carrying your public IP address.
-Run `ip addr show` and find the interface with an address like `135.181.x.x` - that's your main network interface, and the vSwitch VLAN will be created as a subinterface on it.
+If the module fails to load, your kernel may need the WireGuard package installed.
+On Rocky Linux 10, WireGuard is included in the default kernel.
+
+RKE2 bundles Canal as a Helm chart, and customizations are applied through a `HelmChartConfig` resource placed in the auto-deploy manifests directory:
 
 ```bash
-$ ip addr show
-1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-    inet 127.0.0.1/8 scope host lo
-       valid_lft forever preferred_lft forever
-    inet6 ::1/128 scope host noprefixroute
-       valid_lft forever preferred_lft forever
-2: enp5s0f3u2u2c2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
-    link/ether 4a:d7:b5:34:aa:ce brd ff:ff:ff:ff:ff:ff
-    altname enx4ad7b534aace
-    inet6 fe80::d9e6:c53b:7c65:ca8c/64 scope link noprefixroute
-       valid_lft forever preferred_lft forever
-3: enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
-    link/ether d4:5d:64:08:e8:30 brd ff:ff:ff:ff:ff:ff
-    altname enxd45d6408e830
-    inet 135.181.1.252/26 brd 135.181.1.255 scope global dynamic noprefixroute enp195s0
-       valid_lft 31318sec preferred_lft 31318sec
-    inet6 fe80::81d8:8f88:4416:3876/64 scope link noprefixroute
-       valid_lft forever preferred_lft forever
-4: tailscale0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1280 qdisc fq_codel state UNKNOWN group default qlen 500
-    link/none
-    inet 100.122.121.38/32 scope global tailscale0
-       valid_lft forever preferred_lft forever
-    inet6 fd7a:115c:a1e0::e332:7926/128 scope global
-       valid_lft forever preferred_lft forever
-    inet6 fe80::4b3c:4678:6c60:e7b1/64 scope link stable-privacy proto kernel_ll
-       valid_lft forever preferred_lft forever
-```
-
-### Creating the VLAN Interface
-
-Rocky Linux 10 uses NetworkManager for all network configuration, which makes creating VLAN interfaces straightforward.
-The following command creates a new VLAN subinterface with both IPv4 and IPv6 addresses configured:
-
-```bash
-# Replace enp195s0 with your actual interface name
-# Replace 4000 with your VLAN ID
-# Replace addresses with your node's assigned IPs
-
-$ sudo nmcli connection add \
-    type vlan \
-    con-name vswitch \
-    dev enp195s0 \
-    id 4000 \
-    ipv4.method manual \
-    ipv4.addresses 10.0.0.4/24 \
-    ipv6.method manual \
-    ipv6.addresses fd00::4/64
-Connection 'vswitch' (2ecf2e01-122a-4ce2-b786-f4d41fe459cf) successfully added.
-
-$ sudo nmcli connection up vswitch
-Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/1997)
-```
-
-After bringing up the connection, verify that both addresses are properly assigned:
-
-```bash
-$ ip addr show enp195s0.4000
-5: enp195s0.4000@enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
-    link/ether d4:5d:64:08:e8:30 brd ff:ff:ff:ff:ff:ff
-    inet 10.0.0.4/24 brd 10.0.0.255 scope global noprefixroute enp195s0.4000
-       valid_lft forever preferred_lft forever
-    inet6 fd00::4/64 scope global noprefixroute
-       valid_lft forever preferred_lft forever
-    inet6 fe80::cad:c5f2:6cc4:d67b/64 scope link noprefixroute
-       valid_lft forever preferred_lft forever
-```
-
-You should see both an `inet` line with your IPv4 address and an `inet6` line with your IPv6 ULA address.
-If either is missing, check the nmcli command for typos before proceeding.
-
-### Configuring Public IPv6
-
-Hetzner assigns each dedicated server an IPv6 subnet (typically a `/64`), but Rocky Linux's default DHCP configuration only picks up the IPv4 address automatically.
-Without a public IPv6 address and default route, services like Canal's Flannel component fail to detect a valid IPv6 interface—and any workload attempting outbound IPv6 connections will have no route to the internet.
-
-You can find your assigned IPv6 subnet in the Hetzner Robot panel under your server's IPs tab.
-Configure it on the public interface by setting the address, prefix, and gateway:
-
-```bash
-# Replace "Wired connection 1" with your connection name (run nmcli connection to check)
-# Replace the address with your assigned IPv6 from Hetzner
-$ nmcli connection modify "Wired connection 1" \
-    ipv6.method manual \
-    ipv6.addresses "2a01:4f9:XX:XX::2/64" \
-    ipv6.gateway "fe80::1"
-$ nmcli connection up "Wired connection 1"
-```
-
-Hetzner uses `fe80::1` as the IPv6 gateway across all dedicated servers.
-After applying the change, verify that both the address and default route are in place:
-
-```bash
-$ ip -6 addr show dev enp195s0
-3: enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
-    altname enxd45d6408e830
-    inet6 2a01:4f9:XX:XX::2/64 scope global noprefixroute
-       valid_lft forever preferred_lft forever
-    inet6 fe80::81d8:8f88:4416:3876/64 scope link noprefixroute
-       valid_lft forever preferred_lft forever
-
-$ ip -6 route show default
-default via fe80::1 dev enp195s0 proto static metric 103 pref medium
-```
-
-You should see your public IPv6 address with `scope global` and a default route via `fe80::1`.
-
-### Enabling IPv6 Forwarding
-
-By default, Linux doesn't forward IPv6 packets between interfaces—it only handles traffic destined for itself.
-Kubernetes needs forwarding enabled so that pod traffic can flow between nodes:
-
-```bash
-$ sudo tee /etc/sysctl.d/99-ipv6-forward.conf <<EOF
-net.ipv6.conf.all.forwarding = 1
-net.ipv6.conf.default.forwarding = 1
+$ cat <<'EOF' > /var/lib/rancher/rke2/server/manifests/rke2-canal-config.yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: rke2-canal
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    flannel:
+      backend: "wireguard"
 EOF
-$ sudo sysctl -p /etc/sysctl.d/99-ipv6-forward.conf
-net.ipv6.conf.all.forwarding = 1
-net.ipv6.conf.default.forwarding = 1
 ```
 
-## Verifying Connectivity
-
-Before moving on to firewall configuration, verify that the vSwitch is working correctly.
-These tests should be run from node4 (the node we just configured) to confirm it can reach the existing nodes.
-
-### Testing IPv4
-
-Start with IPv4 to confirm node4 can communicate with the existing cluster nodes over the vSwitch:
+RKE2 detects the new manifest and upgrades the Canal Helm release automatically.
+Restart the Canal DaemonSet to apply the new backend:
 
 ```bash
-$ ping -c 3 10.0.0.1 # Node 1
-PING 10.0.0.1 (10.0.0.1) 56(84) bytes of data.
-64 bytes from 10.0.0.1: icmp_seq=1 ttl=64 time=0.351 ms
-64 bytes from 10.0.0.1: icmp_seq=2 ttl=64 time=0.182 ms
-64 bytes from 10.0.0.1: icmp_seq=3 ttl=64 time=0.175 ms
-
---- 10.0.0.1 ping statistics ---
-3 packets transmitted, 3 received, 0% packet loss, time 2027ms
-rtt min/avg/max/mdev = 0.175/0.236/0.351/0.081 ms
-$ ping -c 3 10.0.0.2 # Node 2
-PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
-64 bytes from 10.0.0.2: icmp_seq=1 ttl=64 time=2.70 ms
-64 bytes from 10.0.0.2: icmp_seq=2 ttl=64 time=0.215 ms
-64 bytes from 10.0.0.2: icmp_seq=3 ttl=64 time=0.195 ms
-
---- 10.0.0.2 ping statistics ---
-3 packets transmitted, 3 received, 0% packet loss, time 2043ms
-rtt min/avg/max/mdev = 0.195/1.036/2.700/1.176 ms
-
-$ ping -c 3 10.0.0.3 # Node 3
-PING 10.0.0.3 (10.0.0.3) 56(84) bytes of data.
-64 bytes from 10.0.0.3: icmp_seq=1 ttl=64 time=0.437 ms
-64 bytes from 10.0.0.3: icmp_seq=2 ttl=64 time=0.421 ms
-64 bytes from 10.0.0.3: icmp_seq=3 ttl=64 time=0.585 ms
-
---- 10.0.0.3 ping statistics ---
-3 packets transmitted, 3 received, 0% packet loss, time 2087ms
-rtt min/avg/max/mdev = 0.421/0.481/0.585/0.073 ms
+$ kubectl rollout restart ds rke2-canal -n kube-system
+daemonset.apps/rke2-canal restarted
+$ kubectl rollout status ds rke2-canal -n kube-system --timeout=120s
+Waiting for daemon set "rke2-canal" rollout to finish: 0 of 1 updated pods are available...
+daemon set "rke2-canal" successfully rolled out
 ```
 
-All three should succeed since the existing nodes already have IPv4 configured on the vSwitch.
+WireGuard tunnels are only established between peers, so there is nothing to verify on a single-node cluster.
+We'll confirm that WireGuard encryption is active in Lesson 11 after the second control plane node joins.
 
-### Testing IPv6
+## Network Policies
 
-Since the existing nodes don't have IPv6 on their vSwitch interfaces yet, you can only verify that node4's IPv6 configuration is correct by checking the interface:
+### Understanding Network Policies
+
+By default, Kubernetes allows all pod-to-pod communication across all namespaces.
+A `NetworkPolicy` resource changes this by defining explicit ingress and egress rules for pods matching a selector.
+Once any NetworkPolicy selects a pod, all traffic not explicitly allowed by a policy is denied.
+
+Canal enforces these policies through Calico's policy engine, which supports standard Kubernetes `NetworkPolicy` resources at L3-L4 (IP addresses, ports, and protocols).
+
+| Scope              | Resource type    | Enforced by       |
+| ------------------ | ---------------- | ----------------- |
+| Pod-to-pod traffic | `NetworkPolicy`  | Calico (in Canal) |
+| Host-level traffic | Hetzner firewall | Hetzner network   |
+
+Unlike Cilium, Canal does not provide host-level network policies—the Hetzner firewall configured in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) serves that role.
+
+### Default Deny per Namespace
+
+A common security pattern is to deny all ingress traffic by default and then allow specific communication paths.
+This policy selects all pods in a namespace and permits only traffic from within the same namespace.
+
+Pods also need to reach CoreDNS (in `kube-system`) to resolve service names, so a companion egress policy must allow DNS traffic.
+Without it, pods cannot look up any service addresses.
+
+We place both policies in the RKE2 auto-deploy manifests directory so they are applied on every cluster start and survive node rebuilds—consistent with how we deployed the Canal HelmChartConfig. Create a file at `/var/lib/rancher/rke2/server/manifests/default-network-policies.yaml` with the following content:
+
+```yaml
+# Default deny ingress: only allow traffic from within the same namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: default
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+---
+# Allow DNS egress to CoreDNS in kube-system
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: default
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - port: 53
+          protocol: TCP
+        - port: 53
+          protocol: UDP
+```
+
+RKE2 picks up the manifest automatically within a few seconds.
+The `default-deny-ingress` policy restricts pods in the `default` namespace to only accept traffic from other pods in the same namespace, while `allow-dns` ensures DNS resolution continues to work.
+
+For additional namespaces you create, apply the same pair of policies by duplicating the manifest with the appropriate `namespace` field—or use the CIS hardening profile described below.
+
+### CIS Hardening Profile
+
+RKE2 can automatically apply namespace-level network policies and stricter Pod Security Standards when started with the `profile: cis` configuration option.
+This applies a default-deny ingress policy and a DNS-allow policy to the `kube-system`, `kube-public`, and `default` namespaces—similar to the manual policies above but managed by RKE2 itself.
+
+For namespaces you create, you are still responsible for applying appropriate network policies.
+The manual policies shown above serve as a template for securing your application namespaces.
+
+### Verifying Network Policies
+
+Check that both policies are applied:
 
 ```bash
-$ ip -6 addr show enp195s0.4000
-7: enp195s0.4000@enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
-    inet6 fd00::4/64 scope global noprefixroute
-       valid_lft forever preferred_lft forever
-    inet6 fe80::cad:c5f2:6cc4:d67b/64 scope link noprefixroute
-       valid_lft forever preferred_lft forever
+$ kubectl get networkpolicies -A
+NAMESPACE   NAME                   POD-SELECTOR   AGE
+default     allow-dns              <none>         26s
+default     default-deny-ingress   <none>         26s
 ```
 
-You should see your ULA address (`fd00::4/64`) listed.
-Full IPv6 connectivity testing will become possible as we migrate each node and add IPv6 to their vSwitch interfaces in later lessons.
+Test from within a pod that DNS works but cross-namespace traffic is blocked:
+
+```bash
+$ kubectl run policy-test --image=busybox:1.36 -n default --restart=Never -- sleep 3600
+pod/policy-test created
+
+$ kubectl wait --for=condition=Ready pod/policy-test -n default --timeout=60s
+pod/policy-test condition met
+
+# DNS should work
+$ kubectl exec -n default policy-test -- nslookup kubernetes.default.svc.cluster.local
+Server:         10.43.0.10
+Address:        10.43.0.10:53
+
+
+Name:   kubernetes.default.svc.cluster.local
+Address: 10.43.0.1
+
+# Cross-namespace traffic should be blocked (will timeout)
+$ kubectl exec -n default policy-test -- wget -qO- --timeout=3 http://rke2-metrics-server.kube-system.svc:443 2>&1 || echo "Blocked as expected"
+wget: download timed out
+command terminated with exit code 1
+Blocked as expected
+
+$ kubectl delete pod policy-test -n default
+pod "policy-test" deleted from default namespace
+```
+
+## Troubleshooting
+
+For Canal pod startup failures and dual-stack IPv6 issues, refer to the troubleshooting section in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
+The sections below cover issues specific to this lesson's configuration.
+
+### Network Policy Not Blocking Traffic
+
+Calico applies network policies asynchronously.
+After creating a policy, allow a few seconds for Felix to program the iptables rules.
+Verify that the policy is recognized:
+
+```bash
+$ kubectl get networkpolicies -n <namespace>
+```
+
+If traffic is still flowing despite a deny policy, check that no other policy in the namespace is allowing it.
+Kubernetes network policies are additive, meaning any policy that allows traffic takes precedence.

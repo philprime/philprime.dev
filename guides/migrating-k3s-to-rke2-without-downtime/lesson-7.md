@@ -1,298 +1,398 @@
 ---
 layout: guide-lesson.liquid
-title: Firewall Configuration
+title: Setting Up Storage (Longhorn + local-path)
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 7
 guide_lesson_abstract: >
-  Configure Hetzner Robot firewall rules to allow RKE2 cluster traffic while maintaining security.
+  Configure Longhorn for replicated storage and local-path-provisioner for fast local storage on Cluster B.
 guide_lesson_conclusion: >
-  The Hetzner firewall is configured to allow cluster communication over the vSwitch and necessary public services.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-7.md
+  Both Longhorn and local-path storage classes are configured and ready for workload deployment.
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-101.md
 ---
 
-Before installing RKE2, we need to configure firewall rules that allow cluster components to communicate.
-This lesson covers the first layer of our three-layer security model: the Hetzner network firewall.
+Before deploying workloads, we need to set up persistent storage on Cluster B.
+We'll configure two storage classes: Longhorn for replicated storage and local-path-provisioner for fast local storage.
 
 {% include guide-overview-link.liquid.html %}
 
-## Understanding the Three-Layer Security Model
+## Why Longhorn
 
-We use a layered approach to network security, with each layer serving a specific purpose:
+Several storage provisioners exist for Kubernetes, with [Rook-Ceph](https://rook.io/), [OpenEBS](https://openebs.io/), and [Longhorn](https://longhorn.io/) being the most common self-hosted options.
 
-| Layer | Component                  | Purpose                                                          |
-| ----- | -------------------------- | ---------------------------------------------------------------- |
-| 1     | Hetzner Firewall           | Coarse network-level filtering before traffic reaches the server |
-| 2     | Calico Network Policies    | Fine-grained port control on the host                            |
-| 3     | Kubernetes NetworkPolicies | Pod-to-pod isolation and service-level access control            |
+Rook-Ceph is a powerful distributed storage system that provides block, file, and S3-compatible object storage, but it is designed for large clusters with dozens of nodes and dedicated storage disks, and carries significant operational complexity.
 
-This architecture provides defense-in-depth: if one layer fails or is misconfigured, the others still provide protection.
+OpenEBS offers multiple storage engines, with its flagship Mayastor engine using NVMe-oF and SPDK for high-performance replicated block storage.
+Mayastor requires NVMe drives and has higher resource demands than Longhorn, and the project has gone through several engine generations (Jiva, cStor, Mayastor) which makes the documentation landscape harder to navigate.
 
-### Why Layers?
+Longhorn is a lightweight distributed block storage system built by SUSE/Rancher alongside RKE2, making it a natural fit for our cluster size and tooling.
+It works well on small-to-medium clusters (1–10 nodes), has minimal resource overhead, and is straightforward to deploy and manage via Helm.
 
-Hetzner's firewall has a 10-rule limit, which forces us to use broad port ranges.
-For example, opening ports `22-587` allows SSH, SMTP, HTTP, and HTTPS, but also opens unused ports like `23-24` and `81-442`.
+We use Longhorn for this guide because it matches our 4-node cluster, integrates tightly with the Rancher ecosystem, and keeps operational complexity low.
+If our storage requirements grow to need object storage or multi-petabyte capacity, we may revisit this decision and migrate to Rook-Ceph in a future guide.
 
-Calico Network Policies (configured in Lesson 9) close this gap by explicitly allowing only the specific ports we need.
-Even though Hetzner permits the range, Calico blocks everything except SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`).
+## Understanding Longhorn
 
-If Calico fails, the system falls back to Hetzner rules only, which are broader but still reasonably secure.
+[Longhorn](https://longhorn.io/) replicates volumes across multiple nodes to provide data redundancy.
+When a pod requests storage through a PersistentVolumeClaim (PVC), Longhorn's CSI driver provisions a PersistentVolume (PV) and synchronizes its data across replicas on different nodes.
+If a node fails, the remaining replicas continue serving data while Longhorn rebuilds a new replica on a healthy node.
 
-## Understanding Hetzner's Firewall
+For a deeper introduction to Longhorn—including its architecture, component breakdown, and storage class configuration—see [Installing Longhorn](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-17) and [Configuring Longhorn Storage Classes](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-18) in the guide [Building a Production-Ready Kubernetes Cluster from Scratch](/guides/building-a-production-ready-kubernetes-cluster-from-scratch).
 
-Hetzner's dedicated server firewall operates at the network level, filtering packets before they reach your server.
-This is more secure than host-based firewalls because malicious traffic never touches your machine's network stack.
-The firewall is stateless, meaning it evaluates each packet independently without tracking connection state.
+## Choosing Storage Classes
 
-This stateless design has an important implication: you need explicit rules to allow return traffic from outbound connections.
-When your server makes an HTTPS request to download a container image, the response packets need a rule that permits them.
-We'll handle this with a rule that allows TCP packets with the `ACK` flag set on ephemeral ports.
+The two storage classes serve different workload profiles:
 
-### vSwitch Traffic
+| Storage Class | Replication | Performance | Use Cases                                     |
+| ------------- | ----------- | ----------- | --------------------------------------------- |
+| Longhorn      | Yes         | Good        | Databases, stateful apps, data you can't lose |
+| local-path    | No          | Excellent   | Caching, temp storage, build artifacts        |
 
-A critical point that's easy to overlook: **vSwitch traffic passes through Hetzner's firewall**.
-Even though the vSwitch is a private Layer 2 network between your servers, packets still traverse the firewall infrastructure.
-Without a rule explicitly allowing traffic from your vSwitch subnet, pod-to-pod communication across nodes will fail and your cluster won't function.
+For our migration, we'll configure both to match the flexibility most k3s clusters have.
 
-### Ephemeral Ports and NodePorts
+## Planning Storage Capacity
 
-When your server makes an outbound connection (downloading container images, querying APIs), the kernel assigns a temporary source port from the ephemeral port range.
-The response packets return to this port, so the firewall must allow them through.
+Longhorn stores replicas on each node's local disk, so disk space planning matters before installation.
 
-You can check your system's ephemeral port range:
+| Component        | Minimum | Recommended | Notes                                 |
+| ---------------- | ------- | ----------- | ------------------------------------- |
+| OS and RKE2      | 20GB    | 40GB        | Container images, logs, etcd data     |
+| Longhorn storage | 50GB    | 100GB+      | Per-node, depends on workload volumes |
+| local-path       | 10GB    | 20GB        | Fast local storage for caching        |
+
+For simple partition layouts (`/boot` + `/`), all storage shares the root partition.
+Consider a dedicated partition or disk for `/var/lib/longhorn` if you have large storage requirements.
+
+## Preparing the Node for Longhorn
+
+Longhorn requires several system-level dependencies—most importantly iSCSI for block storage and NFSv4 for RWX volume support.
+The `longhornctl` CLI can check and install these automatically.
+Repeat these steps on every node that joins the cluster.
+
+### Install longhornctl
+
+Download the CLI matching the Longhorn version we'll install:
 
 ```bash
-cat /proc/sys/net/ipv4/ip_local_port_range
-# Output: 32768    60999
+$ curl -fL -o /usr/local/bin/longhornctl \
+    https://github.com/longhorn/cli/releases/download/v1.11.0/longhornctl-linux-amd64
+$ chmod +x /usr/local/bin/longhornctl
+$ /usr/local/bin/longhornctl version
+v1.11.0
 ```
 
-Linux defaults to `32768-60999` for ephemeral ports.
-Kubernetes defaults to `30000-32767` for NodePort services.
+### Run the Preflight Check
 
-These ranges are intentionally non-overlapping:
+The preflight tool deploys DaemonSets into the `longhorn-system` namespace to check and install dependencies on each node.
+Create the namespace first, then run the check.
+Since RKE2 places its kubeconfig at `/etc/rancher/rke2/rke2.yaml`, pass it explicitly:
 
-| Range         | Purpose                  | Used by      |
-| ------------- | ------------------------ | ------------ |
-| `30000-32767` | NodePort services        | Kubernetes   |
-| `32768-60999` | Ephemeral (source) ports | Linux kernel |
+```bash
+$ kubectl create namespace longhorn-system
+namespace/longhorn-system created
 
-The boundary at `32767`/`32768` is `2^15 - 1` / `2^15`, a deliberate design choice to prevent conflicts.
-Our firewall rules respect this boundary: the `tcp established` rule covers `32768-65535` for return traffic, while the `nodeports` rule covers `30000-32767` for inbound service access.
+$ /usr/local/bin/longhornctl --kubeconfig /etc/rancher/rke2/rke2.yaml check preflight
+INFO[2026-02-15T03:15:55+02:00] Initializing preflight checker
+INFO[2026-02-15T03:15:55+02:00] Cleaning up preflight checker
+INFO[2026-02-15T03:15:55+02:00] Running preflight checker
+INFO[2026-02-15T03:16:03+02:00] Retrieved preflight checker result:
+node4:
+  error:
+  - '[IscsidService] Neither iscsid.service nor iscsid.socket is running. - Service iscsid.service is not found (exit code: 4) - Service iscsid.socket is not found (exit code: 4)'
+  - '[Packages] nfs-utils is not installed (exit code: 1)'
+  - '[Packages] iscsi-initiator-utils is not installed (exit code: 1)'
+  - '[KernelModules] nfs is not loaded. (exit code: 1)'
+  - '[KernelModules] iscsi_tcp is not loaded. (exit code: 1)'
+  - '[KernelModules] dm_crypt is not loaded. (exit code: 1)'
+  info:
+  - '[MultipathService] multipathd.service is not found (exit code: 4)'
+  - '[MultipathService] multipathd.socket is not found (exit code: 4)'
+  - '[NFSv4] NFS4 is supported'
+  - '[Packages] cryptsetup is installed'
+  - '[Packages] device-mapper is installed'
+  warn:
+  - '[KubeDNS] Kube DNS "rke2-coredns-rke2-coredns" is set with fewer than 2 replicas; consider increasing replica count for high availability'
+INFO[2026-02-15T03:16:03+02:00] Cleaning up preflight checker
+INFO[2026-02-15T03:16:03+02:00] Completed preflight checker
+```
 
-### Port Strategy
+If the check reports missing packages or modules, run the preflight installer to resolve them automatically:
 
-Some ports are dictated by protocol standards and must use specific numbers:
+```bash
+$ /usr/local/bin/longhornctl --kubeconfig /etc/rancher/rke2/rke2.yaml install preflight
+INFO[2026-02-15T03:16:23+02:00] Initializing preflight installer
+INFO[2026-02-15T03:16:23+02:00] Cleaning up preflight installer
+INFO[2026-02-15T03:16:23+02:00] Running preflight installer
+INFO[2026-02-15T03:16:23+02:00] Installing dependencies with package manager
+INFO[2026-02-15T03:17:32+02:00] Installed dependencies with package manager
+INFO[2026-02-15T03:17:32+02:00] Retrieved preflight installer result:
+node4:
+  info:
+  - Successfully installed package nfs-utils
+  - Successfully installed package iscsi-initiator-utils
+  - Successfully probed module nfs
+  - Successfully probed module iscsi_tcp
+  - Successfully probed module dm_crypt
+  - Successfully started service iscsid
+INFO[2026-02-15T03:17:32+02:00] Cleaning up preflight installer
+INFO[2026-02-15T03:17:32+02:00] Completed preflight installer. Use 'longhornctl check preflight' to check the result (on some os a reboot and a new install execution is required first)
+```
 
-| Port   | Service         | Reason                            |
-| ------ | --------------- | --------------------------------- |
-| `22`   | SSH             | Standard remote access            |
-| `25`   | SMTP            | Receiving mail from other servers |
-| `80`   | HTTP            | ACME challenges and redirects     |
-| `443`  | HTTPS           | Web traffic                       |
-| `587`  | SMTP submission | Sending mail                      |
-| `6443` | Kubernetes API  | RKE2 default                      |
+Run the check again to confirm everything passes.
 
-Services without protocol-mandated ports must use the Kubernetes NodePort range (`30000-32767`).
-For example, PostgreSQL can run on port `30432` instead of `5432`, and Redis on `30379` instead of `6379`.
-Ports outside this range (like `35432`) won't be accessible through the firewall.
-Calico Network Policies control which specific ports within this range are actually accessible.
+```bash
+$ /usr/local/bin/longhornctl --kubeconfig /etc/rancher/rke2/rke2.yaml check preflight
+INFO[2026-02-15T03:17:43+02:00] Initializing preflight checker
+INFO[2026-02-15T03:17:43+02:00] Cleaning up preflight checker
+INFO[2026-02-15T03:17:43+02:00] Running preflight checker
+INFO[2026-02-15T03:17:45+02:00] Retrieved preflight checker result:
+node4:
+  info:
+  - '[IscsidService] Service iscsid is running'
+  - '[MultipathService] multipathd.service is not found (exit code: 4)'
+  - '[MultipathService] multipathd.socket is not found (exit code: 4)'
+  - '[NFSv4] NFS4 is supported'
+  - '[Packages] nfs-utils is installed'
+  - '[Packages] iscsi-initiator-utils is installed'
+  - '[Packages] cryptsetup is installed'
+  - '[Packages] device-mapper is installed'
+  - '[KernelModules] nfs is loaded'
+  - '[KernelModules] iscsi_tcp is loaded'
+  - '[KernelModules] dm_crypt is loaded'
+  warn:
+  - '[KubeDNS] Kube DNS "rke2-coredns-rke2-coredns" is set with fewer than 2 replicas; consider increasing replica count for high availability'
+INFO[2026-02-15T03:17:45+02:00] Cleaning up preflight checker
+INFO[2026-02-15T03:17:45+02:00] Completed preflight checker
+```
 
-### IPv6 Considerations
+## Installing Longhorn
 
-Hetzner's firewall has some limitations with IPv6.
-ICMPv6 traffic is always allowed and cannot be filtered, which is actually helpful since IPv6 requires ICMPv6 for neighbor discovery.
-However, you cannot filter IPv6 traffic by source or destination IP address, only by protocol and port.
-For our dual-stack cluster, the vSwitch rule only applies to IPv4, but since our ULA addresses (`fd00::/64`) are not routable on the public internet, this isn't a security concern.
+RKE2 includes a Helm controller that automatically installs and manages Helm charts from manifest files—the same mechanism we used for the Canal `HelmChartConfig` in [Lesson 9](/guides/migrating-k3s-to-rke2-without-downtime/lesson-9).
+For external charts like Longhorn, we use a `HelmChart` resource instead of `HelmChartConfig`.
 
-## Configuring the Firewall
+We start with a single node, so `defaultReplicaCount` is set to `1`—replicas require separate nodes to be useful.
+We'll increase this to `2` once additional nodes join the cluster.
 
-Navigate to the [Hetzner Robot](https://robot.hetzner.com/server) interface, select your server (node4), and click "Firewall" to access the rules configuration.
+Create the manifest at `/var/lib/rancher/rke2/server/manifests/longhorn.yaml`:
 
-### Firewall Settings
+```yaml
+# /var/lib/rancher/rke2/server/manifests/longhorn.yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: longhorn
+  namespace: kube-system
+spec:
+  repo: https://charts.longhorn.io
+  chart: longhorn
+  version: "1.11.0"
+  targetNamespace: longhorn-system
+  valuesContent: |-
+    defaultSettings:
+      defaultReplicaCount: 1
+      storageMinimalAvailablePercentage: 15
+      defaultDataLocality: "best-effort"
+      nodeDrainPolicy: "block-if-contains-last-replica"
+      guaranteedEngineManagerCPU: 12
+      guaranteedReplicaManagerCPU: 12
+    persistence:
+      defaultClass: false
+      defaultClassReplicaCount: 1
+      reclaimPolicy: Delete
+    ingress:
+      enabled: false
+```
 
-| Setting                     | Value  | Notes                                  |
-| --------------------------- | ------ | -------------------------------------- |
-| Status                      | active | Enable the firewall                    |
-| Filter IPv6 packets         | ☑      | Enable IPv6 filtering                  |
-| Hetzner Services (incoming) | ☑      | Allow rescue system, DNS, SysMon, etc. |
+The most important settings control replica behavior and disk reservation:
 
-### Rules (incoming)
+| Setting                             | Value                            | Purpose                                                  |
+| ----------------------------------- | -------------------------------- | -------------------------------------------------------- |
+| `defaultReplicaCount`               | `1`                              | Single replica while only one node exists                |
+| `storageMinimalAvailablePercentage` | `15`                             | Reserve disk space for system operations                 |
+| `defaultDataLocality`               | `best-effort`                    | Prefer placing replicas on the node running the workload |
+| `nodeDrainPolicy`                   | `block-if-contains-last-replica` | Prevent data loss during node maintenance                |
 
-The firewall has a **10-rule limit**.
-ICMPv6 is always allowed and cannot be blocked, so we don't need a rule for it.
-Most rules are mirrored for IPv4 and IPv6 to provide full dual-stack coverage.
+RKE2 detects the new manifest and installs the chart automatically within a few seconds.
 
-| ID | Name               | Version | Protocol | Source IP   | Source Port | Dest Port   | TCP Flags | Action |
-| -- | ------------------ | ------- | -------- | ----------- | ----------- | ----------- | --------- | ------ |
-| #1 | vswitch            | ipv4    | *        | 10.0.0.0/24 |             |             |           | accept |
-| #2 | tcp established    | ipv4    | tcp      |             |             | 32768-65535 | ack       | accept |
-| #3 | tcp established-v6 | ipv6    | tcp      |             |             | 32768-65535 | ack       | accept |
-| #4 | dns responses      | ipv4    | udp      |             | 53          | 32768-65535 |           | accept |
-| #5 | well-known         | ipv4    | tcp      |             |             | 22-587      |           | accept |
-| #6 | well-known-v6      | ipv6    | tcp      |             |             | 22-587      |           | accept |
-| #7 | k8s-api            | ipv4    | tcp      |             |             | 6443        |           | accept |
-| #8 | k8s-api-v6         | ipv6    | tcp      |             |             | 6443        |           | accept |
-| #9 | nodeports          | *       | *        |             |             | 30000-32767 |           | accept |
+You can watch the installation progress with `kubectl get pods -n longhorn-system -w`.
+All pods should reach Running state within a few minutes:
 
-Rule #10 is available for future use.
-Calico Network Policies (Layer 2) handle fine-grained filtering within these ranges.
+```bash
+$ kubectl get pods -n longhorn-system -w
+NAME                                                READY   STATUS    RESTARTS   AGE
+csi-attacher-896ffc747-kvcg9                        1/1     Running   0          2m46s
+csi-attacher-896ffc747-l6p92                        1/1     Running   0          2m46s
+csi-attacher-896ffc747-m5brz                        1/1     Running   0          2m46s
+csi-provisioner-688964c44b-2r5br                    1/1     Running   0          2m46s
+csi-provisioner-688964c44b-bx5l4                    1/1     Running   0          2m46s
+csi-provisioner-688964c44b-gq967                    1/1     Running   0          2m46s
+csi-resizer-6585bb54-4fgzf                          1/1     Running   0          2m46s
+csi-resizer-6585bb54-89s2w                          1/1     Running   0          2m46s
+csi-resizer-6585bb54-9rpx9                          1/1     Running   0          2m46s
+csi-snapshotter-65884686fc-5mcdm                    1/1     Running   0          2m46s
+csi-snapshotter-65884686fc-m8zbh                    1/1     Running   0          2m46s
+csi-snapshotter-65884686fc-q5p94                    1/1     Running   0          2m46s
+engine-image-ei-ff1cedad-c9zsl                      1/1     Running   0          3m24s
+instance-manager-9d6cce936720fe18ca09b3a5b9c3bb4a   1/1     Running   0          2m54s
+longhorn-csi-plugin-gz98r                           3/3     Running   0          2m46s
+longhorn-driver-deployer-5d7995fc74-dbnjh           1/1     Running   0          3m40s
+longhorn-manager-v6sr8                              2/2     Running   0          3m40s
+longhorn-ui-7fc9b4667f-fxwr9                        1/1     Running   0          3m40s
+longhorn-ui-7fc9b4667f-gvmp9                        1/1     Running   0          3m40s
+```
 
-### Rules (outgoing)
+## Understanding local-path-provisioner
 
-| ID | Name      | Version | Protocol | Source IP | Dest IP | Source Port | Dest Port | TCP Flags | Action |
-| -- | --------- | ------- | -------- | --------- | ------- | ----------- | --------- | --------- | ------ |
-| #1 | allow all | *       | *        |           |         |             |           |           | accept |
+[local-path-provisioner](https://github.com/rancher/local-path-provisioner) is a lightweight storage provisioner developed by Rancher that creates PersistentVolumes backed by directories on the node's local filesystem.
+Unlike Longhorn, it provides no replication, snapshots, or cross-node data availability—when a node goes down, volumes on that node become inaccessible until the node recovers.
 
-### Rule Explanations
+This simplicity is its strength.
+local-path uses the node's native filesystem directly, avoiding the overhead of network-attached block storage and iSCSI.
+For workloads that manage their own replication (like distributed databases) or store ephemeral data (build artifacts, caches, temporary files), local-path delivers better I/O performance with lower resource consumption.
 
-**Rule #1 (vswitch)** is the most critical rule for cluster operation.
-It allows all traffic from the private vSwitch network, enabling Kubernetes API communication between nodes, etcd cluster synchronization, Calico's pod networking, and kubelet communication.
-Without this rule, your cluster cannot function.
+| Feature              | Longhorn                      | local-path                          |
+| -------------------- | ----------------------------- | ----------------------------------- |
+| Replication          | Across nodes                  | None                                |
+| Snapshots            | Yes                           | No                                  |
+| Volume binding       | Immediate                     | WaitForFirstConsumer                |
+| Node failure         | Data survives on other nodes  | Data unavailable until node is back |
+| Performance overhead | iSCSI + replication           | Direct filesystem access            |
+| Use cases            | Databases, stateful workloads | Caches, build artifacts, temp data  |
 
-**Rules #2-3 (tcp established)** handle return traffic for outbound TCP connections.
-When your server connects to external services (container registries, package repositories, APIs), the responses arrive as packets with the `ACK` flag set.
-These rules allow those responses on ephemeral ports (`32768-65535`) for both IPv4 and IPv6.
+The `WaitForFirstConsumer` volume binding mode ensures that a local-path volume is only created on the node where the pod is actually scheduled.
+This prevents Kubernetes from provisioning a volume on one node and then scheduling the pod on a different node where the data does not exist.
 
-**Rule #4 (dns responses)** permits DNS reply packets.
-DNS queries go out on a random high port, and responses come back from port `53`.
-This rule ensures those responses reach your server.
+## Installing local-path-provisioner
 
-**Rules #5-6 (well-known)** cover SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`) for both IPv4 and IPv6.
-This opens some unused ports (`23-24`, `26-79`, `81-442`, `444-586`), but Calico Network Policies block those at Layer 2.
+We place the local-path-provisioner manifest in RKE2's auto-deploy directory so it is applied automatically on cluster startup—consistent with our Longhorn and Canal deployments.
 
-**Rules #7-8 (k8s-api)** open port `6443` for Kubernetes API access over both IPv4 and IPv6.
-This allows `kubectl` commands and other API clients to reach your cluster from outside the vSwitch network.
+Download the manifest and save it to the manifests directory:
 
-**Rule #9 (nodeports)** opens the standard Kubernetes NodePort range (`30000-32767`) for both IPv4 and IPv6.
-It uses wildcard version (`*`) and protocol (`*`) to cover both address families in a single rule.
-PostgreSQL (`30432`), Redis (`30379`), and other services can use ports in this range.
-Calico Network Policies control which specific ports are accessible.
+```bash
+$ curl -fL -o /var/lib/rancher/rke2/server/manifests/local-path-provisioner.yaml \
+    https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
+```
 
-Tailscale is not listed because it uses NAT traversal with outbound connections.
-Since we allow all outbound traffic, Tailscale works without an inbound rule.
-ICMP is omitted to stay within the limit; you can still ping via the vSwitch since Rule #1 allows all traffic from that subnet.
+RKE2 detects the new manifest and creates the namespace, deployment, and storage class automatically.
+The default configuration stores volumes at `/opt/local-path-provisioner` on each node.
 
-### Applying the Rules
+Verify the deployment is running:
 
-After entering all rules, click "Save" to apply them.
-Changes typically propagate within 30-60 seconds.
+```bash
+$ kubectl get pods -n local-path-storage
+NAME                                      READY   STATUS    RESTARTS   AGE
+local-path-provisioner-5f96558fc6-txcw7   1/1     Running   0          4s
+```
 
 ## Verification
 
-### vSwitch Connectivity
+### Check Storage Classes
 
-Test that nodes can communicate over the private network using both IPv4 and IPv6.
-
-From node1, ping node4:
+All three storage classes should appear, with none marked as default:
 
 ```bash
-$ ping -c 3 10.0.0.4
-64 bytes from 10.0.0.4: icmp_seq=1 ttl=64 time=0.351 ms
-...
-3 packets transmitted, 3 received, 0% packet loss
+$ kubectl get storageclass
+NAME              PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION
+local-path        rancher.io/local-path   Delete          WaitForFirstConsumer   false
+longhorn          driver.longhorn.io      Delete          Immediate              true
+longhorn-static   driver.longhorn.io      Delete          Immediate              true
 ```
 
-From node4, ping node1:
+Longhorn creates two classes: `longhorn` for dynamically provisioned volumes and `longhorn-static` for pre-provisioned volumes that reference existing Longhorn volumes by name.
+For most workloads, `longhorn` is the correct choice.
+
+Since no default storage class is set, every PVC must specify a `storageClassName` explicitly.
+This forces workload authors to make a deliberate choice between replicated and local storage.
+
+The reason for not setting `longhorn` as the default is that some workloads (like CI/CD pipelines) may prefer the performance of local storage and manage their own replication, while others (like databases) require Longhorn's data redundancy. By not having a default, we make sure that workloads do not accidentally use ephemeral local storage when they actually need the durability of Longhorn (e.g. a datbase would restart with an empty disk if it used local-path and the node went down).
+
+Verify that Longhorn recognizes the cluster nodes as schedulable for storage:
 
 ```bash
-$ ping -c 3 10.0.0.1
-64 bytes from 10.0.0.1: icmp_seq=1 ttl=64 time=0.348 ms
-...
-3 packets transmitted, 3 received, 0% packet loss
+$ kubectl get nodes.longhorn.io -n longhorn-system
+NAME   READY   ALLOWSCHEDULING   SCHEDULABLE   AGE
+node4   True    true              True          10m
 ```
 
-This works because Rule #1 allows all traffic from the vSwitch subnet, including ICMP.
-If pings fail, verify that Rule #1 has the correct source IP (`10.0.0.0/24`) and is set to `accept`.
-IPv6 connectivity over the vSwitch is not configured on the existing nodes yet, so we only test IPv4 here.
+### Test Volume Provisioning
 
-### Port Scan from vSwitch
-
-Install nmap on node1 if it's not already available:
+To verify that Longhorn can provision volumes correctly, create a test PVC and Pod that writes to it:
 
 ```bash
-dnf install -y nmap
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage-test
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: storage-test
+spec:
+  containers:
+  - name: test
+    image: busybox
+    command: ['sh', '-c', 'echo "Storage works" > /data/test.txt && cat /data/test.txt && sleep 30']
+    volumeMounts:
+    - name: data
+      mountPath: /data
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: storage-test
+EOF
+
+$ kubectl wait --for=condition=Ready pod/storage-test --timeout=120s
+persistentvolumeclaim/storage-test created
+pod/storage-test created
+pod/storage-test condition met
+
+$ kubectl logs storage-test
+Storage works
 ```
 
-Verify that the vSwitch rule allows unrestricted access by scanning node4 from node1:
+The output should show `Storage works`, confirming that Longhorn provisioned the volume and the pod can write to it.
+We can also confirm that the PV is bound to the PVC and that Longhorn created the corresponding volume:
 
 ```bash
-# Scan all ports on node4's private IP from node1
-$ nmap -sT 10.0.0.4 -p-
-Nmap scan report for 10.0.0.4
-Host is up (0.00018s latency).
-Not shown: 65534 closed tcp ports (conn-refused)
-
-PORT   STATE SERVICE
-22/tcp open  ssh
-
-Nmap done: 1 IP address (1 host up) scanned in 1.33 seconds
+$ kubectl get pvc -w
+NAME           STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+storage-test   Bound    pvc-b49021d6-5fa7-4b16-8d13-a125aba696e9   1Gi        RWO            longhorn       <unset>                 46s
 ```
 
-Only SSH (port 22) is open since it's the only service running on the fresh server.
-The remaining 65534 ports show as `closed` (reachable but no service listening), and none show as `filtered`.
-This confirms Rule #1 permits all traffic from the vSwitch subnet regardless of port or protocol.
-
-### Port Scan from Public Internet
-
-From a machine outside the vSwitch, scan node4's public IP to verify the firewall boundaries:
+Remove the test resources once verified:
 
 ```bash
-# From an external machine, scan node4's public IP for relevant ports
-$ nmap -Pn -sT -v -T4 --min-rate 5000 <node4-public-ip> -p 21,22,443,587,588,6443,6444,29999,30000,32767,32768
-
-PORT      STATE    SERVICE
-21/tcp    filtered ftp
-22/tcp    open     ssh
-443/tcp   closed   https
-587/tcp   closed   submission
-588/tcp   filtered cal
-6443/tcp  closed   sun-sr-https
-6444/tcp  filtered sge_qmaster
-29999/tcp filtered bingbang
-30000/tcp closed   ndmps
-32767/tcp closed   filenet-powsrm
-32768/tcp filtered filenet-tms
+kubectl delete pod storage-test
+kubectl delete pvc storage-test
 ```
 
-The results confirm each firewall zone:
+## Accessing Longhorn UI
 
-| Port  | State    | Reason                                            |
-| ----- | -------- | ------------------------------------------------- |
-| 21    | filtered | Below well-known range, blocked by firewall       |
-| 22    | open     | In well-known range (`22-587`), SSH is listening  |
-| 443   | closed   | In well-known range, allowed but no service yet   |
-| 587   | closed   | End of well-known range, allowed but no service   |
-| 588   | filtered | Above well-known range, blocked                   |
-| 6443  | closed   | k8s-api rule, allowed but RKE2 not installed yet  |
-| 6444  | filtered | Not in any allowed range, blocked                 |
-| 29999 | filtered | Below nodeport range, blocked                     |
-| 30000 | closed   | Start of nodeport range, allowed but no service   |
-| 32767 | closed   | End of nodeport range, allowed but no service     |
-| 32768 | filtered | Ephemeral range requires ACK flag, SYN is blocked |
-
-The `-Pn` flag skips host discovery since there is no public ICMP rule.
-Ports showing `closed` are reachable through the firewall but have no service listening.
-Ports showing `filtered` are blocked by the firewall and never reach the server.
-
-### Full Port Scan
-
-To scan all 65535 ports from the public internet, use `--min-rate` to prevent nmap from slowing down on filtered ports:
+Longhorn ships with a web UI for managing volumes, viewing replica status, and troubleshooting.
+Port-forward to access it locally:
 
 ```bash
-nmap -Pn -sT -v --min-rate 1000 <node4-public-ip> -p-
+# Connect to the node and forward port 8080 to the Longhorn UI service
+$ ssh -L 8080:localhost:8080 node4.example.com
+
+# In the SSH session, run:
+$ kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
+Forwarding from 127.0.0.1:8080 -> 8000
+Forwarding from [::1]:8080 -> 8000
+Handling connection for 8080
+Handling connection for 8080
+Handling connection for 8080
 ```
 
-{% include alert.liquid.html type='warning' title='Long Running Scan' content='
-A full port scan against a firewalled host can take 30 minutes or more, even with --min-rate.
-Filtered ports cause timeouts that slow the scan significantly.
-The targeted scan above covers all firewall zone boundaries and is sufficient for verification.
-' %}
-
-## What's Next
-
-The Hetzner firewall provides coarse filtering at Layer 1.
-In Lesson 9, we'll configure Calico Network Policies (Layer 2) to provide fine-grained port control, blocking the unused ports within the ranges we opened here.
-
-With the network-level firewall configured, we're ready to install RKE2 in the next lesson.
+The UI is then available at `http://localhost:8080` on your local machine.

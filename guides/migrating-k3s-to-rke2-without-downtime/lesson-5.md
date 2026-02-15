@@ -1,278 +1,584 @@
 ---
 layout: guide-lesson.liquid
-title: Installing Rocky Linux 10 on Node 4
+title: Installing the RKE2 Server
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 5
 guide_lesson_abstract: >
-  Install Rocky Linux 10 on Node 4 with security hardening, essential tools, and storage planning for the RKE2 cluster.
+  Install and configure RKE2 as the first control plane node with dual-stack networking and security settings.
 guide_lesson_conclusion: >
-  Node 4 is now running Rocky Linux 10 with security hardening complete, ready for network configuration.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-5.md
+  The first RKE2 control plane is running with dual-stack networking and Canal CNI.
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-8.md
 ---
 
-Node 4 needs a fresh operating system before it can serve as the first RKE2 control plane.
-Rocky Linux is a community-driven, enterprise-grade Linux distribution that is fully compatible with Red Hat Enterprise Linux.
-We chose it for its open source nature, stability, and first-class support by Hetzner.
+With networking and firewall configured, Node 4 is ready to run the first RKE2 control plane with dual-stack networking.
+This establishes the foundation of Cluster B that will eventually replace the k3s cluster.
 
 {% include guide-overview-link.liquid.html %}
 
-{% include alert.liquid.html type='note' title='Detailed Node Setup Guide' content='
-For a comprehensive walkthrough of adding nodes to a Hetzner bare-metal cluster, see my blog post <a href="/2025-11-23-new-k3s-agent-node">New K3s agent node for our cluster</a>.
-This lesson covers the essential steps specific to our RKE2 migration.
+{% include alert.liquid.html type='warning' title='WARNING:' content='
+All commands used in this lesson require <code>sudo</code> privileges.
+Either prepend <code>sudo</code> to each command or switch to the root user using <code>sudo -i</code>.
 ' %}
 
-## Installing Rocky Linux via Hetzner Robot
+## Understanding RKE2
 
-Before we can install the operating system, we need to configure the server identity in Hetzner's management interface.
-Log into the [Hetzner Robot](https://robot.hetzner.com/servers) web interface and set the server name (e.g., `node4`) along with a reverse DNS entry.
-Having a proper reverse DNS entry helps with server identification in logs and monitoring tools.
+### Architecture Overview
 
-After receiving the root credentials via email, access the server through SSH:
+RKE2 (also known as RKE Government) is a fully conformant Kubernetes distribution focused on security and compliance.
+Unlike k3s which prioritizes minimal resource usage, RKE2 prioritizes security hardening and FIPS compliance.
+
+```mermaid!
+flowchart TB
+    subgraph RKE2["RKE2 Server · Control Plane"]
+        subgraph CP["Control Plane Components"]
+            API["API Server"]
+            CM["Controller Manager"]
+            SCHED["Scheduler"]
+        end
+
+        ETCD["etcd<br/><i>Embedded</i>"]
+
+        subgraph Node["Node Components"]
+            KUB["Kubelet"]
+            CTD["Containerd"]
+        end
+
+        API --> ETCD
+    end
+
+    classDef cp fill:#2563eb,color:#fff,stroke:#1e40af
+    classDef etcd fill:#16a34a,color:#fff,stroke:#166534
+    classDef node fill:#9ca3af,color:#fff,stroke:#6b7280
+
+    class API,CM,SCHED cp
+    class ETCD etcd
+    class KUB,CTD node
+```
+
+Each RKE2 node runs as either a server (control plane) or an agent (worker), with the server embedding etcd directly:
+
+| Component   | Description                                                    |
+| ----------- | -------------------------------------------------------------- |
+| rke2-server | Control plane: API server, controller manager, scheduler, etcd |
+| rke2-agent  | Worker node: kubelet and container runtime                     |
+| etcd        | Embedded distributed key-value store for cluster state         |
+| containerd  | Container runtime (Docker is not used)                         |
+
+### Security Features
+
+RKE2 includes several security features that should be configured during initial setup.
+
+Secrets encryption at rest protects Kubernetes secrets stored in etcd.
+Enabling this later requires re-encrypting all existing secrets, so it's best to turn it on from the start.
+
+Pod Security Standards (PSS) replace the deprecated PodSecurityPolicy and define three escalating profiles:
+
+| Profile    | Description                                         |
+| ---------- | --------------------------------------------------- |
+| privileged | No restrictions (default)                           |
+| baseline   | Prevents known privilege escalations                |
+| restricted | Heavily restricted, follows security best practices |
+
+You can start with `privileged` and tighten later, or start strict with `restricted`.
+For our use case we are going with `restricted` from the start to enforce security best practices.
+
+Network policies are enforced by the CNI plugin.
+Canal uses Calico's policy engine to provide L3-L4 network policies out of the box.
+
+### Bundled Addons
+
+RKE2 automatically installs several components as Helm charts during startup:
+
+| Addon                            | Purpose                   | Our action |
+| -------------------------------- | ------------------------- | ---------- |
+| CNI plugin (Canal by default)    | Pod networking            | Keep       |
+| rke2-coredns                     | Cluster DNS               | Keep       |
+| rke2-metrics-server              | Resource metrics          | Keep       |
+| rke2-ingress-nginx               | Ingress controller        | Disable    |
+| rke2-snapshot-controller         | CSI volume snapshots      | Keep       |
+| rke2-snapshot-controller-crd     | Snapshot custom resources | Keep       |
+| rke2-snapshot-validation-webhook | Snapshot validation       | Keep       |
+
+We disable `rke2-ingress-nginx` because k3s ships with Traefik as its default ingress controller.
+Our existing Ingress and IngressRoute definitions already target Traefik, so deploying Traefik on the RKE2 cluster lets us reuse them without changes.
+
+## Configuration Planning
+
+### Network CIDRs
+
+These CIDR ranges were planned in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6) and cannot be changed after cluster creation:
+
+| Network         | IPv4 CIDR    | IPv6 CIDR     |
+| --------------- | ------------ | ------------- |
+| Node Network    | 10.0.0.0/24  | fd00::/64     |
+| Pod Network     | 10.42.0.0/16 | fd00:42::/56  |
+| Service Network | 10.43.0.0/16 | fd00:43::/112 |
+| Cluster DNS     | 10.43.0.10   | fd00:43::a    |
+
+### Configuration Options
+
+The RKE2 configuration file supports these key options for dual-stack:
+
+| Option               | Purpose                                    |
+| -------------------- | ------------------------------------------ |
+| `token`              | Authenticates nodes joining the cluster    |
+| `tls-san`            | Additional names/IPs for API server cert   |
+| `cni`                | CNI plugin (Canal is the default)          |
+| `node-ip`            | Node's IPs, comma-separated for dual-stack |
+| `cluster-cidr`       | Pod network CIDRs, comma-separated         |
+| `service-cidr`       | Service network CIDRs, comma-separated     |
+| `cluster-dns`        | DNS service IP                             |
+| `secrets-encryption` | Enable encryption at rest                  |
+
+### File Locations
+
+RKE2 stores its configuration, certificates, and data across several directories:
+
+| Path                                      | Content             |
+| ----------------------------------------- | ------------------- |
+| `/etc/rancher/rke2/config.yaml.d/`        | RKE2 configuration  |
+| `/etc/rancher/rke2/rke2.yaml`             | Kubeconfig file     |
+| `/var/lib/rancher/rke2/bin/`              | Kubernetes binaries |
+| `/var/lib/rancher/rke2/server/node-token` | Cluster join token  |
+| `/var/lib/rancher/rke2/server/tls/`       | TLS certificates    |
+| `/var/lib/rancher/rke2/server/db/`        | etcd data           |
+
+## Installing RKE2
+
+### Run the Installer
+
+RKE2 provides an install script that downloads the correct binary for your architecture.
+You can explore the available options and flags in the [RKE2 installation guide](https://docs.rke2.io/install/).
 
 ```bash
-$ ssh root@<node4-public-ip>
-# Enter password from email
+$ curl -sfL https://get.rke2.io | sh -
+[INFO]  finding release for channel stable
+[INFO]  using 1.34 series from channel stable
+Rancher RKE2 Common (stable)                                                                                                                                                                                                                                  4.0 kB/s | 659  B     00:00
+Rancher RKE2 Common (stable)                                                                                                                                                                                                                                   29 kB/s | 2.4 kB     00:00
+Importing GPG key 0xE257814A:
+...
+
+# Verify installation
+$ rke2 --version
+rke2 version v1.34.3+rke2r3 (7598946e0086a9131564ccbb3c142b3fa54516ad)
+go version go1.24.11 X:boringcrypto
 ```
 
-Hetzner provides the `installimage` tool which makes OS installation straightforward on their dedicated servers.
-This tool handles disk partitioning, OS deployment, and basic configuration in one step:
+### Create Configuration
+
+RKE2 reads configuration from `/etc/rancher/rke2/config.yaml` and `/etc/rancher/rke2/config.yaml.d/*.yaml` in alphabetical order.
+Splitting settings into numbered files keeps each concern isolated and makes it easy to add or remove features later without editing a single monolithic file.
 
 ```bash
-$ installimage
+$ mkdir -p /etc/rancher/rke2/config.yaml.d
 ```
 
-In the configuration editor, select Rocky Linux 10 and set the hostname to match your naming convention.
-We use a simple partition layout without swap, dedicating the entire disk to the root partition with a small separate `/boot`:
+The network configuration sets up dual-stack node addressing, keeps API server traffic on the private vSwitch, and defines the pod and service CIDRs planned in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6):
 
+```yaml
+# /etc/rancher/rke2/config.yaml.d/10-network.yaml
+
+# Canal is the default CNI and auto-detects dual-stack from the cluster CIDRs
+cni: canal
+
+# Dual-stack node IPs on the private vSwitch interface
+node-ip: 10.0.0.4,fd00::4
+# Public IPs so Kubernetes knows how to reach this node externally
+node-external-ip:
+  - 135.181.XX.XX
+  - 2a01:4f9:XX:XX::2
+# Advertise the API server on the private vSwitch IP for cluster communication
+advertise-address: 10.0.0.4
+# Bind the API server to the private vSwitch IP
+bind-address: 10.0.0.4
+
+# Dual-stack pod and service CIDRs (cannot be changed after cluster creation)
+cluster-cidr: 10.42.0.0/16,fd00:42::/56
+service-cidr: 10.43.0.0/16,fd00:43::/112
+cluster-dns: 10.43.0.10
 ```
-PART  /boot  ext3   1024M
-PART  /      ext4   all
+
+The external access configuration adds SANs to the API server certificate so `kubectl` can connect via hostname, IP, or a public DNS name without TLS errors:
+
+```yaml
+# /etc/rancher/rke2/config.yaml.d/20-external-access.yaml
+
+tls-san:
+  - node4
+  - node4.k8s.local
+  - 10.0.0.4
+  - fd00::4
+  - cluster.yourdomain.com # Optional: a public DNS name for external kubectl access
+
+# Allow non-root users to read the generated kubeconfig
+write-kubeconfig-mode: "0644"
 ```
 
-Kubernetes requires swap to be disabled, and RKE2 will verify this during installation.
-Rather than creating swap space we'd immediately disable, we allocate all available disk space to the root partition where container images and volumes will live.
+The security configuration enables secrets encryption from the start, disables bundled components we replace ourselves, and schedules automatic etcd backups:
 
-After installation completes, reboot the server to boot into the new operating system:
+```yaml
+# /etc/rancher/rke2/config.yaml.d/30-security.yaml
+
+# Encrypt secrets at rest in etcd, best enabled before storing any secrets
+secrets-encryption: true
+
+# Disable the bundled ingress controller since we will deploy Traefik later
+disable:
+  - rke2-ingress-nginx
+
+# Automatic etcd snapshots every 6 hours, keeping the last 5
+etcd-snapshot-schedule-cron: "0 */6 * * *"
+etcd-snapshot-retention: 5
+```
+
+### Start RKE2
+
+Enable the service so it starts on boot, then start it:
 
 ```bash
-$ reboot
+$ systemctl enable rke2-server.service
+Created symlink '/etc/systemd/system/multi-user.target.wants/rke2-server.service' → '/usr/lib/systemd/system/rke2-server.service'.
+$ systemctl start rke2-server.service
+
+$ journalctl -u rke2-server -f
+...
+rke2[108343]: time="2026-02-15T01:12:50+02:00" level=info msg="rke2 is up and running"
+systemd[1]: Started rke2-server.service - Rancher Kubernetes Engine v2 (server).
+...
 ```
 
-When reconnecting via SSH, you'll see a host key warning because the server's SSH keys changed with the new OS installation.
-This is expected—remove the old entries from `~/.ssh/known_hosts` on your local machine and accept the new key when prompted.
-
-## Essential Security Configuration
-
-A freshly installed server needs immediate security hardening before we proceed with any other configuration.
-These steps protect the server from unauthorized access and establish good security practices from the start.
-
-### Change the Root Password
-
-The default root password was sent via email, which means it has already been transmitted over the network.
-Change it to something only you know:
+The first start takes several minutes as RKE2 downloads images, initializes etcd, and generates certificates.
+Wait until you see the API server is ready:
 
 ```bash
-$ whoami
-root
-$ passwd
-Changing password for root.
-New password: ********
-Retype new password: ********
-passwd: password updated successfully
+rke2[108343]: time="2026-02-15T01:12:47+02:00" level=info msg="Kube API server is now running"
 ```
 
-### Update the System
+Press `Ctrl+C` to exit the log view.
 
-Security vulnerabilities are patched regularly, and the installation image may be weeks or months old.
-Update all packages to ensure the system has the latest security patches before exposing it to any workloads:
+After startup, RKE2 generates a cluster join token at `/var/lib/rancher/rke2/server/node-token`.
+This token is needed when registering additional server or agent nodes to the cluster.
+
+### Configure kubectl
+
+RKE2 generates a kubeconfig file at `/etc/rancher/rke2/rke2.yaml` and places the `kubectl` binary in `/var/lib/rancher/rke2/bin/`.
+Copy the kubeconfig to the standard location and add the binary path to your shell:
 
 ```bash
-$ dnf update -y
+# Create the kubeconfig directory with the correct permissions
+$ mkdir -p ~/.kube
+$ cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
+$ chown $(id -u):$(id -g) ~/.kube/config
+$ chmod 600 ~/.kube/config
+
+# Add kubectl to PATH
+$ echo 'export PATH=$PATH:/var/lib/rancher/rke2/bin' >> ~/.bashrc
+$ export PATH=$PATH:/var/lib/rancher/rke2/bin
+
+# Verify kubectl can connect to the cluster
+$ kubectl version
+Client Version: v1.34.3+rke2r3
+Kustomize Version: v5.7.1
+Server Version: v1.34.3+rke2r3
 ```
 
-### Create a Dedicated User Account
+### Install etcdctl
 
-Running commands as root is dangerous as it provides unrestricted access to the system.
-We create a dedicated admin account that requires explicit `sudo` for privileged operations, providing both safety and accountability.
+RKE2 embeds etcd as a static pod but does not ship the `etcdctl` CLI on the host.
+We need `etcdctl` to inspect cluster health, list members, and debug issues—tasks that become essential once additional control plane nodes join.
 
-Choose a username that indicates the account's purpose and remains consistent across all cluster nodes.
-We use `k8sadmin` throughout this guide for Kubernetes administration:
+Query the etcd pod image to determine the running version:
 
 ```bash
-$ useradd k8sadmin
-$ passwd k8sadmin
-New password:
-Retype new password:
-passwd: password updated successfully
-$ usermod -aG wheel k8sadmin
+$ kubectl -n kube-system get pod -l component=etcd -o jsonpath='{.items[0].spec.containers[0].image}'
+index.docker.io/rancher/hardened-etcd:v3.6.7-k3s1-build20260126
 ```
 
-Adding the user to the `wheel` group grants sudo privileges on RHEL-based systems.
-
-Test that the new user account works by opening a new SSH session from your local machine:
+Download and install the corresponding `etcdctl` release:
 
 ```bash
-$ ssh k8sadmin@<node4-public-ip>
+# Replace with the version from the previous command
+$ export ETCD_VER=v3.6.7
+$ curl -fL https://storage.googleapis.com/etcd/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz \
+    -o /tmp/etcd-linux-amd64.tar.gz
+$ mkdir -p /tmp/etcd-download
+$ tar xzf /tmp/etcd-linux-amd64.tar.gz -C /tmp/etcd-download --strip-components=1
+$ cp /tmp/etcd-download/etcdctl /usr/local/bin/
+$ rm -rf /tmp/etcd-download /tmp/etcd-linux-amd64.tar.gz
+
+$ /usr/local/bin/etcdctl version
+etcdctl version: 3.6.7
+API version: 3.6
 ```
 
-### Set Up SSH Key Authentication
-
-Password authentication is vulnerable to brute-force attacks and requires typing credentials on every connection.
-SSH key authentication eliminates both problems—keys are far harder to crack and connect without password prompts.
-
-Generate an ED25519 key pair on your local machine, which offers better security and performance than RSA:
+Every `etcdctl` command against RKE2's etcd requires TLS certificate flags.
+A shell alias keeps these out of the way:
 
 ```bash
-$ ssh-keygen -t ed25519 -f ~/.ssh/node4_k8sadmin_ed25519
-$ ssh-copy-id -i ~/.ssh/node4_k8sadmin_ed25519 k8sadmin@<node4-public-ip>
+$ cat <<'EOF' >> ~/.bashrc
+alias etcdctl='/usr/local/bin/etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/var/lib/rancher/rke2/server/tls/etcd/server-ca.crt \
+  --cert=/var/lib/rancher/rke2/server/tls/etcd/server-client.crt \
+  --key=/var/lib/rancher/rke2/server/tls/etcd/server-client.key'
+EOF
+$ source ~/.bashrc
 ```
 
-To avoid typing the full connection details every time, add an entry to your `~/.ssh/config` file:
+## Verification
 
-```
-Host node4
-  HostName <node4-public-ip>
-  User k8sadmin
-  IdentityFile ~/.ssh/node4_k8sadmin_ed25519
-  IdentitiesOnly yes
-```
+### Cluster Status
 
-Now you can connect with just `ssh node4` and verify that key-based authentication works before proceeding:
+Check that the node is registered with the cluster:
 
 ```bash
-$ ssh node4
+$ kubectl get nodes -o wide
+NAME   STATUS   ROLES                AGE   VERSION          INTERNAL-IP   EXTERNAL-IP     OS-IMAGE                        KERNEL-VERSION                  CONTAINER-RUNTIME
+node4   Ready    control-plane,etcd   10m   v1.34.3+rke2r3   10.0.0.4      135.181.1.252   Rocky Linux 10.1 (Red Quartz)   6.12.0-124.27.1.el10_1.x86_64   containerd://2.1.5-k3s1
 ```
 
-### Disable Root Login
+The node may initially show `NotReady` while Canal deploys, then transition to `Ready` when the cluster is fully operational.
 
-With SSH key authentication working for our admin user, we can now disable root login entirely.
-This is a critical security measure as automated bots constantly scan the internet for servers accepting root SSH connections:
+### Dual-Stack Configuration
+
+Verify the node has both IPv4 and IPv6 addresses registered:
 
 ```bash
-$ sudo vi /etc/ssh/sshd_config
-
-# Set: PermitRootLogin no
-
-$ sudo systemctl restart sshd
+$ kubectl get nodes -o jsonpath='{.items[*].status.addresses}' | jq .
+[
+  {
+    "address": "10.0.0.4",
+    "type": "InternalIP"
+  },
+  {
+    "address": "fd00::4",
+    "type": "InternalIP"
+  },
+  {
+    "address": "135.181.X.X",
+    "type": "ExternalIP"
+  },
+  {
+    "address": "2a01:4f9:X:X::2",
+    "type": "ExternalIP"
+  },
+  {
+    "address": "node4",
+    "type": "Hostname"
+  }
+]
 ```
 
-From this point forward, only the `k8sadmin` account can be used to access the server, and all administrative tasks require explicit `sudo` elevation.
-Using `sudo` also logs all privileged commands to the system journal, providing an audit trail of who did what and when.
+You should see both `InternalIP` entries—one for `10.0.0.4` and one for `fd00::4`.
 
-## Optional: Set Up Tailscale
-
-Managing bare-metal servers often means dealing with changing IP addresses, firewall rules, and VPN configurations.
-Tailscale simplifies this by creating a secure mesh network that works regardless of network topology.
-
-With Tailscale, you can access your cluster nodes using consistent hostnames (like `node4.tailnet-name.ts.net`) from anywhere, even behind NAT or firewalls.
-This is especially valuable when you're troubleshooting cluster issues remotely.
+Confirm the cluster CIDR configuration matches what we planned:
 
 ```bash
-$ sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/fedora//tailscale.repo
-$ sudo dnf install -y tailscale
-$ sudo systemctl enable --now tailscaled
-$ sudo tailscale up
+$ kubectl cluster-info dump | grep -E "cluster-cidr|service-cluster-ip-range"
+                            "--cluster-cidr=10.42.0.0/16,fd00:42::/56",
+                            "--service-cluster-ip-range=10.43.0.0/16,fd00:43::/112",
+                            "--cluster-cidr=10.42.0.0/16,fd00:42::/56",
+                            "--service-cluster-ip-range=10.43.0.0/16,fd00:43::/112",
+                            "--cluster-cidr=10.42.0.0/16,fd00:42::/56",
 ```
 
-Follow the authentication URL provided in the output to connect the machine to your Tailscale network.
-After authentication, verify the Tailscale IP address:
+The output should show both IPv4 and IPv6 CIDRs for `cluster-cidr` and `service-cluster-ip-range`.
+
+### etcd Health
+
+Verify the embedded etcd instance is healthy using the `etcdctl` alias we configured earlier:
 
 ```bash
-$ tailscale ip -4
+$ etcdctl endpoint health --cluster --write-out=table
++-----------------------+--------+------------+-------+
+|       ENDPOINT        | HEALTH |    TOOK    | ERROR |
++-----------------------+--------+------------+-------+
+| https://10.0.0.4:2379 |   true | 2.527854ms |       |
++-----------------------+--------+------------+-------+
 ```
 
-For servers that should remain permanently accessible, consider disabling key expiry in the Tailscale admin console.
-This removes the need for periodic re-authentication, but it also means a compromised server could maintain access indefinitely—use this option with caution.
+A single-node cluster shows one endpoint.
+As we add control plane nodes in later lessons, this table will grow to three entries.
 
-## Configure Timezone and Hostname
+## Configuring CoreDNS Upstream DNS
 
-Consistent timezone configuration across all cluster nodes is important for log correlation and debugging.
-When investigating issues, you need timestamps to match across nodes, so set all nodes to their correct local timezone.
+RKE2 bundles CoreDNS as its cluster DNS service.
+By default, CoreDNS forwards external DNS queries to whatever nameservers are listed in the node's `/etc/resolv.conf`.
+This works on most systems, but tools like Tailscale, VPN clients, and NetworkManager can overwrite `/etc/resolv.conf` with addresses that are only reachable from the host network namespace—not from inside pods.
 
-As our cluster nodes are located in Helsinki, we set the timezone to `Europe/Helsinki`:
+On our node, Tailscale has replaced `/etc/resolv.conf` with its MagicDNS resolver at `100.100.100.100`.
+CoreDNS pods cannot reach this address because Tailscale's DNS listener binds to the host network, not the pod network.
+Internal lookups like `kubernetes.default.svc.cluster.local` still work because CoreDNS resolves those directly, but any external domain—container registries, Helm repositories, package mirrors—fails with `server misbehaving`.
 
-```bash
-$ sudo timedatectl set-timezone Europe/Helsinki
+The fix is to override CoreDNS's upstream forwarder with explicit public DNS servers using a `HelmChartConfig` resource—the same mechanism we use for Canal in [Lesson 9](/guides/migrating-k3s-to-rke2-without-downtime/lesson-9).
+
+Create the manifest at `/var/lib/rancher/rke2/server/manifests/rke2-coredns-config.yaml`:
+
+```yaml
+# /var/lib/rancher/rke2/server/manifests/rke2-coredns-config.yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: rke2-coredns
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    servers:
+    - zones:
+      - zone: .
+      port: 53
+      plugins:
+      - name: errors
+      - name: health
+        configBlock: |-
+          lameduck 5s
+      - name: ready
+      - name: kubernetes
+        parameters: cluster.local in-addr.arpa ip6.arpa
+        configBlock: |-
+          pods insecure
+          fallthrough in-addr.arpa ip6.arpa
+          ttl 30
+      - name: prometheus
+        parameters: 0.0.0.0:9153
+      - name: forward
+        parameters: . 8.8.8.8 1.1.1.1
+      - name: cache
+        parameters: 30
+      - name: loop
+      - name: reload
+      - name: loadbalance
 ```
 
-The hostname should already be set from the installation, but verify it matches your naming convention:
+The critical change is `forward . 8.8.8.8 1.1.1.1` which replaces the default `forward . /etc/resolv.conf`.
+CoreDNS queries Google DNS and Cloudflare DNS directly, bypassing whatever the host's resolv.conf contains.
+
+RKE2 detects the new manifest and upgrades the CoreDNS Helm release automatically.
+Restart the deployment to apply the change:
 
 ```bash
-$ hostname
-node4
-
-# If not correct, set it with:
-$ sudo hostnamectl set-hostname node4
+$ kubectl rollout restart deployment rke2-coredns-rke2-coredns -n kube-system
+$ kubectl rollout status deployment rke2-coredns-rke2-coredns -n kube-system --timeout=60s
+daemon set "rke2-coredns-rke2-coredns" successfully rolled out
 ```
 
-## Install Essential Tools
-
-A Kubernetes node needs various tools for administration, troubleshooting, and automation.
-Install these now so they're available when you need them:
+Verify that external DNS resolution works from within the cluster:
 
 ```bash
-$ sudo dnf install -y \
-    vim \
-    git \
-    bash-completion \
-    tar \
-    unzip \
-    net-tools \
-    bind-utils \
-    jq
-```
-
-| Tool                         | Purpose                                              |
-| ---------------------------- | ---------------------------------------------------- |
-| `git`                        | Manages configuration as code and deployment scripts |
-| `bash-completion`            | Enables tab completion for faster command-line work  |
-| `tar` and `unzip`            | Extract downloaded archives                          |
-| `net-tools` and `bind-utils` | Networking diagnostics like `netstat` and `nslookup` |
-| `jq`                         | Parses JSON output from `kubectl` and APIs           |
-
-## Verify System Readiness
-
-Before proceeding, verify that the system is properly configured and can communicate with the outside world.
-These checks catch common issues like DNS misconfiguration or firewall problems:
-
-```bash
-# Check kernel version (should be 6.12+ for Rocky 10)
-$ uname -r
-6.12.0-124.27.1.el10_1.x86_64
-
-# Check available memory (RKE2 needs at least 4GB, 8GB+ recommended)
-$ free -h
-               total        used        free      shared  buff/cache   available
-Mem:           125Gi       5.0Gi       119Gi       4.3Mi       1.2Gi       120Gi
-Swap:             0B          0B          0B
-
-# Check disk space (need at least 20GB free for container images)
-$ df -h /
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/md1        1.8T  1.5G  1.7T   1% /
-
-# Verify DNS resolution works
-$ nslookup philprime.dev
-Server:		100.100.100.100
-Address:	100.100.100.100#53
+$ kubectl run dns-test -n kube-system --rm -it --image=busybox:1.36 --restart=Never -- nslookup charts.longhorn.io
+Server:         10.43.0.10
+Address:        10.43.0.10:53
 
 Non-authoritative answer:
-Name:	philprime.dev
-Address: 104.21.66.10
-Name:	philprime.dev
-Address: 172.67.197.206
-Name:	philprime.dev
-Address: 2606:4700:3032::6815:420a
-Name:	philprime.dev
-Address: 2606:4700:3036::ac43:c5ce
+charts.longhorn.io      canonical name = longhorn.github.io
+Name:   longhorn.github.io
+Address: 2606:50c0:8000::153
+Name:   longhorn.github.io
+Address: 2606:50c0:8001::153
+Name:   longhorn.github.io
+Address: 2606:50c0:8003::153
+Name:   longhorn.github.io
+Address: 2606:50c0:8002::153
 
-# Verify HTTPS connectivity (needed to download RKE2)
-$ curl -s https://get.rke2.io > /dev/null && echo "Internet OK"
-Internet OK
+Non-authoritative answer:
+charts.longhorn.io      canonical name = longhorn.github.io
+Name:   longhorn.github.io
+Address: 185.199.110.153
+Name:   longhorn.github.io
+Address: 185.199.109.153
+Name:   longhorn.github.io
+Address: 185.199.108.153
+Name:   longhorn.github.io
+Address: 185.199.111.153
+
+pod "dns-test" deleted from kube-system namespace
 ```
 
-If any of these checks fail, resolve the issue before continuing.
-Network problems at this stage will cause harder-to-diagnose failures during RKE2 installation.
+If the lookup returns addresses, CoreDNS is forwarding correctly and the cluster can reach external services.
+
+## Create Initial Backup
+
+Before making any further changes, back up the configuration files and take an etcd snapshot:
+
+```bash
+$ mkdir -p /root/rke2-backup
+$ cp -r /etc/rancher/rke2/config.yaml.d /root/rke2-backup/
+$ cp /var/lib/rancher/rke2/server/node-token /root/rke2-backup/
+$ cp ~/.kube/config /root/rke2-backup/kubeconfig
+
+$ rke2 etcd-snapshot save --name initial-setup
+```
+
+This gives us a restore point in case anything goes wrong during subsequent configuration.
+
+## Troubleshooting
+
+### RKE2 Won't Start
+
+If the service fails to start, check the status and logs for details:
+
+```bash
+$ systemctl status rke2-server
+$ journalctl -xeu rke2-server
+```
+
+The most common cause is port `6443` already being in use by an existing k3s or Kubernetes installation.
+Firewall rules blocking required ports can also prevent startup—check that the vSwitch rule from Lesson 7 is in place.
+Another frequent issue is invalid CIDR format in the dual-stack configuration: IPv4 and IPv6 ranges must be comma-separated without spaces.
+
+### Dual-Stack Issues
+
+If pods aren't receiving IPv6 addresses or the API server rejects dual-stack configurations, verify that IPv6 is enabled on the system—the value should be `0`:
+
+```bash
+$ sysctl net.ipv6.conf.all.disable_ipv6
+```
+
+Also confirm the API server certificate includes the IPv6 SAN entries we configured:
+
+```bash
+$ openssl s_client -connect 127.0.0.1:6443 -showcerts </dev/null 2>/dev/null | \
+  openssl x509 -noout -text | grep -A1 "Subject Alternative Name"
+```
+
+If `fd00::4` is missing from the output, the `tls-san` entries in `config.yaml` may not have been applied before the first start.
+
+### Canal Flannel CrashLoopBackOff
+
+If the `rke2-canal` pod shows `CrashLoopBackOff` with only the `kube-flannel` container failing, check its logs:
+
+```bash
+$ kubectl -n kube-system logs -l k8s-app=canal -c kube-flannel
+```
+
+The error `failed to get default v6 interface: unable to find default v6 route` means the host has no IPv6 default route.
+Flannel auto-detects which interface to use by looking for a default route, and without one for IPv6 it refuses to start.
+
+Verify whether a default IPv6 route exists:
+
+```bash
+$ ip -6 route show default
+```
+
+If the output is empty, the public interface is missing its IPv6 configuration.
+Follow the "Configuring Public IPv6" section in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6) to add the address and gateway, then delete the failing pod to force a restart:
+
+```bash
+$ kubectl -n kube-system delete pod -l k8s-app=canal
+```
+
+### etcd Issues
+
+Check the etcd-related log entries and ensure the data directory has sufficient disk space:
+
+```bash
+$ journalctl -u rke2-server | grep etcd
+$ df -h /var/lib/rancher/rke2/
+```
+
+The node may briefly show `NotReady` while Canal finishes deploying.
+Once the Canal pods are running, the node transitions to `Ready`.
