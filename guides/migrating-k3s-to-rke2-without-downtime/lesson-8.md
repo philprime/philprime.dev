@@ -488,8 +488,8 @@ Traffic between the load balancer and the nodes flows over the private vSwitch n
 
 ### Configure Services and Health Checks
 
-The load balancer needs two services: one for HTTP on port `80` and one for HTTPS on port `443`.
-Each service forwards traffic to the corresponding Traefik NodePort.
+The load balancer needs three services: HTTP on port `80`, HTTPS on port `443`, and the Kubernetes API on port `6443`.
+The first two forward traffic to Traefik's NodePorts, while the API service passes traffic directly to the kube-apiserver.
 
 ```bash
 $ hcloud load-balancer add-service k8s-ingress \
@@ -505,7 +505,18 @@ $ hcloud load-balancer add-service k8s-ingress \
   --destination-port 30443
  ✓ Waiting for add_service         100% 0s (load_balancer: 5820086)
 Service was added to Load Balancer 5820086
+
+$ hcloud load-balancer add-service k8s-ingress \
+  --protocol tcp \
+  --listen-port 6443 \
+  --destination-port 6443
+ ✓ Waiting for add_service         100% 0s (load_balancer: 5820086)
+Service was added to Load Balancer 5820086
 ```
+
+The first two services forward to Traefik's NodePorts for web traffic.
+The third service forwards port `6443` directly to the Kubernetes API server, which listens on `6443` on every control plane node.
+Worker nodes do not run the API server, so the health check on port `6443` naturally excludes them from the rotation.
 
 Health checks ensure the load balancer only sends traffic to nodes where Traefik is responding.
 Both services enable proxy protocol so the load balancer prepends a header with the real client IP — without it, Traefik would only see the load balancer's private address as the source.
@@ -537,7 +548,20 @@ $ hcloud load-balancer update-service k8s-ingress \
   --health-check-retries 3
  ✓ Waiting for update_service      100% 0s (load_balancer: 5820086)
 Service 443 on Load Balancer 5820086 was updated
+
+$ hcloud load-balancer update-service k8s-ingress \
+  --listen-port 6443 \
+  --health-check-protocol tcp \
+  --health-check-port 6443 \
+  --health-check-interval 15s \
+  --health-check-timeout 10s \
+  --health-check-retries 3
+ ✓ Waiting for update_service      100% 0s (load_balancer: 5820086)
+Service 6443 on Load Balancer 5820086 was updated
 ```
+
+The API server service does not use proxy protocol — the Kubernetes API server does not understand it and does not need real client IPs from the load balancer.
+Authentication is handled via bearer tokens and certificates, not source IP addresses.
 
 With three retries at 15-second intervals, a failing node is removed from the rotation within 45 seconds.
 
@@ -550,6 +574,33 @@ $ echo "Load Balancer IP: $LB_IP"
 
 Save this IP for DNS configuration.
 
+### Updating the API Server Certificate
+
+When clients connect to the API server through the load balancer, TLS verification checks whether the server certificate includes the LB's IP or hostname in its Subject Alternative Names (SANs).
+Without the LB IP in the SAN list, `kubectl` and CI/CD pipelines connecting via the load balancer will fail with a certificate error.
+
+Update `/etc/rancher/rke2/config.yaml.d/20-external-access.yaml` on the first control plane node (Node 4) to include the load balancer's public IP:
+
+```yaml
+# /etc/rancher/rke2/config.yaml.d/20-external-access.yaml
+tls-san:
+  - node4
+  - node4.k8s.local
+  - 10.1.0.14
+  - fd00::14
+  - 65.109.40.190 # Hetzner Cloud LB public IP
+  - cluster.yourdomain.com # Public DNS name pointing to LB
+write-kubeconfig-mode: "0644"
+```
+
+Restart RKE2 to regenerate the API server certificate with the new SANs:
+
+```bash
+$ sudo systemctl restart rke2-server
+```
+
+Point the `cluster.yourdomain.com` DNS record at the load balancer's public IP so that external `kubectl` access and CI/CD pipelines route through the LB rather than directly to a single node.
+
 ## Verification
 
 ### Check Load Balancer Health
@@ -560,6 +611,17 @@ $ hcloud load-balancer describe k8s-ingress
 
 All targets should show healthy status.
 If any targets appear unhealthy, check the troubleshooting section below before continuing.
+
+### Test Kubernetes API via Load Balancer
+
+Verify that the API server is reachable through the load balancer:
+
+```bash
+$ curl -sk https://${LB_IP}:6443/readyz
+ok
+```
+
+A response of `ok` confirms that the load balancer is forwarding port `6443` to a healthy control plane node and the API server certificate includes the LB IP in its SANs.
 
 ### Test End-to-End
 

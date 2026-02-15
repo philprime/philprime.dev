@@ -76,6 +76,8 @@ tls-san:
   - node3.k8s.local
   - 10.1.0.13
   - fd00::13
+  - 65.109.40.190
+  - cluster.yourdomain.com
 
 cni: none
 node-ip: 10.1.0.13,fd00::13

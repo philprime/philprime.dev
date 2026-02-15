@@ -36,17 +36,226 @@ Admission control is handled by the Pod Security Standards configured in [Lesson
 
 Three authentication methods are relevant for our cluster:
 
-| Method                  | Use Case                                       | Credential Lifetime               |
-| ----------------------- | ---------------------------------------------- | --------------------------------- |
-| Client certificates     | Admin break-glass                              | Long-lived (kubeconfig from RKE2) |
-| OIDC tokens             | CI/CD pipelines / Infrastructure-as-Code (IaC) | Short-lived (per-workflow)        |
-| `ServiceAccount` tokens | In-cluster workloads                           | Managed by Kubernetes             |
+| Method                  | Use Case          | Credential Lifetime               |
+| ----------------------- | ----------------- | --------------------------------- |
+| Client certificates     | Break-glass only  | Long-lived (kubeconfig from RKE2) |
+| `ServiceAccount` tokens | Admin access, IaC | Long-lived (explicit secret)      |
+| OIDC tokens             | CI/CD pipelines   | Short-lived (per-workflow)        |
 
 Client certificates are embedded in the kubeconfig that RKE2 generates at `/etc/rancher/rke2/rke2.yaml`.
-They grant full `cluster-admin` access and are intended for direct administrative use — the kind of access you reach for when SSH'd into a control plane node to debug an outage.
+They grant full `cluster-admin` access and are tied to the `kubernetes-admin` user — a shared identity with no way to distinguish who performed an action.
+This makes them unsuitable for day-to-day administration.
+They should be reserved as a break-glass credential when SSH'd into the control plane node itself.
 
-`ServiceAccount` tokens are created automatically for pods running inside the cluster.
-Kubernetes manages their lifecycle, and workloads use them to talk to the API server without any external configuration.
+`ServiceAccount` tokens provide named identities for both human administrators and automation.
+Each admin gets their own ServiceAccount with an explicit token secret, creating a clear audit trail in the API server logs.
+
+OIDC tokens are the best fit for CI/CD pipelines where short-lived, per-workflow credentials are preferred over stored secrets.
+
+## Creating Admin Credentials
+
+### Restricting the Default Kubeconfig
+
+The RKE2-generated kubeconfig at `/etc/rancher/rke2/rke2.yaml` authenticates as `kubernetes-admin` with full `cluster-admin` privileges.
+In [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5) we set `write-kubeconfig-mode: "0644"` so non-root users could read it during initial setup.
+Now that we are configuring proper access control, this file should be locked down to root only.
+
+Update `/etc/rancher/rke2/config.yaml.d/20-external-access.yaml` and remove the `write-kubeconfig-mode` line:
+
+```yaml
+# /etc/rancher/rke2/config.yaml.d/20-external-access.yaml
+tls-san:
+  - node4
+  - node4.k8s.local
+  - 10.1.0.14
+  - fd00::14
+  - 65.109.40.190 # Hetzner Cloud LB public IP
+  - cluster.yourdomain.com # Public DNS name pointing to LB
+```
+
+RKE2 defaults to mode `0600` when `write-kubeconfig-mode` is not set, making the file readable only by root.
+Apply the change:
+
+```bash
+$ sudo systemctl restart rke2-server
+$ stat /etc/rancher/rke2/rke2.yaml
+  File: /etc/rancher/rke2/rke2.yaml
+  Size: 2945            Blocks: 8          IO Block: 4096   regular file
+Device: 9,1     Inode: 12060119    Links: 1
+Access: (0600/-rw-------)  Uid: (    0/    root)   Gid: (    0/    root)
+Context: system_u:object_r:etc_t:s0
+Access: 2026-02-15 18:17:51.811031115 +0200
+Modify: 2026-02-15 18:28:19.277113776 +0200
+Change: 2026-02-15 18:28:19.277113776 +0200
+ Birth: 2026-02-15 01:04:10.320015075 +0200
+```
+
+From this point on, use personal admin tokens for all cluster operations instead of the default kubeconfig.
+
+### Bootstrapping the RBAC Repository
+
+Rather than hand-crafting RoleBindings for every repository that deploys to the cluster, we delegate RBAC management to a dedicated repository.
+This repository uses infrastructure-as-code to create Kubernetes resources — custom ClusterRoles, namespace-scoped RoleBindings, and per-repo permissions — all versioned in Git and applied through CI/CD.
+
+To get started, the RBAC repository itself needs `cluster-admin` access.
+This is a bootstrapping problem: the tool that manages permissions needs permissions before it can manage anything.
+We solve it with a ServiceAccount and a static ClusterRoleBinding deployed through the RKE2 manifests directory.
+
+Create the bootstrap manifest at `/var/lib/rancher/rke2/server/manifests/rbac-bootstrap.yaml`:
+
+```yaml
+# /var/lib/rancher/rke2/server/manifests/rbac-bootstrap.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rbac-manager
+  namespace: kube-system
+  labels:
+    app: rbac-manager
+    managed-by: manual-bootstrap
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rbac-manager-admin
+  labels:
+    app: rbac-manager
+    managed-by: manual-bootstrap
+subjects:
+  - kind: ServiceAccount
+    name: rbac-manager
+    namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rbac-manager-token
+  namespace: kube-system
+  annotations:
+    kubernetes.io/service-account.name: rbac-manager
+  labels:
+    app: rbac-manager
+    managed-by: manual-bootstrap
+type: kubernetes.io/service-account-token
+```
+
+Placing this file in `/var/lib/rancher/rke2/server/manifests/` makes RKE2 auto-deploy it — the same pattern used for Longhorn in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) and Traefik in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
+
+The manifest creates three resources:
+
+- A `ServiceAccount` that the RBAC repository's pipeline authenticates as
+- A `ClusterRoleBinding` granting it `cluster-admin` so it can create and modify RBAC resources across all namespaces
+- A `Secret` of type `kubernetes.io/service-account-token` that forces Kubernetes to generate a long-lived token for the ServiceAccount — since Kubernetes 1.24, tokens are no longer auto-created as secrets, so this explicit secret is needed for the infrastructure-as-code provider's kubeconfig
+
+The `managed-by: manual-bootstrap` label marks these as the only hand-managed RBAC resources in the cluster.
+Everything else like custom ClusterRoles like `deployer` and `reader`, namespace-scoped `RoleBindings` for each application repository, and read-only access for pull requests, is created by the RBAC repository through infrastructure-as-code and is outside the scope of this lesson.
+
+### Creating a Personal Admin Token
+
+Each administrator gets their own `ServiceAccount` with `cluster-admin` privileges and a long-lived token.
+This provides the same level of access as the RKE2 kubeconfig, but with a named identity that appears in the API server audit logs.
+
+We are now creating a new admin credential for a user named `philprime`. You should replace this with your own name or a descriptive identifier for the person who will use this credential. Create the manifest at `/var/lib/rancher/rke2/server/manifests/rbac-admin-philprime.yaml`:
+
+```yaml
+# /var/lib/rancher/rke2/server/manifests/rbac-admin-philprime.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: philprime
+  namespace: kube-system
+  labels:
+    app: admin-access
+    managed-by: manual-bootstrap
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: philprime-admin
+  labels:
+    app: admin-access
+    managed-by: manual-bootstrap
+subjects:
+  - kind: ServiceAccount
+    name: philprime
+    namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: philprime-token
+  namespace: kube-system
+  annotations:
+    kubernetes.io/service-account.name: philprime
+  labels:
+    app: admin-access
+    managed-by: manual-bootstrap
+type: kubernetes.io/service-account-token
+```
+
+The structure follows the same three-resource pattern as the RBAC bootstrap manifest above.
+RKE2 auto-deploys it from the manifests directory within a few seconds.
+
+Repeat this pattern for each administrator, using a separate file and ServiceAccount name per person.
+
+Extract the token once the secret is created:
+
+```bash
+$ sudo /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get secret philprime-token -n kube-system -o jsonpath='{.data.token}' | base64 -d
+eyJhbGciOiJSUzI1NiIs...
+```
+
+### Configuring kubectl Locally
+
+Rather than running multiple `kubectl config` commands on your local machine, generate a complete kubeconfig on the server that embeds the CA certificate and token.
+Run this on the control plane node, replacing `cluster.yourdomain.com` with the public DNS name or IP from the `tls-san` list in [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5):
+
+```bash
+$ export SERVER="https://cluster.yourdomain.com:6443"
+$ export CA_DATA=$(sudo base64 -w0 /var/lib/rancher/rke2/server/tls/server-ca.crt)
+$ export TOKEN=$(sudo /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get secret philprime-token -n kube-system -o jsonpath='{.data.token}' | base64 -d)
+
+$ cat <<EOF
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority-data: ${CA_DATA}
+    server: ${SERVER}
+  name: prod-hel1-2
+contexts:
+- context:
+    cluster: prod-hel1-2
+    user: philprime
+  name: prod-hel1-2
+current-context: prod-hel1-2
+users:
+- name: philprime
+  user:
+    token: ${TOKEN}
+EOF
+```
+
+Copy the output and save it to `~/.kube/config` on your local machine (or merge it into an existing kubeconfig with `KUBECONFIG=~/.kube/config:new-file kubectl config view --flatten`).
+
+Verify the connection from your local machine:
+
+```bash
+$ kubectl get nodes
+NAME    STATUS   ROLES                       AGE   VERSION
+node4   Ready    control-plane,etcd,master   2d    v1.34.3+rke2r3
+```
+
+Repeat for each administrator who needs cluster access, using a different ServiceAccount name.
+All subsequent commands in this guide assume you are using a personal admin context rather than the default RKE2 kubeconfig.
 
 ### Why OIDC for CI/CD
 
@@ -121,7 +330,7 @@ RBAC bindings target the organization group, so adding a new repository to the o
 
 The authentication configuration lives in two files: one that describes the OIDC provider and one that tells RKE2 to load it.
 
-Unlike the RBAC manifests we create later in this lesson, the `AuthenticationConfiguration` is not a Kubernetes resource.
+Unlike the RBAC manifests created earlier in this lesson, the `AuthenticationConfiguration` is not a Kubernetes resource.
 It is a local file that the kube-apiserver reads at startup — it never enters the Kubernetes API and is not applied with `kubectl`.
 This is why we place it in `/etc/rancher/rke2/` alongside the other RKE2 configuration files rather than in `/var/lib/rancher/rke2/server/manifests/`, which is reserved for Kubernetes resources that the Helm controller auto-deploys into the cluster.
 
@@ -188,73 +397,6 @@ $ sudo systemctl restart rke2-server
 ```
 
 The API server will re-read all configuration files and initialize the OIDC authenticator during startup.
-
-## Configuring RBAC
-
-Authentication only establishes identity — it does not grant permissions.
-RBAC (Role-Based Access Control) maps identities to allowed actions through Roles and RoleBindings.
-
-### Bootstrapping the RBAC Repository
-
-Rather than hand-crafting RoleBindings for every repository that deploys to the cluster, we delegate RBAC management to a dedicated repository.
-This repository uses infrastructure-as-code to create Kubernetes resources — custom ClusterRoles, namespace-scoped RoleBindings, and per-repo permissions — all versioned in Git and applied through CI/CD.
-
-To get started, the RBAC repository itself needs `cluster-admin` access.
-This is a bootstrapping problem: the tool that manages permissions needs permissions before it can manage anything.
-We solve it with a ServiceAccount and a static ClusterRoleBinding deployed through the RKE2 manifests directory.
-
-Create the bootstrap manifest at `/var/lib/rancher/rke2/server/manifests/rbac-bootstrap.yaml`:
-
-```yaml
-# /var/lib/rancher/rke2/server/manifests/rbac-bootstrap.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: rbac-manager
-  namespace: kube-system
-  labels:
-    app: rbac-manager
-    managed-by: manual-bootstrap
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: rbac-manager-admin
-  labels:
-    app: rbac-manager
-    managed-by: manual-bootstrap
-subjects:
-  - kind: ServiceAccount
-    name: rbac-manager
-    namespace: kube-system
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: rbac-manager-token
-  namespace: kube-system
-  annotations:
-    kubernetes.io/service-account.name: rbac-manager
-  labels:
-    app: rbac-manager
-    managed-by: manual-bootstrap
-type: kubernetes.io/service-account-token
-```
-
-Placing this file in `/var/lib/rancher/rke2/server/manifests/` makes RKE2 auto-deploy it — the same pattern used for Longhorn in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) and Traefik in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
-
-The manifest creates three resources:
-
-- A `ServiceAccount` that the RBAC repository's pipeline authenticates as
-- A `ClusterRoleBinding` granting it `cluster-admin` so it can create and modify RBAC resources across all namespaces
-- A `Secret` of type `kubernetes.io/service-account-token` that forces Kubernetes to generate a long-lived token for the ServiceAccount — since Kubernetes 1.24, tokens are no longer auto-created as secrets, so this explicit secret is needed for the infrastructure-as-code provider's kubeconfig
-
-The `managed-by: manual-bootstrap` label marks these as the only hand-managed RBAC resources in the cluster.
-Everything else like custom ClusterRoles like `deployer` and `reader`, namespace-scoped `RoleBindings` for each application repository, and read-only access for pull requests, is created by the RBAC repository through infrastructure-as-code and is outside the scope of this lesson.
 
 ## Verification
 

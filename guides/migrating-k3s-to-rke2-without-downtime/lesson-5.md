@@ -214,7 +214,8 @@ tls-san:
   - fd00::14
   - cluster.yourdomain.com # Optional: a public DNS name for external kubectl access
 
-# Allow non-root users to read the generated kubeconfig
+# Allow non-root users to read the generated kubeconfig during initial setup.
+# This is tightened to the default 0600 in Lesson 9 once personal admin tokens are configured.
 write-kubeconfig-mode: "0644"
 ```
 

@@ -125,6 +125,8 @@ tls-san:
   - node2.k8s.local
   - 10.1.0.12
   - fd00::12
+  - 65.109.40.190
+  - cluster.yourdomain.com
 
 cni: none
 node-ip: 10.1.0.12,fd00::12
