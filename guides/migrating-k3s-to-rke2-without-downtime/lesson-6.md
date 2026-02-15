@@ -345,6 +345,42 @@ $ ip addr show enp195s0.4000
 You should see both an `inet` line with your IPv4 address and an `inet6` line with your IPv6 ULA address.
 If either is missing, check the nmcli command for typos before proceeding.
 
+### Configuring Public IPv6
+
+Hetzner assigns each dedicated server an IPv6 subnet (typically a `/64`), but Rocky Linux's default DHCP configuration only picks up the IPv4 address automatically.
+Without a public IPv6 address and default route, services like Canal's Flannel component fail to detect a valid IPv6 interface—and any workload attempting outbound IPv6 connections will have no route to the internet.
+
+You can find your assigned IPv6 subnet in the Hetzner Robot panel under your server's IPs tab.
+Configure it on the public interface by setting the address, prefix, and gateway:
+
+```bash
+# Replace "Wired connection 1" with your connection name (run nmcli connection to check)
+# Replace the address with your assigned IPv6 from Hetzner
+$ nmcli connection modify "Wired connection 1" \
+    ipv6.method manual \
+    ipv6.addresses "2a01:4f9:XX:XX::2/64" \
+    ipv6.gateway "fe80::1"
+$ nmcli connection up "Wired connection 1"
+```
+
+Hetzner uses `fe80::1` as the IPv6 gateway across all dedicated servers.
+After applying the change, verify that both the address and default route are in place:
+
+```bash
+$ ip -6 addr show dev enp195s0
+3: enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    altname enxd45d6408e830
+    inet6 2a01:4f9:XX:XX::2/64 scope global noprefixroute
+       valid_lft forever preferred_lft forever
+    inet6 fe80::81d8:8f88:4416:3876/64 scope link noprefixroute
+       valid_lft forever preferred_lft forever
+
+$ ip -6 route show default
+default via fe80::1 dev enp195s0 proto static metric 103 pref medium
+```
+
+You should see your public IPv6 address with `scope global` and a default route via `fe80::1`.
+
 ### Enabling IPv6 Forwarding
 
 By default, Linux doesn't forward IPv6 packets between interfaces—it only handles traffic destined for itself.
