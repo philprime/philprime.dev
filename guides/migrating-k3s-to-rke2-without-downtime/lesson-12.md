@@ -112,28 +112,20 @@ $ curl -sfL https://get.rke2.io | sudo sh -
 $ sudo systemctl enable rke2-server.service
 ```
 
-Create the configuration using the same multi-file layout as Node 3 ([Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11)), replacing the node-specific addresses:
+Create the configuration using the same multi-file layout as Node 3 ([Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11)), with Node 2's addresses:
 
 ```bash
 $ sudo mkdir -p /etc/rancher/rke2/config.yaml.d
 ```
 
 ```yaml
-# /etc/rancher/rke2/config.yaml.d/00-join.yaml
-
-server: https://10.1.0.14:9345
-token: <paste-token-from-node4>
-```
-
-```yaml
 # /etc/rancher/rke2/config.yaml.d/10-network.yaml
-
 cni: canal
 
 node-ip: 10.1.0.12,fd00::12
 node-external-ip:
-  - 65.109.XX.XX
-  - 2a01:4f9:XX:XX::2
+  - 65.109.XX.XX # Node 2's public IPv4
+  - 2a01:4f9:XX:XX::2 # Node 2's public IPv6
 advertise-address: 10.1.0.12
 bind-address: 10.1.0.12
 
@@ -144,28 +136,15 @@ cluster-dns: 10.43.0.10
 
 ```yaml
 # /etc/rancher/rke2/config.yaml.d/20-external-access.yaml
-
 tls-san:
   - node2
   - node2.k8s.local
   - 10.1.0.12
   - fd00::12
   - cluster.yourdomain.com
-
-write-kubeconfig-mode: "0644"
 ```
 
-```yaml
-# /etc/rancher/rke2/config.yaml.d/30-security.yaml
-
-secrets-encryption: true
-
-disable:
-  - rke2-ingress-nginx
-
-etcd-snapshot-schedule-cron: "0 */6 * * *"
-etcd-snapshot-retention: 5
-```
+The `00-join.yaml` and `30-security.yaml` files are identical to Node 3 — see [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11) for their contents.
 
 ### Start RKE2
 
@@ -184,16 +163,6 @@ If you do see "no route to host" errors, restart the Canal DaemonSet as describe
 
 ## Verification
 
-### Configure kubectl
-
-```bash
-$ mkdir -p ~/.kube
-$ sudo cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
-$ sudo chown $(id -u):$(id -g) ~/.kube/config
-$ echo 'export PATH=$PATH:/var/lib/rancher/rke2/bin' >> ~/.bashrc
-$ export PATH=$PATH:/var/lib/rancher/rke2/bin
-```
-
 ### Check 3-Node Control Plane
 
 ```bash
@@ -211,18 +180,11 @@ node4   Ready    control-plane,etcd,master   4h    v1.31.x+rke2r1   10.1.0.14,fd
 
 ### Verify etcd HA
 
+On Node 4, where `etcdctl` is available, check the etcd cluster members to confirm three nodes are present and healthy:
+
 ```bash
-$ sudo /var/lib/rancher/rke2/bin/etcdctl \
-  --endpoints=https://127.0.0.1:2379 \
-  --cacert=/var/lib/rancher/rke2/server/tls/etcd/server-ca.crt \
-  --cert=/var/lib/rancher/rke2/server/tls/etcd/server-client.crt \
-  --key=/var/lib/rancher/rke2/server/tls/etcd/server-client.key \
-  member list
-```
+$ sudo etcdctl member list
 
-Should show 3 members:
-
-```
 xxxx, started, node2-xxxx, https://10.1.0.12:2380, https://10.1.0.12:2379, false
 yyyy, started, node3-xxxx, https://10.1.0.13:2380, https://10.1.0.13:2379, false
 zzzz, started, node4-xxxx, https://10.1.0.14:2380, https://10.1.0.14:2379, true
@@ -231,92 +193,21 @@ zzzz, started, node4-xxxx, https://10.1.0.14:2380, https://10.1.0.14:2379, true
 Check cluster health:
 
 ```bash
-$ sudo /var/lib/rancher/rke2/bin/etcdctl \
-  --endpoints=https://127.0.0.1:2379 \
-  --cacert=/var/lib/rancher/rke2/server/tls/etcd/server-ca.crt \
-  --cert=/var/lib/rancher/rke2/server/tls/etcd/server-client.crt \
-  --key=/var/lib/rancher/rke2/server/tls/etcd/server-client.key \
-  endpoint health --cluster
+$ sudo etcdctl endpoint health --cluster
 ```
 
 All 3 endpoints should be healthy, with one showing as leader.
 
 ### Verify Canal and WireGuard
 
-```bash
-$ kubectl get pods -n kube-system -l k8s-app=canal -o wide
-```
-
-Should show 3 Canal pods, one per node, all `2/2` Ready.
-
-Verify the WireGuard mesh is complete:
-
-```bash
-$ wg show flannel-wg
-```
-
-Node 2 should show two peers (Node 3 and Node 4), each with a recent handshake and an `allowed ips` entry for their pod subnet.
-With 3 nodes, the WireGuard mesh forms a full triangle — each node maintains a direct encrypted tunnel to every other node.
+Verify that Canal shows 3 pods (`kubectl get pods -n kube-system -l k8s-app=canal -o wide`) and that `wg show flannel-wg` on Node 2 shows two peers — one for Node 3 and one for Node 4.
+With 3 nodes, the WireGuard mesh forms a full triangle where each node maintains a direct encrypted tunnel to every other node.
+See [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11) for expected output and troubleshooting.
 
 ## Preparing Longhorn Storage
 
-Longhorn is already running on the cluster — the `HelmChart` manifest deployed in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) handles that automatically.
-However, each new node needs system-level dependencies (iSCSI for block storage and NFSv4 for RWX volumes) before Longhorn can schedule replicas on it.
-
-Install `longhornctl` and run the preflight installer on Node 2:
-
-```bash
-$ curl -fL -o /usr/local/bin/longhornctl \
-    https://github.com/longhorn/cli/releases/download/v1.11.0/longhornctl-linux-amd64
-$ chmod +x /usr/local/bin/longhornctl
-
-$ /usr/local/bin/longhornctl --kubeconfig /etc/rancher/rke2/rke2.yaml install preflight
-```
-
-Run the preflight check to confirm all dependencies are in place:
-
-```bash
-$ /usr/local/bin/longhornctl --kubeconfig /etc/rancher/rke2/rke2.yaml check preflight
-INFO[2026-02-15T23:38:00+02:00] Initializing preflight checker
-INFO[2026-02-15T23:38:00+02:00] Cleaning up preflight checker
-INFO[2026-02-15T23:38:00+02:00] Running preflight checker
-INFO[2026-02-15T23:38:04+02:00] Retrieved preflight checker result:
-doom:
-  info:
-  - '[KubeDNS] Kube DNS "rke2-coredns-rke2-coredns" is set with 2 replicas and 2 ready replicas'
-  - '[IscsidService] Service iscsid is running'
-  - '[MultipathService] multipathd.service is not found (exit code: 4)'
-  - '[MultipathService] multipathd.socket is not found (exit code: 4)'
-  - '[NFSv4] NFS4 is supported'
-  - '[Packages] nfs-utils is installed'
-  - '[Packages] iscsi-initiator-utils is installed'
-  - '[Packages] cryptsetup is installed'
-  - '[Packages] device-mapper is installed'
-  - '[KernelModules] nfs is loaded'
-  - '[KernelModules] iscsi_tcp is loaded'
-  - '[KernelModules] dm_crypt is loaded'
-mystique:
-  info:
-  - '[KubeDNS] Kube DNS "rke2-coredns-rke2-coredns" is set with 2 replicas and 2 ready replicas'
-  - '[IscsidService] Service iscsid is running'
-  - '[MultipathService] multipathd.service is not found (exit code: 4)'
-  - '[MultipathService] multipathd.socket is not found (exit code: 4)'
-  - '[NFSv4] NFS4 is supported'
-  - '[Packages] nfs-utils is installed'
-  - '[Packages] iscsi-initiator-utils is installed'
-  - '[Packages] cryptsetup is installed'
-  - '[Packages] device-mapper is installed'
-  - '[KernelModules] nfs is loaded'
-  - '[KernelModules] iscsi_tcp is loaded'
-  - '[KernelModules] dm_crypt is loaded'
-INFO[2026-02-15T23:38:04+02:00] Cleaning up preflight checker
-INFO[2026-02-15T23:38:04+02:00] Completed preflight checker
-```
-
-The check should report no errors.
-See [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) for a detailed walkthrough of what each dependency does and how to troubleshoot failures.
-
-Once the preflight passes, verify that Longhorn recognizes Node 2 as schedulable:
+Run the same `longhornctl` preflight process on Node 2 as described in [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11).
+Once complete, verify that Longhorn recognizes all three nodes:
 
 ```bash
 $ kubectl get nodes.longhorn.io -n longhorn-system

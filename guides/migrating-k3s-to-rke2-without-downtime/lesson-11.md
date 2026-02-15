@@ -701,6 +701,44 @@ $ kubectl get pods -A | grep -v Running | grep -v Completed
 $ kubectl top nodes
 ```
 
+## Preparing Longhorn Storage
+
+Longhorn is already running on the cluster — the `HelmChart` manifest deployed in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) handles that automatically.
+However, each new node needs system-level dependencies (iSCSI for block storage and NFSv4 for RWX volumes) before Longhorn can schedule replicas on it.
+
+Install `longhornctl` and run the preflight installer on Node 3:
+
+```bash
+$ curl -fL -o /usr/local/bin/longhornctl \
+    https://github.com/longhorn/cli/releases/download/v1.11.0/longhornctl-linux-amd64
+$ chmod +x /usr/local/bin/longhornctl
+
+$ /usr/local/bin/longhornctl --kubeconfig /etc/rancher/rke2/rke2.yaml install preflight
+```
+
+Run the preflight check to confirm all dependencies are in place:
+
+```bash
+$ /usr/local/bin/longhornctl --kubeconfig /etc/rancher/rke2/rke2.yaml check preflight
+```
+
+The check should report no errors for Node 3.
+See [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) for a detailed walkthrough of what each dependency does and how to troubleshoot failures.
+
+Once the preflight passes, verify that Longhorn recognizes Node 3 as schedulable:
+
+```bash
+$ kubectl get nodes.longhorn.io -n longhorn-system
+NAME    READY   ALLOWSCHEDULING   SCHEDULABLE   AGE
+node3   True    true              True          2m
+node4   True    true              True          3h
+```
+
+With two storage nodes, Longhorn can now replicate volumes across nodes.
+We'll increase the replica count once a third node joins the cluster in [Lesson 12](/guides/migrating-k3s-to-rke2-without-downtime/lesson-12).
+
+Repeat this `longhornctl` preflight process on every node that joins the cluster going forward.
+
 ## Current State
 
 ```mermaid!
