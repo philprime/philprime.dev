@@ -35,7 +35,7 @@ The key configuration difference is the `server` directive, which tells RKE2 whe
 Follow the same setup process as Node 4:
 
 1. Install Rocky Linux 10 using Hetzner Rescue System ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
-2. Configure dual-stack vSwitch networking with `10.0.0.3` and `fd00::3` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
+2. Configure dual-stack vSwitch networking with `10.1.0.13` and `fd00::13` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
 3. Configure firewall for control plane ports ([Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7))
 
 After setup, verify connectivity to the existing cluster:
@@ -43,9 +43,9 @@ After setup, verify connectivity to the existing cluster:
 ```bash
 sudo hostnamectl set-hostname node3
 
-ping -c 3 10.0.0.4
-ping6 -c 3 fd00::4
-nc -zv 10.0.0.4 9345
+ping -c 3 10.1.0.14
+ping6 -c 3 fd00::14
+nc -zv 10.1.0.14 9345
 ```
 
 The last command verifies the RKE2 supervisor port is reachable.
@@ -68,17 +68,17 @@ sudo mkdir -p /etc/rancher/rke2
 TOKEN="<your-cluster-token>"
 
 sudo tee /etc/rancher/rke2/config.yaml <<EOF
-server: https://10.0.0.4:9345
+server: https://10.1.0.14:9345
 token: ${TOKEN}
 
 tls-san:
   - node3
   - node3.k8s.local
-  - 10.0.0.3
-  - fd00::3
+  - 10.1.0.13
+  - fd00::13
 
 cni: none
-node-ip: 10.0.0.3,fd00::3
+node-ip: 10.1.0.13,fd00::13
 
 cluster-cidr: 10.42.0.0/16,fd00:42::/56
 service-cidr: 10.43.0.0/16,fd00:43::/112
@@ -133,8 +133,8 @@ Expected output showing both nodes with dual-stack IPs:
 
 ```
 NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
-node3   Ready    control-plane,etcd,master   2m    v1.31.x+rke2r1   10.0.0.3,fd00::3
-node4   Ready    control-plane,etcd,master   3h    v1.31.x+rke2r1   10.0.0.4,fd00::4
+node3   Ready    control-plane,etcd,master   2m    v1.31.x+rke2r1   10.1.0.13,fd00::13
+node4   Ready    control-plane,etcd,master   3h    v1.31.x+rke2r1   10.1.0.14,fd00::14
 ```
 
 ### Check etcd Membership
@@ -151,8 +151,8 @@ sudo /var/lib/rancher/rke2/bin/etcdctl \
 Should show two members:
 
 ```
-xxxx, started, node3-xxxx, https://10.0.0.3:2380, https://10.0.0.3:2379, false
-yyyy, started, node4-xxxx, https://10.0.0.4:2380, https://10.0.0.4:2379, true
+xxxx, started, node3-xxxx, https://10.1.0.13:2380, https://10.1.0.13:2379, false
+yyyy, started, node4-xxxx, https://10.1.0.14:2380, https://10.1.0.14:2379, true
 ```
 
 ### Check Canal
@@ -197,8 +197,8 @@ Proceed with Node 2 migration to achieve HA.
 
 ```bash
 # Check connectivity
-ping -c 3 10.0.0.4
-nc -zv 10.0.0.4 9345
+ping -c 3 10.1.0.14
+nc -zv 10.1.0.14 9345
 
 # Verify token matches Node 4
 cat /etc/rancher/rke2/config.yaml | grep token
@@ -211,7 +211,7 @@ sudo journalctl -u rke2-server | grep -i error
 
 ```bash
 # Check etcd connectivity
-nc -zv 10.0.0.4 2380
+nc -zv 10.1.0.14 2380
 
 # Check etcd logs
 sudo journalctl -u rke2-server | grep etcd

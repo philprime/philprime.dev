@@ -51,7 +51,7 @@ Use backticks for anything the reader would type, see in output, or reference as
 - Port numbers: `22`, `443`, `6443`
 - Port ranges: `32768-65535`, `30000-32767`
 - Commands and binaries: `ip addr show`, `nmcli`, `kubectl`, `nmap`
-- CIDR ranges and IP addresses: `10.0.0.0/24`, `fd00::/64`, `135.181.x.x`
+- CIDR ranges and IP addresses: `10.1.0.0/16`, `fd00::/64`, `135.181.x.x`
 - Configuration values and enum-like names: `PreferDualStack`, `SingleStack`, `RequireDualStack`
 - File and directory paths: `/etc/sysctl.d/99-ipv6-forward.conf`, `/proc/sys/net/ipv4/ip_local_port_range`
 - Protocol flags and technical terms used as identifiers: `ACK`, `SYN`
@@ -162,7 +162,7 @@ Never use tables as a substitute for prose explanation.
 
 | Network      | IPv4 CIDR    | IPv6 CIDR    | Purpose                  |
 | ------------ | ------------ | ------------ | ------------------------ |
-| Node Network | 10.0.0.0/24  | fd00::/64    | vSwitch inter-node comms |
+| Node Network | 10.1.0.0/16  | fd00::/64    | vSwitch inter-node comms |
 | Pod Network  | 10.42.0.0/16 | fd00:42::/56 | IP addresses for pods    |
 
 <!-- Correct: table followed by prose explaining it -->
@@ -181,8 +181,8 @@ Show expected output directly below without a prefix:
 
 ````markdown
 ```bash
-$ ping -c 3 10.0.0.1
-64 bytes from 10.0.0.1: icmp_seq=1 ttl=64 time=0.351 ms
+$ ping -c 3 10.1.0.1
+64 bytes from 10.1.0.1: icmp_seq=1 ttl=64 time=0.351 ms
 ...
 3 packets transmitted, 3 received, 0% packet loss
 ```

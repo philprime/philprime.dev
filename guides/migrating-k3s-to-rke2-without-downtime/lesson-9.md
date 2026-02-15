@@ -78,8 +78,8 @@ You can see this in action by inspecting any running pod's IP assignments:
 ```bash
 $ kubectl -n kube-system get pod etcd-node4 -o jsonpath='{.status.podIPs}' | jq .
 [
-  { "ip": "10.0.0.4" },
-  { "ip": "fd00::4" }
+  { "ip": "10.1.0.14" },
+  { "ip": "fd00::14" }
 ]
 ```
 
@@ -109,20 +109,20 @@ When a pod on Node A sends a packet to a pod on Node B, Flannel wraps the packet
 
 ```mermaid!
 flowchart LR
-    subgraph NodeA["Node A · 10.0.0.2"]
+    subgraph NodeA["Node A · 10.1.0.12"]
         PodA["Pod A<br/><small>10.42.0.5</small>"]
         FA["Flannel"]
     end
 
     subgraph Wire["vSwitch · VXLAN Packet"]
         direction TB
-        subgraph Outer["Outer: UDP · src 10.0.0.2 → dst 10.0.0.4"]
+        subgraph Outer["Outer: UDP · src 10.1.0.12 → dst 10.1.0.14"]
             subgraph Inner["Inner: Pod · src 10.42.0.5 → dst 10.42.1.3"]
             end
         end
     end
 
-    subgraph NodeB["Node B · 10.0.0.4"]
+    subgraph NodeB["Node B · 10.1.0.14"]
         FB["Flannel"]
         PodB["Pod B<br/><small>10.42.1.3</small>"]
     end
@@ -162,7 +162,7 @@ Verify that both containers in the Canal pod are running on every node:
 ```bash
 $ kubectl get pods -n kube-system -l k8s-app=canal -o wide
 NAME               READY   STATUS    RESTARTS   AGE   IP         NODE
-rke2-canal-xxxxx   2/2     Running   0          30m   10.0.0.4   node4
+rke2-canal-xxxxx   2/2     Running   0          30m   10.1.0.14   node4
 ```
 
 Both containers must show `2/2` in the `READY` column—one for Calico and one for Flannel.
@@ -193,21 +193,21 @@ The pod should have one address from `10.42.0.0/16` and one from `fd00:42::/56`.
 Test that the pod can reach the node over both address families:
 
 ```bash
-$ kubectl exec dual-stack-test -- ping -c 2 10.0.0.4
-PING 10.0.0.4 (10.0.0.4): 56 data bytes
-64 bytes from 10.0.0.4: seq=0 ttl=64 time=0.105 ms
-64 bytes from 10.0.0.4: seq=1 ttl=64 time=0.069 ms
+$ kubectl exec dual-stack-test -- ping -c 2 10.1.0.14
+PING 10.1.0.14 (10.1.0.14): 56 data bytes
+64 bytes from 10.1.0.14: seq=0 ttl=64 time=0.105 ms
+64 bytes from 10.1.0.14: seq=1 ttl=64 time=0.069 ms
 
---- 10.0.0.4 ping statistics ---
+--- 10.1.0.14 ping statistics ---
 2 packets transmitted, 2 packets received, 0% packet loss
 round-trip min/avg/max = 0.069/0.087/0.105 ms
 
-$ kubectl exec dual-stack-test -- ping6 -c 2 fd00::4
-PING fd00::4 (fd00::4): 56 data bytes
-64 bytes from fd00::4: seq=0 ttl=64 time=0.148 ms
-64 bytes from fd00::4: seq=1 ttl=64 time=0.108 ms
+$ kubectl exec dual-stack-test -- ping6 -c 2 fd00::14
+PING fd00::14 (fd00::14): 56 data bytes
+64 bytes from fd00::14: seq=0 ttl=64 time=0.148 ms
+64 bytes from fd00::14: seq=1 ttl=64 time=0.108 ms
 
---- fd00::4 ping statistics ---
+--- fd00::14 ping statistics ---
 2 packets transmitted, 2 packets received, 0% packet loss
 round-trip min/avg/max = 0.108/0.128/0.148 ms
 ```
@@ -234,7 +234,7 @@ WireGuard adds an encryption layer around the VXLAN tunnel, so the packet on the
 
 ```mermaid!
 flowchart LR
-    subgraph NodeA["Node A · 10.0.0.2"]
+    subgraph NodeA["Node A · 10.1.0.12"]
         PodA["Pod A<br/><small>10.42.0.5</small>"]
         FA["Flannel"]
         WA["WireGuard"]
@@ -243,14 +243,14 @@ flowchart LR
     subgraph Wire["vSwitch · Encrypted Packet"]
         direction TB
         subgraph WG["WireGuard · encrypted"]
-            subgraph Outer["VXLAN · src 10.0.0.2 → dst 10.0.0.4"]
+            subgraph Outer["VXLAN · src 10.1.0.12 → dst 10.1.0.14"]
                 subgraph Inner["Pod · src 10.42.0.5 → dst 10.42.1.3"]
                 end
             end
         end
     end
 
-    subgraph NodeB["Node B · 10.0.0.4"]
+    subgraph NodeB["Node B · 10.1.0.14"]
         WB["WireGuard"]
         FB["Flannel"]
         PodB["Pod B<br/><small>10.42.1.3</small>"]

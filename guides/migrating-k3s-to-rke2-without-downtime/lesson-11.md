@@ -195,15 +195,15 @@ Save the configuration Node 3 will use when joining Cluster B:
 
 ```bash
 cat <<'EOF' > /root/node3-rke2-config.yaml
-server: https://10.0.0.4:9345
+server: https://10.1.0.14:9345
 token: <your-token-from-node4>
 tls-san:
   - node3
   - node3.k8s.local
-  - 10.0.0.3
-  - fd00::3
+  - 10.1.0.13
+  - fd00::13
 cni: none
-node-ip: 10.0.0.3,fd00::3
+node-ip: 10.1.0.13,fd00::13
 EOF
 ```
 

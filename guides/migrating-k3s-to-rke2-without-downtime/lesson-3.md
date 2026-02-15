@@ -59,16 +59,16 @@ flowchart TB
     %% =========================
     %% Node Network Layer
     %% =========================
-    subgraph NODE["Node Network 10.0.0.0/24 · fd00::/64"]
+    subgraph NODE["Node Network 10.1.0.0/16 · fd00::/64"]
 
-        subgraph N1["Node 1 · 10.0.0.1 · fd00::1"]
+        subgraph N1["Node 1 · 10.1.0.11 · fd00::11"]
             subgraph POD1["Pod CIDR 10.42.0.0/24"]
                 P1["Pod A<br/>10.42.0.5<br/>fd00:42::5"]
                 P2["Pod B<br/>10.42.0.6<br/>fd00:42::6"]
             end
         end
 
-        subgraph N2["Node 2 · 10.0.0.2 · fd00::2"]
+        subgraph N2["Node 2 · 10.1.0.12 · fd00::12"]
             subgraph POD2["Pod CIDR 10.42.1.0/24"]
                 P3["Pod C<br/>10.42.1.3<br/>fd00:42:1::3"]
             end
@@ -143,10 +143,10 @@ flowchart TB
         subgraph VS["vSwitch · VLAN 4000"]
             direction TB
             subgraph addrs["Dual-Stack Addresses"]
-                N1["Node 1<br/>10.0.0.1 · fd00::1"]
-                N2["Node 2<br/>10.0.0.2 · fd00::2"]
-                N3["Node 3<br/>10.0.0.3 · fd00::3"]
-                N4["Node 4<br/>10.0.0.4 · fd00::4"]
+                N1["Node 1<br/>10.1.0.11 · fd00::11"]
+                N2["Node 2<br/>10.1.0.12 · fd00::12"]
+                N3["Node 3<br/>10.1.0.13 · fd00::13"]
+                N4["Node 4<br/>10.1.0.14 · fd00::14"]
             end
         end
         PN["Physical Network · Public Internet"]
@@ -193,7 +193,7 @@ These values will appear in multiple places throughout the cluster setup—the v
 
 | Network         | IPv4 CIDR    | IPv6 CIDR     | Purpose                  |
 | --------------- | ------------ | ------------- | ------------------------ |
-| Node Network    | 10.0.0.0/24  | fd00::/64     | vSwitch inter-node comms |
+| Node Network    | 10.1.0.0/16  | fd00::/64     | vSwitch inter-node comms |
 | Pod Network     | 10.42.0.0/16 | fd00:42::/56  | IP addresses for pods    |
 | Service Network | 10.43.0.0/16 | fd00:43::/112 | ClusterIP services       |
 
@@ -219,14 +219,17 @@ Most clusters use only a few hundred services at most, so this is more than suff
 ### Node Address Assignment
 
 For clarity and easier troubleshooting, assign each node a consistent address across both address families.
-Using the same final octet/segment (node1 gets .1 and ::1, node2 gets .2 and ::2) makes it obvious which addresses belong to which node when you're debugging network issues at 2 AM.
+Using the same final number (node1 gets `.11` and `::11`, node2 gets `.12` and `::12`) makes it obvious which addresses belong to which node when you're debugging network issues at 2 AM.
+
+We start at `.11` rather than `.1` because the Hetzner Cloud Network gateway claims the first address in the subnet (`.1`) when you attach a Cloud Network to the vSwitch — as we'll do in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8) for the load balancer.
+Starting at `.11` leaves `.1` through `.10` available for infrastructure.
 
 | Node  | IPv4 Address | IPv6 Address |
 | ----- | ------------ | ------------ |
-| node1 | 10.0.0.1     | fd00::1      |
-| node2 | 10.0.0.2     | fd00::2      |
-| node3 | 10.0.0.3     | fd00::3      |
-| node4 | 10.0.0.4     | fd00::4      |
+| node1 | 10.1.0.11    | fd00::11     |
+| node2 | 10.1.0.12    | fd00::12     |
+| node3 | 10.1.0.13    | fd00::13     |
+| node4 | 10.1.0.14    | fd00::14     |
 
 ### Ingress Planning
 
@@ -319,14 +322,19 @@ $ sudo nmcli connection add \
     dev enp195s0 \
     id 4000 \
     ipv4.method manual \
-    ipv4.addresses 10.0.0.4/24 \
+    ipv4.addresses 10.1.0.14/16 \
+    ipv4.routes "10.0.0.0/24 10.1.0.1" \
     ipv6.method manual \
-    ipv6.addresses fd00::4/64
+    ipv6.addresses fd00::14/64
 Connection 'vswitch' (2ecf2e01-122a-4ce2-b786-f4d41fe459cf) successfully added.
 
 $ sudo nmcli connection up vswitch
 Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/1997)
 ```
+
+The `ipv4.routes` line adds a static route for the Hetzner Cloud subnet (`10.0.0.0/24`) via the Cloud Network gateway at `10.1.0.1`.
+This route is needed later when we attach a Hetzner Cloud Load Balancer to the vSwitch — without it, return traffic from the node cannot reach the load balancer's private IP and health checks will fail.
+The gateway at `10.1.0.1` is created automatically by Hetzner when a Cloud Network is attached to the vSwitch.
 
 After bringing up the connection, verify that both addresses are properly assigned:
 
@@ -334,9 +342,9 @@ After bringing up the connection, verify that both addresses are properly assign
 $ ip addr show enp195s0.4000
 5: enp195s0.4000@enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
     link/ether d4:5d:64:08:e8:30 brd ff:ff:ff:ff:ff:ff
-    inet 10.0.0.4/24 brd 10.0.0.255 scope global noprefixroute enp195s0.4000
+    inet 10.1.0.14/16 brd 10.1.255.255 scope global noprefixroute enp195s0.4000
        valid_lft forever preferred_lft forever
-    inet6 fd00::4/64 scope global noprefixroute
+    inet6 fd00::14/64 scope global noprefixroute
        valid_lft forever preferred_lft forever
     inet6 fe80::cad:c5f2:6cc4:d67b/64 scope link noprefixroute
        valid_lft forever preferred_lft forever
@@ -406,32 +414,32 @@ These tests should be run from node4 (the node we just configured) to confirm it
 Start with IPv4 to confirm node4 can communicate with the existing cluster nodes over the vSwitch:
 
 ```bash
-$ ping -c 3 10.0.0.1 # Node 1
-PING 10.0.0.1 (10.0.0.1) 56(84) bytes of data.
-64 bytes from 10.0.0.1: icmp_seq=1 ttl=64 time=0.351 ms
-64 bytes from 10.0.0.1: icmp_seq=2 ttl=64 time=0.182 ms
-64 bytes from 10.0.0.1: icmp_seq=3 ttl=64 time=0.175 ms
+$ ping -c 3 10.1.0.11 # Node 1
+PING 10.1.0.11 (10.1.0.11) 56(84) bytes of data.
+64 bytes from 10.1.0.11: icmp_seq=1 ttl=64 time=0.351 ms
+64 bytes from 10.1.0.11: icmp_seq=2 ttl=64 time=0.182 ms
+64 bytes from 10.1.0.11: icmp_seq=3 ttl=64 time=0.175 ms
 
---- 10.0.0.1 ping statistics ---
+--- 10.1.0.11 ping statistics ---
 3 packets transmitted, 3 received, 0% packet loss, time 2027ms
 rtt min/avg/max/mdev = 0.175/0.236/0.351/0.081 ms
-$ ping -c 3 10.0.0.2 # Node 2
-PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
-64 bytes from 10.0.0.2: icmp_seq=1 ttl=64 time=2.70 ms
-64 bytes from 10.0.0.2: icmp_seq=2 ttl=64 time=0.215 ms
-64 bytes from 10.0.0.2: icmp_seq=3 ttl=64 time=0.195 ms
+$ ping -c 3 10.1.0.12 # Node 2
+PING 10.1.0.12 (10.1.0.12) 56(84) bytes of data.
+64 bytes from 10.1.0.12: icmp_seq=1 ttl=64 time=2.70 ms
+64 bytes from 10.1.0.12: icmp_seq=2 ttl=64 time=0.215 ms
+64 bytes from 10.1.0.12: icmp_seq=3 ttl=64 time=0.195 ms
 
---- 10.0.0.2 ping statistics ---
+--- 10.1.0.12 ping statistics ---
 3 packets transmitted, 3 received, 0% packet loss, time 2043ms
 rtt min/avg/max/mdev = 0.195/1.036/2.700/1.176 ms
 
-$ ping -c 3 10.0.0.3 # Node 3
-PING 10.0.0.3 (10.0.0.3) 56(84) bytes of data.
-64 bytes from 10.0.0.3: icmp_seq=1 ttl=64 time=0.437 ms
-64 bytes from 10.0.0.3: icmp_seq=2 ttl=64 time=0.421 ms
-64 bytes from 10.0.0.3: icmp_seq=3 ttl=64 time=0.585 ms
+$ ping -c 3 10.1.0.13 # Node 3
+PING 10.1.0.13 (10.1.0.13) 56(84) bytes of data.
+64 bytes from 10.1.0.13: icmp_seq=1 ttl=64 time=0.437 ms
+64 bytes from 10.1.0.13: icmp_seq=2 ttl=64 time=0.421 ms
+64 bytes from 10.1.0.13: icmp_seq=3 ttl=64 time=0.585 ms
 
---- 10.0.0.3 ping statistics ---
+--- 10.1.0.13 ping statistics ---
 3 packets transmitted, 3 received, 0% packet loss, time 2087ms
 rtt min/avg/max/mdev = 0.421/0.481/0.585/0.073 ms
 ```
@@ -445,11 +453,11 @@ Since the existing nodes don't have IPv6 on their vSwitch interfaces yet, you ca
 ```bash
 $ ip -6 addr show enp195s0.4000
 7: enp195s0.4000@enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
-    inet6 fd00::4/64 scope global noprefixroute
+    inet6 fd00::14/64 scope global noprefixroute
        valid_lft forever preferred_lft forever
     inet6 fe80::cad:c5f2:6cc4:d67b/64 scope link noprefixroute
        valid_lft forever preferred_lft forever
 ```
 
-You should see your ULA address (`fd00::4/64`) listed.
+You should see your ULA address (`fd00::14/64`) listed.
 Full IPv6 connectivity testing will become possible as we migrate each node and add IPv6 to their vSwitch interfaces in later lessons.

@@ -126,7 +126,7 @@ Most rules are mirrored for IPv4 and IPv6 to provide full dual-stack coverage.
 
 | ID | Name               | Version | Protocol | Source IP   | Source Port | Dest Port   | TCP Flags | Action |
 | -- | ------------------ | ------- | -------- | ----------- | ----------- | ----------- | --------- | ------ |
-| #1 | vswitch            | ipv4    | *        | 10.0.0.0/24 |             |             |           | accept |
+| #1 | vswitch            | ipv4    | *        | 10.1.0.0/16 |             |             |           | accept |
 | #2 | tcp established    | ipv4    | tcp      |             |             | 32768-65535 | ack       | accept |
 | #3 | tcp established-v6 | ipv6    | tcp      |             |             | 32768-65535 | ack       | accept |
 | #4 | dns responses      | ipv4    | udp      |             | 53          | 32768-65535 |           | accept |
@@ -188,8 +188,8 @@ Test that nodes can communicate over the private network using both IPv4 and IPv
 From node1, ping node4:
 
 ```bash
-$ ping -c 3 10.0.0.4
-64 bytes from 10.0.0.4: icmp_seq=1 ttl=64 time=0.351 ms
+$ ping -c 3 10.1.0.14
+64 bytes from 10.1.0.14: icmp_seq=1 ttl=64 time=0.351 ms
 ...
 3 packets transmitted, 3 received, 0% packet loss
 ```
@@ -197,14 +197,14 @@ $ ping -c 3 10.0.0.4
 From node4, ping node1:
 
 ```bash
-$ ping -c 3 10.0.0.1
-64 bytes from 10.0.0.1: icmp_seq=1 ttl=64 time=0.348 ms
+$ ping -c 3 10.1.0.11
+64 bytes from 10.1.0.11: icmp_seq=1 ttl=64 time=0.348 ms
 ...
 3 packets transmitted, 3 received, 0% packet loss
 ```
 
 This works because Rule #1 allows all traffic from the vSwitch subnet, including ICMP.
-If pings fail, verify that Rule #1 has the correct source IP (`10.0.0.0/24`) and is set to `accept`.
+If pings fail, verify that Rule #1 has the correct source IP (`10.1.0.0/16`) and is set to `accept`.
 IPv6 connectivity over the vSwitch is not configured on the existing nodes yet, so we only test IPv4 here.
 
 ### Port Scan from vSwitch
@@ -219,8 +219,8 @@ Verify that the vSwitch rule allows unrestricted access by scanning node4 from n
 
 ```bash
 # Scan all ports on node4's private IP from node1
-$ nmap -sT 10.0.0.4 -p-
-Nmap scan report for 10.0.0.4
+$ nmap -sT 10.1.0.14 -p-
+Nmap scan report for 10.1.0.14
 Host is up (0.00018s latency).
 Not shown: 65534 closed tcp ports (conn-refused)
 

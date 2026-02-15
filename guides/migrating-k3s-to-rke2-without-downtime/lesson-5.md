@@ -113,7 +113,7 @@ These CIDR ranges were planned in [Lesson 6](/guides/migrating-k3s-to-rke2-witho
 
 | Network         | IPv4 CIDR    | IPv6 CIDR     |
 | --------------- | ------------ | ------------- |
-| Node Network    | 10.0.0.0/24  | fd00::/64     |
+| Node Network    | 10.1.0.0/16  | fd00::/64     |
 | Pod Network     | 10.42.0.0/16 | fd00:42::/56  |
 | Service Network | 10.43.0.0/16 | fd00:43::/112 |
 | Cluster DNS     | 10.43.0.10   | fd00:43::a    |
@@ -186,15 +186,15 @@ The network configuration sets up dual-stack node addressing, keeps API server t
 cni: canal
 
 # Dual-stack node IPs on the private vSwitch interface
-node-ip: 10.0.0.4,fd00::4
+node-ip: 10.1.0.14,fd00::14
 # Public IPs so Kubernetes knows how to reach this node externally
 node-external-ip:
   - 135.181.XX.XX
   - 2a01:4f9:XX:XX::2
 # Advertise the API server on the private vSwitch IP for cluster communication
-advertise-address: 10.0.0.4
+advertise-address: 10.1.0.14
 # Bind the API server to the private vSwitch IP
-bind-address: 10.0.0.4
+bind-address: 10.1.0.14
 
 # Dual-stack pod and service CIDRs (cannot be changed after cluster creation)
 cluster-cidr: 10.42.0.0/16,fd00:42::/56
@@ -210,8 +210,8 @@ The external access configuration adds SANs to the API server certificate so `ku
 tls-san:
   - node4
   - node4.k8s.local
-  - 10.0.0.4
-  - fd00::4
+  - 10.1.0.14
+  - fd00::14
   - cluster.yourdomain.com # Optional: a public DNS name for external kubectl access
 
 # Allow non-root users to read the generated kubeconfig
@@ -338,7 +338,7 @@ Check that the node is registered with the cluster:
 ```bash
 $ kubectl get nodes -o wide
 NAME   STATUS   ROLES                AGE   VERSION          INTERNAL-IP   EXTERNAL-IP     OS-IMAGE                        KERNEL-VERSION                  CONTAINER-RUNTIME
-node4   Ready    control-plane,etcd   10m   v1.34.3+rke2r3   10.0.0.4      135.181.1.252   Rocky Linux 10.1 (Red Quartz)   6.12.0-124.27.1.el10_1.x86_64   containerd://2.1.5-k3s1
+node4   Ready    control-plane,etcd   10m   v1.34.3+rke2r3   10.1.0.14      135.181.1.252   Rocky Linux 10.1 (Red Quartz)   6.12.0-124.27.1.el10_1.x86_64   containerd://2.1.5-k3s1
 ```
 
 The node may initially show `NotReady` while Canal deploys, then transition to `Ready` when the cluster is fully operational.
@@ -351,11 +351,11 @@ Verify the node has both IPv4 and IPv6 addresses registered:
 $ kubectl get nodes -o jsonpath='{.items[*].status.addresses}' | jq .
 [
   {
-    "address": "10.0.0.4",
+    "address": "10.1.0.14",
     "type": "InternalIP"
   },
   {
-    "address": "fd00::4",
+    "address": "fd00::14",
     "type": "InternalIP"
   },
   {
@@ -373,7 +373,7 @@ $ kubectl get nodes -o jsonpath='{.items[*].status.addresses}' | jq .
 ]
 ```
 
-You should see both `InternalIP` entries—one for `10.0.0.4` and one for `fd00::4`.
+You should see both `InternalIP` entries—one for `10.1.0.14` and one for `fd00::14`.
 
 Confirm the cluster CIDR configuration matches what we planned:
 
@@ -397,7 +397,7 @@ $ etcdctl endpoint health --cluster --write-out=table
 +-----------------------+--------+------------+-------+
 |       ENDPOINT        | HEALTH |    TOOK    | ERROR |
 +-----------------------+--------+------------+-------+
-| https://10.0.0.4:2379 |   true | 2.527854ms |       |
+| https://10.1.0.14:2379 |   true | 2.527854ms |       |
 +-----------------------+--------+------------+-------+
 ```
 
@@ -545,7 +545,7 @@ $ openssl s_client -connect 127.0.0.1:6443 -showcerts </dev/null 2>/dev/null | \
   openssl x509 -noout -text | grep -A1 "Subject Alternative Name"
 ```
 
-If `fd00::4` is missing from the output, the `tls-san` entries in `config.yaml` may not have been applied before the first start.
+If `fd00::14` is missing from the output, the `tls-san` entries in `config.yaml` may not have been applied before the first start.
 
 ### Canal Flannel CrashLoopBackOff
 
