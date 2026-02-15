@@ -82,7 +82,8 @@ Pod Security Standards (PSS) replace the deprecated PodSecurityPolicy and define
 | baseline   | Prevents known privilege escalations                |
 | restricted | Heavily restricted, follows security best practices |
 
-You can start with `privileged` and tighten later, or start strict with `restricted`. This is up to you and your workload requirements, but for our use case we are going for `restricted` from the start since we want to enforce security best practices.
+You can start with `privileged` and tighten later, or start strict with `restricted`.
+For our use case we are going with `restricted` from the start to enforce security best practices.
 
 Network policies are enforced by the CNI plugin.
 Canal uses Calico's policy engine to provide L3-L4 network policies out of the box.
@@ -149,7 +150,8 @@ RKE2 stores its configuration, certificates, and data across several directories
 
 ### Run the Installer
 
-RKE2 provides an install script that downloads the correct binary for your architecture. You can download and explore the available options and flags by visiting the [RKE2 installation guide](https://docs.rke2.io/install/).
+RKE2 provides an install script that downloads the correct binary for your architecture.
+You can explore the available options and flags in the [RKE2 installation guide](https://docs.rke2.io/install/).
 
 ```bash
 $ curl -sfL https://get.rke2.io | sh -
@@ -284,6 +286,49 @@ Kustomize Version: v5.7.1
 Server Version: v1.34.3+rke2r3
 ```
 
+### Install etcdctl
+
+RKE2 embeds etcd as a static pod but does not ship the `etcdctl` CLI on the host.
+We need `etcdctl` to inspect cluster health, list members, and debug issues—tasks that become essential once additional control plane nodes join.
+
+Query the etcd pod image to determine the running version:
+
+```bash
+$ kubectl -n kube-system get pod -l component=etcd -o jsonpath='{.items[0].spec.containers[0].image}'
+index.docker.io/rancher/hardened-etcd:v3.6.7-k3s1-build20260126
+```
+
+Download and install the corresponding `etcdctl` release:
+
+```bash
+# Replace with the version from the previous command
+$ export ETCD_VER=v3.6.7
+$ curl -fL https://storage.googleapis.com/etcd/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz \
+    -o /tmp/etcd-linux-amd64.tar.gz
+$ mkdir -p /tmp/etcd-download
+$ tar xzf /tmp/etcd-linux-amd64.tar.gz -C /tmp/etcd-download --strip-components=1
+$ cp /tmp/etcd-download/etcdctl /usr/local/bin/
+$ rm -rf /tmp/etcd-download /tmp/etcd-linux-amd64.tar.gz
+
+$ /usr/local/bin/etcdctl version
+etcdctl version: 3.6.7
+API version: 3.6
+```
+
+Every `etcdctl` command against RKE2's etcd requires TLS certificate flags.
+A shell alias keeps these out of the way:
+
+```bash
+$ cat <<'EOF' >> ~/.bashrc
+alias etcdctl='/usr/local/bin/etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/var/lib/rancher/rke2/server/tls/etcd/server-ca.crt \
+  --cert=/var/lib/rancher/rke2/server/tls/etcd/server-client.crt \
+  --key=/var/lib/rancher/rke2/server/tls/etcd/server-client.key'
+EOF
+$ source ~/.bashrc
+```
+
 ## Verification
 
 ### Cluster Status
@@ -343,52 +388,9 @@ $ kubectl cluster-info dump | grep -E "cluster-cidr|service-cluster-ip-range"
 
 The output should show both IPv4 and IPv6 CIDRs for `cluster-cidr` and `service-cluster-ip-range`.
 
-### Install etcdctl
-
-RKE2 embeds etcd as a static pod but does not ship the `etcdctl` CLI on the host.
-We need `etcdctl` to inspect cluster health, list members, and debug issues—tasks that become essential once additional control plane nodes join.
-
-Query the etcd API to determine the running version:
-
-```bash
-$ kubectl -n kube-system get pod -l component=etcd -o jsonpath='{.items[0].spec.containers[0].image}'
-index.docker.io/rancher/hardened-etcd:v3.6.7-k3s1-build20260126
-```
-
-Download and install the corresponding `etcdctl` release:
-
-```bash
-# Replace with the version from the previous command
-$ export ETCD_VER=v3.6.7
-$ curl -fL https://storage.googleapis.com/etcd/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz \
-    -o /tmp/etcd-linux-amd64.tar.gz
-$ mkdir -p /tmp/etcd-download
-$ tar xzf /tmp/etcd-linux-amd64.tar.gz -C /tmp/etcd-download --strip-components=1
-$ cp /tmp/etcd-download/etcdctl /usr/local/bin/
-$ rm -rf /tmp/etcd-download /tmp/etcd-linux-amd64.tar.gz
-
-$ /usr/local/bin/etcdctl version
-etcdctl version: 3.6.7
-API version: 3.6
-```
-
-Every `etcdctl` command against RKE2's etcd requires TLS certificate flags.
-For convenience, you can create a shell alias that includes the necessary flags to avoid typing them each time:
-
-```bash
-$ cat <<'EOF' >> ~/.bashrc
-alias etcdctl='/usr/local/bin/etcdctl \
-  --endpoints=https://127.0.0.1:2379 \
-  --cacert=/var/lib/rancher/rke2/server/tls/etcd/server-ca.crt \
-  --cert=/var/lib/rancher/rke2/server/tls/etcd/server-client.crt \
-  --key=/var/lib/rancher/rke2/server/tls/etcd/server-client.key'
-EOF
-$ source ~/.bashrc
-```
-
 ### etcd Health
 
-With `etcdctl` installed and the alias in place, verify the embedded etcd instance is healthy:
+Verify the embedded etcd instance is healthy using the `etcdctl` alias we configured earlier:
 
 ```bash
 $ etcdctl endpoint health --cluster --write-out=table
@@ -399,9 +401,10 @@ $ etcdctl endpoint health --cluster --write-out=table
 +-----------------------+--------+------------+-------+
 ```
 
-A single-node cluster shows one endpoint, but as we add control plane nodes in later lessons, this table will grow to three entries.
+A single-node cluster shows one endpoint.
+As we add control plane nodes in later lessons, this table will grow to three entries.
 
-### Create Initial Backup
+## Create Initial Backup
 
 Before making any further changes, back up the configuration files and take an etcd snapshot:
 
@@ -414,6 +417,8 @@ $ cp ~/.kube/config /root/rke2-backup/kubeconfig
 $ rke2 etcd-snapshot save --name initial-setup
 ```
 
+This gives us a restore point in case anything goes wrong during subsequent configuration.
+
 ## Troubleshooting
 
 ### RKE2 Won't Start
@@ -425,7 +430,9 @@ $ systemctl status rke2-server
 $ journalctl -xeu rke2-server
 ```
 
-The most common causes are port `6443` already being in use by an existing k3s or Kubernetes installation, firewall rules blocking required ports (check that the vSwitch rule from Lesson 7 is in place), and invalid CIDR format in the dual-stack configuration where IPv4 and IPv6 ranges must be comma-separated without spaces.
+The most common cause is port `6443` already being in use by an existing k3s or Kubernetes installation.
+Firewall rules blocking required ports can also prevent startup—check that the vSwitch rule from Lesson 7 is in place.
+Another frequent issue is invalid CIDR format in the dual-stack configuration: IPv4 and IPv6 ranges must be comma-separated without spaces.
 
 ### Dual-Stack Issues
 
