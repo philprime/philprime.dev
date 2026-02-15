@@ -1,539 +1,464 @@
 ---
 layout: guide-lesson.liquid
-title: Installing the Cilium CNI
+title: Configuring Canal and Network Policies
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 9
 guide_lesson_abstract: >
-  Install and configure Cilium as the CNI plugin with dual-stack IPv4/IPv6 support, eBPF-based networking, and host-level firewall policies.
+  Verify the Canal CNI, enable WireGuard encryption for inter-node traffic, and configure Calico network policies for pod-level security.
 guide_lesson_conclusion: >
-  Cilium is providing dual-stack pod networking with host-level security policies. Node 4 is Ready and Cluster B can accept additional nodes.
+  Canal is providing encrypted dual-stack pod networking with namespace-level network policies. Node 4 is Ready and Cluster B can accept additional nodes.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-9.md
 ---
 
-Cilium is an advanced CNI plugin that uses eBPF to provide networking, security, and observability for Kubernetes.
-In this lesson, we'll install Cilium with dual-stack support on our RKE2 cluster.
+Canal was installed automatically when RKE2 started in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
+This lesson verifies that dual-stack networking is working, enables WireGuard encryption for inter-node traffic, and configures Calico network policies to secure pod communication.
 
 {% include guide-overview-link.liquid.html %}
 
-## Understanding Cilium
+## Understanding Canal
 
-### Why Cilium for Dual-Stack
+### Architecture
 
-Cilium provides native dual-stack support with significant advantages over traditional CNI plugins:
+Canal is a composite CNI that combines two well-established projects: [Flannel](https://github.com/flannel-io/flannel) handles inter-node traffic by creating a VXLAN overlay network, while [Calico](https://www.tigera.io/project-calico/) manages intra-node routing and enforces network policies.
+This separation of concerns gives Canal the simplicity of Flannel's overlay networking with the power of Calico's policy engine.
 
-| Feature          | Cilium            | Traditional CNI           |
-| ---------------- | ----------------- | ------------------------- |
-| Dual-stack       | Native support    | Often limited or complex  |
-| Data plane       | eBPF (kernel)     | iptables/ipvs             |
-| Performance      | High              | Moderate                  |
-| Observability    | Built-in (Hubble) | Requires additional tools |
-| Network Policies | L3-L7             | L3-L4 only                |
-| Load Balancing   | eBPF-based        | kube-proxy/iptables       |
+| Component      | Role                  | Responsibility                                       |
+| -------------- | --------------------- | ---------------------------------------------------- |
+| Flannel        | Inter-node overlay    | VXLAN tunnels between nodes, IP masquerading         |
+| Calico (Felix) | Intra-node routing    | Local pod routing, iptables/nftables rule management |
+| Calico         | Network policy engine | L3-L4 network policy enforcement                     |
 
-### Key Components
+Each Canal pod runs both a Flannel and a Calico container as a DaemonSet, ensuring every node in the cluster participates in both the overlay network and the policy engine.
 
-| Component       | Purpose                                  |
-| --------------- | ---------------------------------------- |
-| cilium-agent    | Runs on each node, manages eBPF programs |
-| cilium-operator | Cluster-wide operations and IPAM         |
-| hubble-relay    | Aggregates flow data from agents         |
-| hubble-ui       | Web interface for network visibility     |
+### Data Plane: iptables vs eBPF
 
-### What is eBPF?
+Traditional Kubernetes networking and Canal's default data plane rely on iptables (or its successor nftables) to process packets.
+The kernel evaluates packets against a chain of rules, and each Kubernetes Service adds entries to that chain.
+In a dual-stack cluster the rule count effectively doubles, since separate chains exist for IPv4 and IPv6.
 
-eBPF (extended Berkeley Packet Filter) is a technology that allows running sandboxed programs inside the Linux kernel without changing kernel source code or loading kernel modules.
-Originally designed for packet filtering, eBPF has evolved into a general-purpose execution engine for kernel-level programming.
+eBPF (extended Berkeley Packet Filter) is an alternative data plane technology that runs sandboxed programs directly inside the Linux kernel.
+Rather than traversing rule chains, eBPF programs use hash maps for O(1) lookups and can process both IPv4 and IPv6 in a single code path.
+CNI plugins like Cilium and newer versions of Calico support eBPF natively, replacing iptables entirely.
 
-eBPF programs are:
+Canal does not use eBPF — it relies on the traditional iptables/nftables stack.
+For most clusters this performs well, but it's worth understanding the trade-off:
 
-- Verified by the kernel for safety before execution
-- JIT-compiled to native machine code for performance
-- Attached to kernel hooks (network, tracing, security)
-- Able to share data with userspace through maps
+| Aspect             | iptables (Canal)                  | eBPF (Cilium, Calico eBPF)         |
+| ------------------ | --------------------------------- | ---------------------------------- |
+| Rule complexity    | Linear chain, grows with Services | Hash maps, constant-time lookups   |
+| Dual-stack         | Separate rule sets per family     | Unified code path                  |
+| Policy scope       | L3-L4 (NetworkPolicy)             | L3-L7 (extended policy CRDs)       |
+| Kernel requirement | Any modern kernel                 | 4.19+ (5.8+ recommended)           |
+| Maturity           | Battle-tested, decades of use     | Rapidly maturing, production-ready |
 
-### Why eBPF for Networking?
-
-Traditional Kubernetes networking uses iptables, which processes packets through a chain of rules.
-As clusters grow, iptables rules multiply and performance degrades.
-Each Service adds rules, and with dual-stack, the rule count doubles.
-
-Cilium replaces iptables with eBPF programs that:
-
-- Process packets at the earliest possible point in the network stack
-- Use hash maps for O(1) lookups instead of linear rule chains
-- Handle both IPv4 and IPv6 in the same code path
-- Provide load balancing, masquerading, and policy enforcement without context switches
-
-For dual-stack specifically, eBPF programs can inspect packet headers and route IPv4 and IPv6 traffic using unified logic, rather than maintaining separate iptables rule sets for each protocol.
+We chose Canal because it is the RKE2 default, auto-detects dual-stack, and requires no additional installation or kernel dependencies.
+If your workloads eventually need L7 policy enforcement or eBPF performance, RKE2 also bundles Cilium and Calico with eBPF support as alternative CNI options, but switching CNI requires rebuilding the cluster.
 
 ### IPAM (IP Address Management)
 
-IPAM controls how pod IP addresses are allocated.
-Cilium supports several IPAM modes:
+IPAM controls how pod IP addresses are allocated across the cluster.
+Different CNI plugins support different allocation strategies:
 
-| Mode         | Description                                             |
-| ------------ | ------------------------------------------------------- |
-| kubernetes   | Delegates to Kubernetes, uses node's PodCIDR allocation |
-| cluster-pool | Cilium manages a cluster-wide pool of IPs               |
-| multi-pool   | Multiple pools with different CIDRs per node            |
+| Mode         | Description                                                  |
+| ------------ | ------------------------------------------------------------ |
+| kubernetes   | Delegates to Kubernetes, uses each node's PodCIDR allocation |
+| cluster-pool | The CNI manages a cluster-wide pool of IPs                   |
+| multi-pool   | Multiple pools with different CIDRs per node                 |
 
-We use `kubernetes` mode because RKE2 already configures the pod CIDRs and assigns ranges to each node.
-Cilium simply uses the addresses that Kubernetes provides, ensuring consistency with the cluster configuration from lesson 8.
+Canal uses the `kubernetes` mode exclusively.
+RKE2 configures the pod CIDRs at startup (we set `cluster-cidr: 10.42.0.0/16,fd00:42::/56` in Lesson 8), and the Kubernetes controller manager assigns each node a subnet from that range.
+When a pod starts, it receives one IPv4 and one IPv6 address from its node's allocated subnets.
 
-For dual-stack, Kubernetes allocates both an IPv4 and IPv6 CIDR range to each node.
-When a pod starts, it receives one address from each range.
-
-### kube-proxy Replacement
-
-Cilium can fully replace kube-proxy, handling Kubernetes Service load balancing using eBPF instead of iptables.
-This provides better performance and native dual-stack support without the complexity of managing iptables rules for both IPv4 and IPv6.
-
-## Configuration Planning
-
-### Key Options
-
-| Option                  | Value        | Purpose                               |
-| ----------------------- | ------------ | ------------------------------------- |
-| `ipv6.enabled`          | true         | Enable IPv6 support                   |
-| `hostFirewall.enabled`  | true         | Enable host-level eBPF firewall       |
-| `kubeProxyReplacement`  | true         | Replace kube-proxy with eBPF          |
-| `routingMode`           | native       | Use native routing instead of overlay |
-| `ipv4NativeRoutingCIDR` | 10.42.0.0/16 | IPv4 pod CIDR for native routing      |
-| `ipv6NativeRoutingCIDR` | fd00:42::/56 | IPv6 pod CIDR for native routing      |
-| `enableIPv4Masquerade`  | true         | SNAT for IPv4 traffic leaving cluster |
-| `enableIPv6Masquerade`  | true         | SNAT for IPv6 traffic leaving cluster |
-
-### Native Routing vs Overlay
-
-Cilium supports two routing modes:
-
-**Native routing** sends packets directly between nodes without encapsulation.
-This provides better performance but requires the underlying network to route pod CIDRs.
-On a vSwitch where all nodes are Layer 2 adjacent, native routing works well.
-
-**Overlay (VXLAN/Geneve)** encapsulates packets to tunnel them between nodes.
-This works on any network but adds overhead.
-
-We use native routing since our vSwitch provides direct Layer 2 connectivity.
-
-## Installing Cilium
-
-### Install Helm
+This means the CNI never makes allocation decisions itself and it simply uses the addresses that Kubernetes provides.
+You can see this in action by inspecting any running pod's IP assignments:
 
 ```bash
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-helm version
-```
-
-### Add Cilium Repository
-
-```bash
-helm repo add cilium https://helm.cilium.io/
-helm repo update
-```
-
-### Create Configuration
-
-```bash
-cat <<'EOF' > /root/cilium-values.yaml
-ipv6:
-  enabled: true
-
-hostFirewall:
-  enabled: true
-
-kubeProxyReplacement: true
-
-k8sServiceHost: 10.0.0.4
-k8sServicePort: 6443
-
-ipam:
-  mode: kubernetes
-
-hubble:
-  enabled: true
-  relay:
-    enabled: true
-  ui:
-    enabled: true
-
-operator:
-  replicas: 1
-
-bpf:
-  masquerade: true
-  preallocateMaps: true
-
-routingMode: native
-ipv4NativeRoutingCIDR: 10.42.0.0/16
-ipv6NativeRoutingCIDR: fd00:42::/56
-autoDirectNodeRoutes: true
-
-bandwidthManager:
-  enabled: true
-  bbr: true
-
-containerRuntime:
-  integration: containerd
-  socketPath: /run/k3s/containerd/containerd.sock
-
-enableIPv4Masquerade: true
-enableIPv6Masquerade: true
-EOF
-```
-
-{% include alert.liquid.html type='note' title='RKE2 Socket Path' content='
-RKE2 uses the same containerd socket path as k3s: /run/k3s/containerd/containerd.sock
-' %}
-
-### Install Cilium
-
-```bash
-export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
-
-helm install cilium cilium/cilium \
-  --namespace kube-system \
-  --values /root/cilium-values.yaml \
-  --wait
-```
-
-Watch the installation:
-
-```bash
-kubectl get pods -n kube-system -l k8s-app=cilium -w
-```
-
-Wait until all Cilium pods show `Running` status, then press `Ctrl+C`.
-
-### Install Cilium CLI
-
-The Cilium CLI provides useful status and connectivity testing commands:
-
-```bash
-CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
-curl -L --fail --remote-name-all \
-  https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-amd64.tar.gz
-sudo tar xzf cilium-linux-amd64.tar.gz -C /usr/local/bin
-rm cilium-linux-amd64.tar.gz
-
-cilium version
-```
-
-## Verification
-
-### Cilium Status
-
-```bash
-cilium status --wait
-```
-
-The output should show IPv4 and IPv6 enabled, along with Host Firewall:
-
-```
-    /¯¯\
- /¯¯\__/¯¯\    Cilium:          OK
- \__/¯¯\__/    Operator:        OK
- /¯¯\__/¯¯\    Hubble Relay:    OK
- \__/¯¯\__/
-    \__/
-
-KubeProxyReplacement:    True
-Host Firewall:           Enabled
-IPv4 BPF NodePort:       Enabled
-IPv6 BPF NodePort:       Enabled
-IPv4 Masquerade:         Enabled
-IPv6 Masquerade:         Enabled
-```
-
-### Node Status
-
-The node should now be Ready:
-
-```bash
-kubectl get nodes -o wide
-```
-
-Expected output showing both IPs:
-
-```
-NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
-node4   Ready    control-plane,etcd,master   20m   v1.31.x+rke2r1   10.0.0.4,fd00::4
-```
-
-### Dual-Stack Pod Test
-
-```bash
-kubectl run dual-stack-test --image=busybox:1.36 --restart=Never -- sleep 3600
-kubectl wait --for=condition=Ready pod/dual-stack-test --timeout=60s
-
-# Check pod has both IPv4 and IPv6 addresses
-kubectl get pod dual-stack-test -o jsonpath='{.status.podIPs}' | jq .
-```
-
-Expected output:
-
-```json
+$ kubectl -n kube-system get pod etcd-node4 -o jsonpath='{.status.podIPs}' | jq .
 [
-  { "ip": "10.42.x.x" },
-  { "ip": "fd00:42:x:x::x" }
+  { "ip": "10.0.0.4" },
+  { "ip": "fd00::4" }
 ]
 ```
 
-Test connectivity:
+Static pods like etcd use the node's own addresses, but regular pods receive addresses from the pod CIDR subnets allocated to their node.
+The advantage is that pod CIDR assignments stay consistent with the cluster configuration, and tools like `kubectl get nodes -o jsonpath` accurately reflect which subnets belong to which nodes.
 
 ```bash
-kubectl exec dual-stack-test -- ping -c 2 10.0.0.4
-kubectl exec dual-stack-test -- ping6 -c 2 fd00::4
-
-kubectl delete pod dual-stack-test
+$ kubectl -n kube-system get pod rke2-metrics-server-7b59bd8854-blsqz -o jsonpath='{.status.podIPs}' | jq .
+[
+  {
+    "ip": "10.42.0.8"
+  },
+  {
+    "ip": "fd00:42::8"
+  }
+]
 ```
 
-### Connectivity Test
+### Overlay and Encryption
 
-Run the full Cilium connectivity test:
+VXLAN (Virtual Extensible LAN) is a network encapsulation protocol that creates a virtual Layer 2 network on top of an existing Layer 3 infrastructure.
+It works by wrapping each original Ethernet frame inside a UDP packet with a VXLAN header, effectively creating a tunnel between two endpoints.
+The outer UDP packet is routable across any IP network, while the inner frame carries the original pod-to-pod traffic unchanged.
+
+Canal uses VXLAN as its default overlay for inter-node traffic.
+When a pod on Node A sends a packet to a pod on Node B, Flannel wraps the packet in a VXLAN header addressed to Node B's IP, sends it across the vSwitch, and Flannel on Node B unwraps it and delivers the original packet to the destination pod.
+
+```mermaid!
+flowchart LR
+    subgraph NodeA["Node A · 10.0.0.2"]
+        PodA["Pod A<br/><small>10.42.0.5</small>"]
+        FA["Flannel"]
+    end
+
+    subgraph Wire["vSwitch · VXLAN Packet"]
+        direction TB
+        subgraph Outer["Outer: UDP · src 10.0.0.2 → dst 10.0.0.4"]
+            subgraph Inner["Inner: Pod · src 10.42.0.5 → dst 10.42.1.3"]
+            end
+        end
+    end
+
+    subgraph NodeB["Node B · 10.0.0.4"]
+        FB["Flannel"]
+        PodB["Pod B<br/><small>10.42.1.3</small>"]
+    end
+
+    PodA -->|"original packet"| FA
+    FA -->|"encapsulate"| Wire
+    Wire -->|"decapsulate"| FB
+    FB -->|"original packet"| PodB
+
+    classDef node fill:#eff6ff,color:#1e3a8a,stroke:#bfdbfe,stroke-width:1.5px
+    classDef pod fill:#ecfdf5,color:#065f46,stroke:#a7f3d0,stroke-width:1.5px
+    classDef flannel fill:#fef3c7,color:#92400e,stroke:#fcd34d,stroke-width:1.5px
+    classDef wire fill:#f3e8ff,color:#5b21b6,stroke:#c4b5fd,stroke-width:1.5px
+    classDef outer fill:#ede9fe,color:#4c1d95,stroke:#c4b5fd,stroke-width:1.5px
+    classDef inner fill:#fce7f3,color:#831843,stroke:#f9a8d4,stroke-width:1.5px
+
+    class NodeA,NodeB node
+    class PodA,PodB pod
+    class FA,FB flannel
+    class Wire wire
+    class Outer outer
+    class Inner inner
+```
+
+The diagram shows how the original pod-to-pod packet is nested inside VXLAN encapsulation for transit across the vSwitch.
+The underlying infrastructure only needs to route between node IPs—it never sees the pod CIDRs directly.
+
+The trade-off is a small overhead per packet (approximately 50 bytes for the VXLAN + UDP + outer IP headers) and the fact that the encapsulated traffic is unencrypted by default.
+On a private vSwitch this is generally acceptable, but for defense in depth we'll enable WireGuard encryption later in this lesson.
+
+## Verification
+
+### Canal Pod Status
+
+Verify that both containers in the Canal pod are running on every node:
 
 ```bash
-cilium connectivity test
+$ kubectl get pods -n kube-system -l k8s-app=canal -o wide
+NAME               READY   STATUS    RESTARTS   AGE   IP         NODE
+rke2-canal-xxxxx   2/2     Running   0          30m   10.0.0.4   node4
 ```
 
-This deploys test pods and validates pod-to-pod, pod-to-service, and external connectivity for both IPv4 and IPv6.
+Both containers must show `2/2` in the `READY` column—one for Calico and one for Flannel.
+A single-node cluster shows one pod; this grows to one per node as additional nodes join.
 
-{% include alert.liquid.html type='info' title='Single Node Limitations' content='
-Some tests may be skipped on a single-node cluster.
-Full dual-stack testing will be possible once additional nodes join.
+### Dual-Stack Pod Test
+
+Deploy a test pod and confirm it receives both an IPv4 and IPv6 address from the pod CIDRs:
+
+```bash
+$ kubectl run dual-stack-test --image=busybox:1.36 --restart=Never -- sleep 3600
+pod/dual-stack-test created
+$ kubectl wait --for=condition=Ready pod/dual-stack-test --timeout=60s
+pod/dual-stack-test condition met
+$ kubectl get pod dual-stack-test -o jsonpath='{.status.podIPs}' | jq .
+[
+  {
+    "ip": "10.42.0.10"
+  },
+  {
+    "ip": "fd00:42::a"
+  }
+]
+```
+
+The pod should have one address from `10.42.0.0/16` and one from `fd00:42::/56`.
+
+Test that the pod can reach the node over both address families:
+
+```bash
+$ kubectl exec dual-stack-test -- ping -c 2 10.0.0.4
+PING 10.0.0.4 (10.0.0.4): 56 data bytes
+64 bytes from 10.0.0.4: seq=0 ttl=64 time=0.105 ms
+64 bytes from 10.0.0.4: seq=1 ttl=64 time=0.069 ms
+
+--- 10.0.0.4 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.069/0.087/0.105 ms
+
+$ kubectl exec dual-stack-test -- ping6 -c 2 fd00::4
+PING fd00::4 (fd00::4): 56 data bytes
+64 bytes from fd00::4: seq=0 ttl=64 time=0.148 ms
+64 bytes from fd00::4: seq=1 ttl=64 time=0.108 ms
+
+--- fd00::4 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.108/0.128/0.148 ms
+```
+
+Clean up the test pod:
+
+```bash
+$ kubectl delete pod dual-stack-test
+```
+
+{% include alert.liquid.html type='info' title='Single-Node Limitations' content='
+Pod-to-pod connectivity across nodes cannot be tested until additional nodes join the cluster.
+The VXLAN overlay and WireGuard encryption are only exercised for cross-node traffic.
 ' %}
 
-## Host-Level Security with Cilium
+## Enabling WireGuard Encryption
 
-In Lesson 7, we configured Hetzner's firewall with port ranges to stay within the 10-rule limit.
-The `well-known` range (`22-587`) opens some unused ports, and the `nodeports` range (`30000-32767`) covers standard Kubernetes NodePorts.
+### Why Encrypt Overlay Traffic
 
-Cilium Host Policies provide Layer 2 security that closes these gaps.
-Using `CiliumClusterwideNetworkPolicy` resources, we can specify exactly which ports to allow on the host, blocking everything else even if Hetzner permits it.
+VXLAN encapsulation carries pod traffic in cleartext between nodes.
+On a shared physical network like Hetzner's vSwitch — where VLAN tagging provides logical isolation but not encryption — a compromised adjacent server could theoretically capture inter-node packets.
 
-### Understanding Host Policies
+WireGuard adds an encryption layer around the VXLAN tunnel, so the packet on the wire is fully encrypted:
 
-Host policies apply to the nodes themselves, not to pods.
-They control traffic destined for services running directly on the host, such as SSH, the Kubernetes API, and NodePort services.
+```mermaid!
+flowchart LR
+    subgraph NodeA["Node A · 10.0.0.2"]
+        PodA["Pod A<br/><small>10.42.0.5</small>"]
+        FA["Flannel"]
+        WA["WireGuard"]
+    end
 
-The key difference from regular NetworkPolicies:
+    subgraph Wire["vSwitch · Encrypted Packet"]
+        direction TB
+        subgraph WG["WireGuard · encrypted"]
+            subgraph Outer["VXLAN · src 10.0.0.2 → dst 10.0.0.4"]
+                subgraph Inner["Pod · src 10.42.0.5 → dst 10.42.1.3"]
+                end
+            end
+        end
+    end
 
-| Type                             | Applies to | Selector       |
-| -------------------------------- | ---------- | -------------- |
-| `NetworkPolicy`                  | Pods       | `podSelector`  |
-| `CiliumClusterwideNetworkPolicy` | Nodes      | `nodeSelector` |
+    subgraph NodeB["Node B · 10.0.0.4"]
+        WB["WireGuard"]
+        FB["Flannel"]
+        PodB["Pod B<br/><small>10.42.1.3</small>"]
+    end
 
-### Default-Deny Ingress Policy
+    PodA -->|"original"| FA
+    FA -->|"VXLAN wrap"| WA
+    WA -->|"encrypt"| Wire
+    Wire -->|"decrypt"| WB
+    WB -->|"VXLAN unwrap"| FB
+    FB -->|"original"| PodB
 
-Create a policy that denies all external ingress to nodes by default, while allowing cluster-internal traffic:
+    classDef node fill:#eff6ff,color:#1e3a8a,stroke:#bfdbfe,stroke-width:1.5px
+    classDef pod fill:#ecfdf5,color:#065f46,stroke:#a7f3d0,stroke-width:1.5px
+    classDef flannel fill:#fef3c7,color:#92400e,stroke:#fcd34d,stroke-width:1.5px
+    classDef wg fill:#d1fae5,color:#065f46,stroke:#6ee7b7,stroke-width:1.5px
+    classDef wire fill:#f3e8ff,color:#5b21b6,stroke:#c4b5fd,stroke-width:1.5px
+    classDef outer fill:#ede9fe,color:#4c1d95,stroke:#c4b5fd,stroke-width:1.5px
+    classDef inner fill:#fce7f3,color:#831843,stroke:#f9a8d4,stroke-width:1.5px
+    classDef encrypted fill:#d1fae5,color:#065f46,stroke:#6ee7b7,stroke-width:1.5px
+
+    class NodeA,NodeB node
+    class PodA,PodB pod
+    class FA,FB flannel
+    class WA,WB wg
+    class Wire wire
+    class WG encrypted
+    class Outer outer
+    class Inner inner
+```
+
+The diagram extends the earlier VXLAN flow with WireGuard wrapping the entire VXLAN packet in an encrypted tunnel before it hits the wire.
+Each node establishes a WireGuard tunnel to every other node, and all overlay traffic flows through these tunnels transparently.
+
+### Applying the Configuration
+
+WireGuard requires kernel module support.
+Before applying the configuration, verify the module loads correctly:
 
 ```bash
-cat <<'EOF' | kubectl apply -f -
-apiVersion: cilium.io/v2
-kind: CiliumClusterwideNetworkPolicy
+$ modprobe wireguard
+$ lsmod | grep wireguard
+wireguard             118784  0
+```
+
+If the module fails to load, your kernel may need the WireGuard package installed.
+On Rocky Linux 10, WireGuard is included in the default kernel.
+
+RKE2 bundles Canal as a Helm chart, and customizations are applied through a `HelmChartConfig` resource placed in the auto-deploy manifests directory:
+
+```bash
+$ cat <<'EOF' > /var/lib/rancher/rke2/server/manifests/rke2-canal-config.yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
 metadata:
-  name: host-default-deny-ingress
+  name: rke2-canal
+  namespace: kube-system
 spec:
-  description: "Default deny all external ingress to nodes"
-  nodeSelector:
-    matchLabels: {}
-  ingress:
-    - fromEntities:
-        - cluster
+  valuesContent: |-
+    flannel:
+      backend: "wireguard"
 EOF
 ```
 
-The `cluster` entity includes all pods and nodes within the Kubernetes cluster.
-This ensures internal communication continues to work while blocking external traffic by default.
-
-### Allow Specific Services
-
-Create a policy that explicitly allows the services we need:
+RKE2 detects the new manifest and upgrades the Canal Helm release automatically.
+Restart the Canal DaemonSet to apply the new backend:
 
 ```bash
-cat <<'EOF' | kubectl apply -f -
-apiVersion: cilium.io/v2
-kind: CiliumClusterwideNetworkPolicy
+$ kubectl rollout restart ds rke2-canal -n kube-system
+daemonset.apps/rke2-canal restarted
+$ kubectl rollout status ds rke2-canal -n kube-system --timeout=120s
+Waiting for daemon set "rke2-canal" rollout to finish: 0 of 1 updated pods are available...
+daemon set "rke2-canal" successfully rolled out
+```
+
+WireGuard tunnels are only established between peers, so there is nothing to verify on a single-node cluster.
+We'll confirm that WireGuard encryption is active in Lesson 11 after the second control plane node joins.
+
+## Network Policies
+
+### Understanding Network Policies
+
+By default, Kubernetes allows all pod-to-pod communication across all namespaces.
+A `NetworkPolicy` resource changes this by defining explicit ingress and egress rules for pods matching a selector.
+Once any NetworkPolicy selects a pod, all traffic not explicitly allowed by a policy is denied.
+
+Canal enforces these policies through Calico's policy engine, which supports standard Kubernetes `NetworkPolicy` resources at L3-L4 (IP addresses, ports, and protocols).
+
+| Scope              | Resource type    | Enforced by       |
+| ------------------ | ---------------- | ----------------- |
+| Pod-to-pod traffic | `NetworkPolicy`  | Calico (in Canal) |
+| Host-level traffic | Hetzner firewall | Hetzner network   |
+
+Unlike Cilium, Canal does not provide host-level network policies—the Hetzner firewall configured in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) serves that role.
+
+### Default Deny per Namespace
+
+A common security pattern is to deny all ingress traffic by default and then allow specific communication paths.
+This policy selects all pods in a namespace and permits only traffic from within the same namespace.
+
+Pods also need to reach CoreDNS (in `kube-system`) to resolve service names, so a companion egress policy must allow DNS traffic.
+Without it, pods cannot look up any service addresses.
+
+We place both policies in the RKE2 auto-deploy manifests directory so they are applied on every cluster start and survive node rebuilds—consistent with how we deployed the Canal HelmChartConfig. Create a file at `/var/lib/rancher/rke2/server/manifests/default-network-policies.yaml` with the following content:
+
+```yaml
+# Default deny ingress: only allow traffic from within the same namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
 metadata:
-  name: host-allow-services
+  name: default-deny-ingress
+  namespace: default
 spec:
-  description: "Allow specific services to nodes"
-  nodeSelector:
-    matchLabels: {}
+  podSelector: {}
+  policyTypes:
+    - Ingress
   ingress:
-    # SSH
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "22"
-              protocol: TCP
-    # SMTP (receiving mail)
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "25"
-              protocol: TCP
-    # HTTP/HTTPS (Traefik)
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "80"
-              protocol: TCP
-            - port: "443"
-              protocol: TCP
-    # SMTP submission
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "587"
-              protocol: TCP
-    # Kubernetes API
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "6443"
-              protocol: TCP
-    # PostgreSQL (NodePort)
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "30432"
-              protocol: TCP
-EOF
-```
-
-This policy explicitly allows only the ports we need.
-Even though Hetzner permits `22-587` and `30000-32767`, Cilium blocks everything except these specific ports.
-
-### Verify Host Policies
-
-Check that the policies are applied:
-
-```bash
-kubectl get ciliumclusterwidenetworkpolicies
-```
-
-Expected output:
-
-```
-NAME                        AGE
-host-default-deny-ingress   10s
-host-allow-services         5s
-```
-
-Test that blocked ports are actually blocked (from an external machine):
-
-```bash
-# This should fail (port 23 is in the 22-587 range but not explicitly allowed)
-nc -zv <your-server-ip> 23
-
-# This should succeed (port 22 is explicitly allowed)
-nc -zv <your-server-ip> 22
-```
-
-### Adding New Services
-
-To allow a new service, add an ingress rule to the `host-allow-services` policy.
-For example, to add Redis on port `30379`:
-
-```yaml
-# Redis (NodePort)
-- fromEntities:
-    - world
-  toPorts:
-    - ports:
-        - port: "30379"
+    - from:
+        - podSelector: {}
+---
+# Allow DNS egress to CoreDNS in kube-system
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: default
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - port: 53
           protocol: TCP
+        - port: 53
+          protocol: UDP
 ```
 
-No changes to Hetzner firewall rules are needed since `30379` is within the `nodeports` range.
+RKE2 picks up the manifest automatically within a few seconds.
+The `default-deny-ingress` policy restricts pods in the `default` namespace to only accept traffic from other pods in the same namespace, while `allow-dns` ensures DNS resolution continues to work.
 
-### Restricting SSH Access
+For additional namespaces you create, apply the same pair of policies by duplicating the manifest with the appropriate `namespace` field—or use the CIS hardening profile described below.
 
-For production environments, consider restricting SSH to specific IP addresses:
+### CIS Hardening Profile
 
-```yaml
-# SSH from admin IPs only
-- fromCIDR:
-    - 203.0.113.10/32
-    - 198.51.100.0/24
-  toPorts:
-    - ports:
-        - port: "22"
-          protocol: TCP
-```
+RKE2 can automatically apply namespace-level network policies and stricter Pod Security Standards when started with the `profile: cis` configuration option.
+This applies a default-deny ingress policy and a DNS-allow policy to the `kube-system`, `kube-public`, and `default` namespaces—similar to the manual policies above but managed by RKE2 itself.
 
-This provides an additional layer of security beyond Hetzner's firewall.
+For namespaces you create, you are still responsible for applying appropriate network policies.
+The manual policies shown above serve as a template for securing your application namespaces.
 
-## Hubble UI
+### Verifying Network Policies
 
-Hubble provides real-time network flow visibility:
+Check that both policies are applied:
 
 ```bash
-kubectl port-forward -n kube-system svc/hubble-ui 12000:80
+$ kubectl get networkpolicies -A
+NAMESPACE   NAME                   POD-SELECTOR   AGE
+default     allow-dns              <none>         26s
+default     default-deny-ingress   <none>         26s
 ```
 
-Access `http://localhost:12000` in your browser.
+Test from within a pod that DNS works but cross-namespace traffic is blocked:
+
+```bash
+$ kubectl run policy-test --image=busybox:1.36 -n default --restart=Never -- sleep 3600
+pod/policy-test created
+
+$ kubectl wait --for=condition=Ready pod/policy-test -n default --timeout=60s
+pod/policy-test condition met
+
+# DNS should work
+$ kubectl exec -n default policy-test -- nslookup kubernetes.default.svc.cluster.local
+Server:         10.43.0.10
+Address:        10.43.0.10:53
+
+
+Name:   kubernetes.default.svc.cluster.local
+Address: 10.43.0.1
+
+# Cross-namespace traffic should be blocked (will timeout)
+$ kubectl exec -n default policy-test -- wget -qO- --timeout=3 http://rke2-metrics-server.kube-system.svc:443 2>&1 || echo "Blocked as expected"
+wget: download timed out
+command terminated with exit code 1
+Blocked as expected
+
+$ kubectl delete pod policy-test -n default
+pod "policy-test" deleted from default namespace
+```
 
 ## Troubleshooting
 
-### Cilium Pod Not Starting
+For Canal pod startup failures and dual-stack IPv6 issues, refer to the troubleshooting section in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
+The sections below cover issues specific to this lesson's configuration.
+
+### Network Policy Not Blocking Traffic
+
+Calico applies network policies asynchronously.
+After creating a policy, allow a few seconds for Felix to program the iptables rules.
+Verify that the policy is recognized:
 
 ```bash
-kubectl logs -n kube-system -l k8s-app=cilium --tail=100
+$ kubectl get networkpolicies -n <namespace>
 ```
 
-Common issues:
-
-- BPF filesystem not mounted
-- containerd socket not accessible
-- Kernel version too old (need 4.19+ for IPv6 eBPF)
-
-### IPv6 Not Working
-
-```bash
-# Verify IPv6 is enabled in config
-kubectl -n kube-system get configmap cilium-config -o yaml | grep enable-ipv6
-
-# Check if pods are getting IPv6 addresses
-kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.podIPs}{"\n"}{end}'
-
-# Verify node has IPv6 forwarding
-sysctl net.ipv6.conf.all.forwarding
-```
-
-### BPF Issues
-
-```bash
-# Verify BPF filesystem is mounted
-mount | grep bpf
-
-# If not mounted
-sudo mount -t bpf bpf /sys/fs/bpf
-```
-
-### Connectivity Issues
-
-```bash
-kubectl exec -n kube-system -l k8s-app=cilium -- cilium-health status
-kubectl exec -n kube-system -l k8s-app=cilium -- cilium endpoint list
-```
-
-## Backup Configuration
-
-```bash
-cp /root/cilium-values.yaml /root/rke2-backup/
-kubectl -n kube-system get configmap cilium-config -o yaml > /root/rke2-backup/cilium-config.yaml
-```
-
-The node is now fully Ready with dual-stack networking.
-In the next section, we'll begin migrating nodes from the k3s cluster to RKE2.
+If traffic is still flowing despite a deny policy, check that no other policy in the namespace is allowing it.
+Kubernetes network policies are additive, meaning any policy that allows traffic takes precedence.
