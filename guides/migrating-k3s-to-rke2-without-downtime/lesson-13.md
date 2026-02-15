@@ -1,232 +1,214 @@
 ---
 layout: guide-lesson.liquid
-title: Installing Rocky Linux and RKE2 on Node 3
+title: "Verifying the 3-Node Control Plane"
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 3
 guide_lesson_id: 13
 guide_lesson_abstract: >
-  Install Rocky Linux 10 on Node 3 and join it to Cluster B as the second control plane node.
+  Comprehensively verify the 3-node RKE2 control plane, test HA capabilities, and confirm readiness for workload migration.
 guide_lesson_conclusion: >
-  Node 3 is now running RKE2 as the second control plane node in Cluster B, with etcd showing 2 members.
+  The 3-node control plane is verified as highly available and ready to receive production workloads.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-13.md
 ---
 
-With Node 3 drained and removed from Cluster A, we'll install Rocky Linux 10 and configure it as an RKE2 control plane node to join Cluster B.
+With all three control plane nodes running, we need to verify the cluster's high availability before migrating production workloads.
 
 {% include guide-overview-link.liquid.html %}
 
-## Understanding Cluster Joins
+## What Makes a Cluster HA
 
-When a new node joins an existing RKE2 cluster, it differs from bootstrapping the first node:
+A highly available Kubernetes cluster requires:
 
-| Aspect | First Node (Bootstrap)   | Additional Nodes (Join)     |
-| ------ | ------------------------ | --------------------------- |
-| Config | Defines cluster settings | References existing cluster |
-| etcd   | Creates new cluster      | Joins existing cluster      |
-| Certs  | Generates CA             | Receives certs from server  |
-| State  | Empty                    | Syncs from existing nodes   |
+| Component          | Requirement                     | Our Setup   |
+| ------------------ | ------------------------------- | ----------- |
+| etcd               | 3+ members for quorum tolerance | 3 members   |
+| API Server         | Multiple endpoints              | 3 endpoints |
+| Controller Manager | Leader election across nodes    | Enabled     |
+| Scheduler          | Leader election across nodes    | Enabled     |
 
-The key configuration difference is the `server` directive, which tells RKE2 where to find the existing cluster.
+If any single node fails, the remaining two maintain quorum and continue serving requests.
 
-## Preparing Node 3
+## Verifying etcd
 
-Follow the same setup process as Node 4:
-
-1. Install Rocky Linux 10 using Hetzner Rescue System ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
-2. Configure dual-stack vSwitch networking with `10.1.0.13` and `fd00::13` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
-3. Configure firewall for control plane ports ([Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7))
-
-After setup, verify connectivity to the existing cluster:
+### Member Status
 
 ```bash
-sudo hostnamectl set-hostname node3
-
-ping -c 3 10.1.0.14
-ping6 -c 3 fd00::14
-nc -zv 10.1.0.14 9345
-```
-
-The last command verifies the RKE2 supervisor port is reachable.
-
-## Installing RKE2
-
-```bash
-curl -sfL https://get.rke2.io | sudo sh -
-sudo systemctl enable rke2-server.service
-```
-
-## Configuring RKE2 to Join
-
-The configuration specifies which cluster to join via the `server` directive:
-
-```bash
-sudo mkdir -p /etc/rancher/rke2
-
-# Get the token from Node 4 (/root/rke2-token.txt)
-TOKEN="<your-cluster-token>"
-
-sudo tee /etc/rancher/rke2/config.yaml <<EOF
-server: https://10.1.0.14:9345
-token: ${TOKEN}
-
-tls-san:
-  - node3
-  - node3.k8s.local
-  - 10.1.0.13
-  - fd00::13
-  - 65.109.40.190
-  - cluster.yourdomain.com
-
-cni: none
-node-ip: 10.1.0.13,fd00::13
-
-cluster-cidr: 10.42.0.0/16,fd00:42::/56
-service-cidr: 10.43.0.0/16,fd00:43::/112
-cluster-dns: 10.43.0.10
-EOF
-```
-
-The `cluster-cidr`, `service-cidr`, and `cluster-dns` values must match Node 4's configuration exactly.
-
-## Starting RKE2
-
-```bash
-sudo systemctl start rke2-server.service
-sudo journalctl -u rke2-server -f
-```
-
-The join process takes several minutes as the node:
-
-1. Contacts Node 4's supervisor API
-2. Retrieves cluster certificates
-3. Joins the etcd cluster as a new member
-4. Starts control plane components
-5. Syncs existing cluster state
-
-Watch for these log messages indicating success:
-
-```
-level=info msg="Starting etcd member..."
-level=info msg="etcd member started"
-level=info msg="Running kube-apiserver..."
-```
-
-## Verification
-
-### Configure kubectl
-
-```bash
-mkdir -p ~/.kube
-sudo cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
-sudo chown $(id -u):$(id -g) ~/.kube/config
-echo 'export PATH=$PATH:/var/lib/rancher/rke2/bin' >> ~/.bashrc
-export PATH=$PATH:/var/lib/rancher/rke2/bin
-```
-
-### Check Nodes
-
-```bash
-kubectl get nodes -o wide
-```
-
-Expected output showing both nodes with dual-stack IPs:
-
-```
-NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
-node3   Ready    control-plane,etcd,master   2m    v1.31.x+rke2r1   10.1.0.13,fd00::13
-node4   Ready    control-plane,etcd,master   3h    v1.31.x+rke2r1   10.1.0.14,fd00::14
-```
-
-### Check etcd Membership
-
-```bash
-sudo /var/lib/rancher/rke2/bin/etcdctl \
+$ sudo /var/lib/rancher/rke2/bin/etcdctl \
   --endpoints=https://127.0.0.1:2379 \
   --cacert=/var/lib/rancher/rke2/server/tls/etcd/server-ca.crt \
   --cert=/var/lib/rancher/rke2/server/tls/etcd/server-client.crt \
   --key=/var/lib/rancher/rke2/server/tls/etcd/server-client.key \
-  member list
+  member list --write-out=table
 ```
 
-Should show two members:
+Should show 3 members, all started:
 
 ```
-xxxx, started, node3-xxxx, https://10.1.0.13:2380, https://10.1.0.13:2379, false
-yyyy, started, node4-xxxx, https://10.1.0.14:2380, https://10.1.0.14:2379, true
++------------------+---------+-------------+-----------------------+-----------------------+
+|        ID        | STATUS  |    NAME     |      PEER ADDRS       |     CLIENT ADDRS      |
++------------------+---------+-------------+-----------------------+-----------------------+
+| xxxxxxxxxxxx     | started | node2-xxxxx | https://10.1.1.2:2380 | https://10.1.1.2:2379 |
+| yyyyyyyyyyyy     | started | node3-xxxxx | https://10.1.1.3:2380 | https://10.1.1.3:2379 |
+| zzzzzzzzzzzz     | started | node4-xxxxx | https://10.1.1.4:2380 | https://10.1.1.4:2379 |
++------------------+---------+-------------+-----------------------+-----------------------+
 ```
 
-### Check Canal
-
-Canal automatically deploys to new nodes:
+### Endpoint Health
 
 ```bash
-kubectl get pods -n kube-system -l k8s-app=canal -o wide
+$ sudo /var/lib/rancher/rke2/bin/etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/var/lib/rancher/rke2/server/tls/etcd/server-ca.crt \
+  --cert=/var/lib/rancher/rke2/server/tls/etcd/server-client.crt \
+  --key=/var/lib/rancher/rke2/server/tls/etcd/server-client.key \
+  endpoint health --cluster
 ```
 
-## Current State
+All three endpoints should report healthy:
 
-```mermaid!
-flowchart LR
-  subgraph A["Cluster A · k3s"]
-    A1["🧠 Node 1"]
-    A2["⚙️ Node 2"]
-  end
-
-  subgraph B["Cluster B · RKE2"]
-    B3["🧠 Node 3 ✓"]
-    B4["🧠 Node 4 ✓"]
-  end
-
-  classDef clusterA fill:#2563eb,color:#fff,stroke:#1e40af
-  classDef clusterB fill:#16a34a,color:#fff,stroke:#166534
-
-  class A clusterA
-  class B clusterB
+```
+https://10.1.1.2:2379 is healthy: successfully committed proposal: took = 5.1ms
+https://10.1.1.3:2379 is healthy: successfully committed proposal: took = 4.8ms
+https://10.1.1.4:2379 is healthy: successfully committed proposal: took = 5.2ms
 ```
 
-{% include alert.liquid.html type='warning' title='Not Yet HA' content='
-With 2 control plane nodes, Cluster B is NOT highly available.
-etcd requires 3 members for quorum tolerance.
-If either node fails, etcd loses quorum.
-Proceed with Node 2 migration to achieve HA.
+### Leader Status
+
+```bash
+$ sudo /var/lib/rancher/rke2/bin/etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/var/lib/rancher/rke2/server/tls/etcd/server-ca.crt \
+  --cert=/var/lib/rancher/rke2/server/tls/etcd/server-client.crt \
+  --key=/var/lib/rancher/rke2/server/tls/etcd/server-client.key \
+  endpoint status --cluster --write-out=table
+```
+
+One node should show `IS LEADER = true`.
+The other two show `false`, indicating they're followers ready to take over if needed.
+
+## Verifying Control Plane Components
+
+### API Server Endpoints
+
+```bash
+$ kubectl get endpoints -n default kubernetes
+```
+
+Should list all three control plane IPs:
+
+```
+NAME         ENDPOINTS                                      AGE
+kubernetes   10.1.1.2:6443,10.1.1.3:6443,10.1.1.4:6443     4h
+```
+
+Clients can connect to any of these endpoints.
+If one fails, they automatically failover to another.
+
+### Controller Manager and Scheduler
+
+These components use leader election — only one instance is active at a time:
+
+```bash
+$ kubectl get leases -n kube-system kube-controller-manager -o jsonpath='{.spec.holderIdentity}'
+$ echo
+$ kubectl get leases -n kube-system kube-scheduler -o jsonpath='{.spec.holderIdentity}'
+$ echo
+```
+
+Each shows which node currently holds the lease.
+If that node fails, another node acquires the lease within seconds.
+
+## Testing Failover (Optional)
+
+To verify the cluster survives a node failure, you can temporarily stop one node:
+
+```bash
+# Monitor from your workstation
+$ watch kubectl get nodes
+
+# Stop one node (not the etcd leader for faster recovery)
+$ ssh root@node2 "sudo systemctl stop rke2-server"
+```
+
+Within 30-60 seconds:
+
+- Node 2 becomes `NotReady`
+- etcd elects a new leader if needed
+- `kubectl` commands continue working via the other nodes
+
+Restore the node:
+
+```bash
+$ ssh root@node2 "sudo systemctl start rke2-server"
+```
+
+{% include alert.liquid.html type='info' title='Test Carefully' content='
+Only perform this test if you are comfortable with cluster recovery procedures.
+The cluster should handle single-node failure gracefully.
 ' %}
 
-## Troubleshooting
+## Verifying Networking and Pods
 
-### Node Won't Join
-
-```bash
-# Check connectivity
-ping -c 3 10.1.0.14
-nc -zv 10.1.0.14 9345
-
-# Verify token matches Node 4
-cat /etc/rancher/rke2/config.yaml | grep token
-
-# Check logs for errors
-sudo journalctl -u rke2-server | grep -i error
-```
-
-### etcd Issues
+### Canal Status
 
 ```bash
-# Check etcd connectivity
-nc -zv 10.1.0.14 2380
-
-# Check etcd logs
-sudo journalctl -u rke2-server | grep etcd
+$ kubectl get pods -n kube-system -l k8s-app=canal -o wide
 ```
 
-### Certificate Issues
+Should show one Canal pod per node, all Running.
+
+### System Pods
 
 ```bash
-# Verify certificates exist
-ls -la /var/lib/rancher/rke2/server/tls/
-
-# Check CA certificate
-openssl x509 -in /var/lib/rancher/rke2/server/tls/server-ca.crt -text -noout | head -20
+$ kubectl get pods -n kube-system -o wide
 ```
 
-In the next lesson, we'll migrate Node 2 to achieve full HA with 3 control plane nodes.
+Verify pods are distributed across nodes:
+
+- Canal agent on each node
+- CoreDNS replicas on different nodes
+- No pods in Pending or Error state
+
+### Resource Availability
+
+```bash
+$ kubectl top nodes
+```
+
+Check that nodes have headroom for workloads:
+
+```
+NAME    CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
+node2   150m         3%     1200Mi          15%
+node3   140m         3%     1150Mi          14%
+node4   160m         4%     1250Mi          16%
+```
+
+## Verification Checklist
+
+### etcd
+
+- [ ] 3 members listed and started
+- [ ] All endpoints healthy
+- [ ] One leader elected
+
+### Control Plane
+
+- [ ] API server accessible on all 3 nodes
+- [ ] Controller manager lease held
+- [ ] Scheduler lease held
+
+### Networking
+
+- [ ] Canal running on all nodes
+- [ ] All Canal pods show Running
+
+### Resources
+
+- [ ] All nodes Ready
+- [ ] No pods in error state
+- [ ] Sufficient CPU/memory headroom
+
+With verification complete, the cluster is ready for storage setup and workload migration.

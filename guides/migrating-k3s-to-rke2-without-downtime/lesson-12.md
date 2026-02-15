@@ -1,197 +1,25 @@
 ---
 layout: guide-lesson.liquid
-title: "Critical 2-Node Transition: Draining Node 3"
+title: Migrating Node 2 to Cluster B
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 3
 guide_lesson_id: 12
 guide_lesson_abstract: >
-  Execute the critical drain of Node 3 from the k3s cluster, managing the 2-node transition with care.
+  Migrate Node 2 from Cluster A to Cluster B, achieving high availability with 3 control plane nodes and etcd quorum.
 guide_lesson_conclusion: >
-  Node 3 has been safely drained and removed from Cluster A, with workloads redistributed to remaining nodes.
+  Node 2 has joined Cluster B as the third control plane node, achieving full high availability with etcd quorum tolerance.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-12.md
 ---
 
-This lesson covers the critical 2-node transition phase.
-We will drain Node 3 from Cluster A and prepare it for migration to Cluster B.
+The process for migrating Node 2 is identical to Node 3 — backup, drain, reinstall, join.
+This lesson focuses on what's different: the impact on Cluster A capacity, and the significance of reaching 3 control plane nodes for etcd quorum.
+Refer to [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11) for detailed explanations of each step.
 
 {% include guide-overview-link.liquid.html %}
 
-{% include alert.liquid.html type='warning' title='Critical Phase' content='
-This is a high-risk operation.
-Ensure you have completed all preparation steps from the previous lesson before proceeding.
-' %}
-
-## Understanding the Drain Process
-
-When draining a node, Kubernetes performs three steps:
-
-1. **Cordon** - marks the node as unschedulable so no new pods land on it
-2. **Evict** - sends termination signals to all pods, respecting Pod Disruption Budgets
-3. **Reschedule** - controllers recreate evicted pods on remaining nodes
-
-```mermaid!
-flowchart LR
-  subgraph before["Before Drain"]
-    direction TB
-    B1["🧠 Node 1<br/>[P1][P4]"]
-    B2["⚙️ Node 2<br/>[P2][P5]"]
-    B3["⚙️ Node 3<br/>[P3][P6]"]
-  end
-
-  subgraph after["After Drain"]
-    direction TB
-    A1["🧠 Node 1<br/>[P1][P4]"]
-    A2["⚙️ Node 2<br/>[P2][P3][P5][P6]"]
-    A3["❌ Node 3<br/><small>Empty</small>"]
-  end
-
-  before -->|"drain"| after
-
-  classDef cp fill:#2563eb,color:#fff,stroke:#1e40af
-  classDef worker fill:#16a34a,color:#fff,stroke:#166534
-  classDef drained fill:#9ca3af,color:#fff,stroke:#6b7280
-
-  class B1,A1 cp
-  class B2,B3,A2 worker
-  class A3 drained
-```
-
-DaemonSet pods are a special case.
-The `--ignore-daemonsets` flag tells the drain to skip them since they're meant to run on every node and will be cleaned up when the node is removed.
-
-## Pre-Drain Verification
-
-```bash
-export KUBECONFIG=/path/to/cluster-a-kubeconfig
-
-# Verify all nodes are Ready
-kubectl get nodes
-
-# Check for problematic pods (should be empty or only show Completed jobs)
-kubectl get pods -A | grep -v Running | grep -v Completed
-
-# Verify PDBs won't block the drain
-kubectl get pdb -A
-```
-
-## Executing the Drain
-
-### Cordon the Node
-
-Mark Node 3 as unschedulable:
-
-```bash
-kubectl cordon node3
-kubectl get nodes
-```
-
-Expected output shows `SchedulingDisabled`:
-
-```
-NAME    STATUS                     ROLES    AGE   VERSION
-node1   Ready                      master   30d   v1.28.5+k3s1
-node2   Ready                      <none>   30d   v1.28.5+k3s1
-node3   Ready,SchedulingDisabled   <none>   30d   v1.28.5+k3s1
-```
-
-### Monitor the Drain
-
-In a separate terminal, watch for pod transitions:
-
-```bash
-watch -n 2 'kubectl get pods -A -o wide | grep -E "node3|Terminating|Pending|ContainerCreating"'
-```
-
-### Drain the Node
-
-```bash
-kubectl drain node3 \
-  --ignore-daemonsets \
-  --delete-emptydir-data \
-  --grace-period=300 \
-  --timeout=600s
-```
-
-| Flag                     | Purpose                                                |
-| ------------------------ | ------------------------------------------------------ |
-| `--ignore-daemonsets`    | Skip DaemonSet pods (they'll be removed with the node) |
-| `--delete-emptydir-data` | Allow eviction of pods using emptyDir volumes          |
-| `--grace-period=300`     | Give pods 5 minutes to shut down gracefully            |
-| `--timeout=600s`         | Fail if drain doesn't complete in 10 minutes           |
-
-### Handling Blocked Drains
-
-**PDB blocking eviction:**
-
-```bash
-# Check which PDB is blocking
-kubectl get pdb -A
-
-# If safe, temporarily reduce the minimum (restore after drain!)
-kubectl patch pdb <name> -n <namespace> -p '{"spec":{"minAvailable":0}}'
-```
-
-**Stuck terminating pods:**
-
-```bash
-# Find stuck pods
-kubectl get pods -A --field-selector spec.nodeName=node3 | grep Terminating
-
-# Force delete if necessary (may lose in-flight data)
-kubectl delete pod <pod-name> -n <namespace> --grace-period=0 --force
-```
-
-**Local storage preventing eviction:**
-
-Pods with hostPath or local-path-provisioner volumes may block the drain.
-Back up any important data, then use `--force` or delete the pod manually.
-
-## Removing Node 3
-
-### Verify Drain Success
-
-```bash
-# Should show only DaemonSet pods or be empty
-kubectl get pods -A -o wide --field-selector spec.nodeName=node3
-
-# Verify workloads are running elsewhere
-kubectl get pods -A | grep -v Running | grep -v Completed
-```
-
-### Delete from Cluster
-
-```bash
-kubectl delete node node3
-kubectl get nodes
-```
-
-### Stop k3s on Node 3
-
-```bash
-ssh root@node3
-
-sudo systemctl stop k3s-agent
-sudo systemctl disable k3s-agent
-```
-
-## Verification
-
-### Cluster A Stability
-
-```bash
-# Check remaining nodes
-kubectl get nodes
-
-# Verify all pods are running
-kubectl get pods -A | grep -v Running | grep -v Completed
-
-# Check resource pressure
-kubectl top nodes
-```
-
-### Current State
+## Current State
 
 ```mermaid!
 flowchart LR
@@ -200,38 +28,258 @@ flowchart LR
     A2["⚙️ Node 2"]
   end
 
-  N3["Node 3<br/><small>drained, stopped</small>"]
-
   subgraph B["Cluster B · RKE2"]
+    B3["🧠 Node 3"]
+    B4["🧠 Node 4"]
+  end
+
+  A2 -.->|"migrating"| B
+
+  classDef clusterA fill:#2563eb,color:#fff,stroke:#1e40af
+  classDef clusterB fill:#16a34a,color:#fff,stroke:#166534
+
+  class A clusterA
+  class B clusterB
+```
+
+This migration reduces Cluster A to a single node temporarily, but completes Cluster B's HA setup.
+
+## Understanding etcd Quorum
+
+etcd uses the Raft consensus algorithm, which requires a majority of nodes to agree on any change.
+This majority is called quorum.
+
+| Nodes | Quorum Needed | Can Lose | HA Status |
+| ----- | ------------- | -------- | --------- |
+| 1     | 1             | 0        | None      |
+| 2     | 2             | 0        | None      |
+| 3     | 2             | 1        | HA        |
+| 5     | 3             | 2        | Better HA |
+
+With 2 nodes, losing either one breaks quorum.
+With 3 nodes, the cluster continues operating if one node fails.
+This is why achieving 3 control planes is a critical milestone.
+
+## Draining Node 2 from Cluster A
+
+### Backup
+
+Create an etcd snapshot before making changes:
+
+```bash
+# On Node 1
+$ ssh root@node1
+$ sudo k3s etcd-snapshot save --name pre-node2-migration-$(date +%Y%m%d-%H%M%S)
+```
+
+### Drain and Remove
+
+```bash
+$ export KUBECONFIG=/path/to/cluster-a-kubeconfig
+
+$ kubectl cordon node2
+$ kubectl drain node2 \
+  --ignore-daemonsets \
+  --delete-emptydir-data \
+  --grace-period=300 \
+  --timeout=600s
+
+$ kubectl delete node node2
+
+$ ssh root@node2 "sudo systemctl stop k3s-agent && sudo systemctl disable k3s-agent"
+```
+
+{% include alert.liquid.html type='warning' title='Single Point of Failure' content='
+Cluster A is now running on Node 1 only.
+Any issue with Node 1 will cause complete cluster failure.
+Proceed with Node 2 installation promptly.
+' %}
+
+## Installing RKE2 on Node 2
+
+### Prepare the OS
+
+1. Install Rocky Linux 10 ([Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5))
+2. Configure dual-stack networking with `10.1.0.12` and `fd00::12` ([Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6))
+3. Configure firewall ([Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7))
+
+### Install and Configure RKE2
+
+```bash
+$ sudo hostnamectl set-hostname node2
+
+$ curl -sfL https://get.rke2.io | sudo sh -
+$ sudo systemctl enable rke2-server.service
+```
+
+Create the configuration using the same multi-file layout as Node 3 ([Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11)), replacing the node-specific addresses:
+
+```bash
+$ sudo mkdir -p /etc/rancher/rke2/config.yaml.d
+```
+
+```yaml
+# /etc/rancher/rke2/config.yaml.d/00-join.yaml
+
+server: https://10.1.0.14:9345
+token: <paste-token-from-node4>
+```
+
+```yaml
+# /etc/rancher/rke2/config.yaml.d/10-network.yaml
+
+cni: canal
+
+node-ip: 10.1.0.12,fd00::12
+node-external-ip:
+  - 65.109.XX.XX
+  - 2a01:4f9:XX:XX::2
+advertise-address: 10.1.0.12
+bind-address: 10.1.0.12
+
+cluster-cidr: 10.42.0.0/16,fd00:42::/56
+service-cidr: 10.43.0.0/16,fd00:43::/112
+cluster-dns: 10.43.0.10
+```
+
+```yaml
+# /etc/rancher/rke2/config.yaml.d/20-external-access.yaml
+
+tls-san:
+  - node2
+  - node2.k8s.local
+  - 10.1.0.12
+  - fd00::12
+  - cluster.yourdomain.com
+
+write-kubeconfig-mode: "0644"
+```
+
+```yaml
+# /etc/rancher/rke2/config.yaml.d/30-security.yaml
+
+secrets-encryption: true
+
+disable:
+  - rke2-ingress-nginx
+
+etcd-snapshot-schedule-cron: "0 */6 * * *"
+etcd-snapshot-retention: 5
+```
+
+### Start RKE2
+
+```bash
+$ sudo systemctl start rke2-server.service
+$ sudo journalctl -u rke2-server -f
+```
+
+When Node 2 starts, several things happen in sequence.
+The node contacts Node 4's supervisor API on port `9345` and retrieves cluster certificates.
+It then joins the etcd cluster as the third member — bringing the cluster to quorum tolerance for the first time.
+Canal deploys automatically and establishes WireGuard tunnels to both Node 3 and Node 4.
+
+Unlike the Node 3 join, there should be no WireGuard/VXLAN mismatch here because all existing nodes are already running the WireGuard backend.
+If you do see "no route to host" errors, restart the Canal DaemonSet as described in [Lesson 11's troubleshooting section](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11#wireguard--vxlan-backend-mismatch).
+
+## Verification
+
+### Configure kubectl
+
+```bash
+$ mkdir -p ~/.kube
+$ sudo cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
+$ sudo chown $(id -u):$(id -g) ~/.kube/config
+$ echo 'export PATH=$PATH:/var/lib/rancher/rke2/bin' >> ~/.bashrc
+$ export PATH=$PATH:/var/lib/rancher/rke2/bin
+```
+
+### Check 3-Node Control Plane
+
+```bash
+$ kubectl get nodes -o wide
+```
+
+Expected output:
+
+```
+NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
+node2   Ready    control-plane,etcd,master   2m    v1.31.x+rke2r1   10.1.0.12,fd00::12
+node3   Ready    control-plane,etcd,master   2h    v1.31.x+rke2r1   10.1.0.13,fd00::13
+node4   Ready    control-plane,etcd,master   4h    v1.31.x+rke2r1   10.1.0.14,fd00::14
+```
+
+### Verify etcd HA
+
+```bash
+$ sudo /var/lib/rancher/rke2/bin/etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/var/lib/rancher/rke2/server/tls/etcd/server-ca.crt \
+  --cert=/var/lib/rancher/rke2/server/tls/etcd/server-client.crt \
+  --key=/var/lib/rancher/rke2/server/tls/etcd/server-client.key \
+  member list
+```
+
+Should show 3 members:
+
+```
+xxxx, started, node2-xxxx, https://10.1.0.12:2380, https://10.1.0.12:2379, false
+yyyy, started, node3-xxxx, https://10.1.0.13:2380, https://10.1.0.13:2379, false
+zzzz, started, node4-xxxx, https://10.1.0.14:2380, https://10.1.0.14:2379, true
+```
+
+Check cluster health:
+
+```bash
+$ sudo /var/lib/rancher/rke2/bin/etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/var/lib/rancher/rke2/server/tls/etcd/server-ca.crt \
+  --cert=/var/lib/rancher/rke2/server/tls/etcd/server-client.crt \
+  --key=/var/lib/rancher/rke2/server/tls/etcd/server-client.key \
+  endpoint health --cluster
+```
+
+All 3 endpoints should be healthy, with one showing as leader.
+
+### Verify Canal and WireGuard
+
+```bash
+$ kubectl get pods -n kube-system -l k8s-app=canal -o wide
+```
+
+Should show 3 Canal pods, one per node, all `2/2` Ready.
+
+Verify the WireGuard mesh is complete:
+
+```bash
+$ wg show flannel-wg
+```
+
+Node 2 should show two peers (Node 3 and Node 4), each with a recent handshake and an `allowed ips` entry for their pod subnet.
+With 3 nodes, the WireGuard mesh forms a full triangle — each node maintains a direct encrypted tunnel to every other node.
+
+## Current State
+
+```mermaid!
+flowchart LR
+  subgraph A["Cluster A · k3s"]
+    A1["🧠 Node 1<br/><small>all workloads</small>"]
+  end
+
+  subgraph B["Cluster B · RKE2 ✓ HA"]
+    B2["🧠 Node 2"]
+    B3["🧠 Node 3"]
     B4["🧠 Node 4"]
   end
 
   classDef clusterA fill:#2563eb,color:#fff,stroke:#1e40af
   classDef clusterB fill:#16a34a,color:#fff,stroke:#166534
-  classDef drained fill:#9ca3af,color:#fff,stroke:#6b7280
 
   class A clusterA
   class B clusterB
-  class N3 drained
 ```
 
-## Rollback Procedure
+Cluster B now has 3 control plane nodes with full HA.
+The cluster can tolerate one node failure while maintaining quorum.
 
-If issues arise and you need Node 3 back in Cluster A:
-
-```bash
-# On Node 3
-ssh root@node3
-sudo systemctl start k3s-agent
-
-# On your workstation (may need to wait for node to rejoin)
-kubectl get nodes
-kubectl uncordon node3
-```
-
-{% include alert.liquid.html type='info' title='Proceed Promptly' content='
-With Node 3 drained, Cluster A is running at reduced capacity.
-Proceed with the OS installation without unnecessary delay.
-' %}
-
-In the next lesson, we'll install Rocky Linux 10 and RKE2 on Node 3, joining it to Cluster B as the second control plane.
+With the control plane complete, we can proceed to verify the cluster's HA capabilities in detail.

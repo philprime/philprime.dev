@@ -326,8 +326,40 @@ Waiting for daemon set "rke2-canal" rollout to finish: 0 of 1 updated pods are a
 daemon set "rke2-canal" successfully rolled out
 ```
 
-WireGuard tunnels are only established between peers, so there is nothing to verify on a single-node cluster.
-We'll confirm that WireGuard encryption is active in Lesson 11 after the second control plane node joins.
+### Installing WireGuard Tools
+
+The WireGuard kernel module is built into Rocky Linux 10's default kernel, but the `wg` userspace tool for inspecting tunnels is a separate package.
+Install it now so it's available when we verify cross-node tunnels later:
+
+```bash
+$ sudo dnf install -y wireguard-tools
+```
+
+### Verifying the Interface
+
+On a single-node cluster, WireGuard tunnels have no peers to connect to — but we can verify the interface was created and the kernel module is active:
+
+```bash
+$ ip link show | grep flannel-wg
+87: flannel-wg: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN mode DEFAULT group default
+88: flannel-wg-v6: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN mode DEFAULT group default
+
+$ wg show flannel-wg
+interface: flannel-wg
+  public key: <node-public-key>
+  private key: (hidden)
+  listening port: 51820
+```
+
+The `flannel-wg` and `flannel-wg-v6` interfaces confirm that Canal switched from VXLAN to WireGuard.
+The `wg show` output should list the interface with a public key and listening port, but no peers yet.
+Peers will appear automatically as additional nodes join the cluster in [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11).
+
+{% include alert.liquid.html type='warning' title='Missing flannel-wg Interface' content='
+If `ip link show` still shows `flannel.1` (VXLAN) instead of `flannel-wg`, the Canal DaemonSet did not fully pick up the new backend.
+Run `kubectl rollout restart ds rke2-canal -n kube-system` again and wait for the rollout to complete.
+Verify the old VXLAN interfaces are gone before adding new nodes — a backend mismatch between nodes will prevent cross-node pod traffic.
+' %}
 
 ## Network Policies
 

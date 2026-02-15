@@ -13,17 +13,13 @@ guide_section_cta: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/section-3.md
 ---
 
-This section covers the most critical phase of the migration: moving nodes from the k3s cluster to RKE2. You will
-learn how to safely drain nodes, handle the 2-node transition phase, and build a highly available 3-node control
-plane on the new cluster.
+This section covers the most critical phase of the migration: moving nodes from the k3s cluster to RKE2.
+Each node follows the same pattern — analyze workloads, create backups, drain, reinstall the OS, and join RKE2.
 
 ## Topics Covered
 
-- Preparing nodes for migration with proper cordoning and draining
-- Navigating the critical 2-node transition phase
-- Installing Rocky Linux and RKE2 on migrated nodes
-- Joining nodes to the RKE2 cluster as control plane members
-- Verifying etcd cluster health and HA status
+- Draining nodes from Cluster A and joining them to Cluster B as RKE2 control plane members
+- Understanding etcd quorum and why 3 nodes is the HA threshold
+- Verifying the completed control plane with failover testing
 
-By the end of this section, Cluster B (RKE2) will have a fully operational 3-node high-availability control plane,
-while Cluster A (k3s) continues to serve traffic with its remaining nodes.
+By the end of this section, Cluster B (RKE2) will have a fully operational 3-node high-availability control plane, while Cluster A (k3s) continues to serve traffic on its remaining node.
