@@ -258,6 +258,77 @@ $ wg show flannel-wg
 Node 2 should show two peers (Node 3 and Node 4), each with a recent handshake and an `allowed ips` entry for their pod subnet.
 With 3 nodes, the WireGuard mesh forms a full triangle — each node maintains a direct encrypted tunnel to every other node.
 
+## Preparing Longhorn Storage
+
+Longhorn is already running on the cluster — the `HelmChart` manifest deployed in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) handles that automatically.
+However, each new node needs system-level dependencies (iSCSI for block storage and NFSv4 for RWX volumes) before Longhorn can schedule replicas on it.
+
+Install `longhornctl` and run the preflight installer on Node 2:
+
+```bash
+$ curl -fL -o /usr/local/bin/longhornctl \
+    https://github.com/longhorn/cli/releases/download/v1.11.0/longhornctl-linux-amd64
+$ chmod +x /usr/local/bin/longhornctl
+
+$ /usr/local/bin/longhornctl --kubeconfig /etc/rancher/rke2/rke2.yaml install preflight
+```
+
+Run the preflight check to confirm all dependencies are in place:
+
+```bash
+$ /usr/local/bin/longhornctl --kubeconfig /etc/rancher/rke2/rke2.yaml check preflight
+INFO[2026-02-15T23:38:00+02:00] Initializing preflight checker
+INFO[2026-02-15T23:38:00+02:00] Cleaning up preflight checker
+INFO[2026-02-15T23:38:00+02:00] Running preflight checker
+INFO[2026-02-15T23:38:04+02:00] Retrieved preflight checker result:
+doom:
+  info:
+  - '[KubeDNS] Kube DNS "rke2-coredns-rke2-coredns" is set with 2 replicas and 2 ready replicas'
+  - '[IscsidService] Service iscsid is running'
+  - '[MultipathService] multipathd.service is not found (exit code: 4)'
+  - '[MultipathService] multipathd.socket is not found (exit code: 4)'
+  - '[NFSv4] NFS4 is supported'
+  - '[Packages] nfs-utils is installed'
+  - '[Packages] iscsi-initiator-utils is installed'
+  - '[Packages] cryptsetup is installed'
+  - '[Packages] device-mapper is installed'
+  - '[KernelModules] nfs is loaded'
+  - '[KernelModules] iscsi_tcp is loaded'
+  - '[KernelModules] dm_crypt is loaded'
+mystique:
+  info:
+  - '[KubeDNS] Kube DNS "rke2-coredns-rke2-coredns" is set with 2 replicas and 2 ready replicas'
+  - '[IscsidService] Service iscsid is running'
+  - '[MultipathService] multipathd.service is not found (exit code: 4)'
+  - '[MultipathService] multipathd.socket is not found (exit code: 4)'
+  - '[NFSv4] NFS4 is supported'
+  - '[Packages] nfs-utils is installed'
+  - '[Packages] iscsi-initiator-utils is installed'
+  - '[Packages] cryptsetup is installed'
+  - '[Packages] device-mapper is installed'
+  - '[KernelModules] nfs is loaded'
+  - '[KernelModules] iscsi_tcp is loaded'
+  - '[KernelModules] dm_crypt is loaded'
+INFO[2026-02-15T23:38:04+02:00] Cleaning up preflight checker
+INFO[2026-02-15T23:38:04+02:00] Completed preflight checker
+```
+
+The check should report no errors.
+See [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) for a detailed walkthrough of what each dependency does and how to troubleshoot failures.
+
+Once the preflight passes, verify that Longhorn recognizes Node 2 as schedulable:
+
+```bash
+$ kubectl get nodes.longhorn.io -n longhorn-system
+NAME    READY   ALLOWSCHEDULING   SCHEDULABLE   AGE
+node2   True    true              True          2m
+node3   True    true              True          2h
+node4   True    true              True          4h
+```
+
+With a third storage node available, Longhorn can now maintain 2 replicas of each volume across different nodes.
+If you set `defaultReplicaCount` to `1` during initial setup, consider increasing it to `2` now that multiple nodes are available.
+
 ## Current State
 
 ```mermaid!
