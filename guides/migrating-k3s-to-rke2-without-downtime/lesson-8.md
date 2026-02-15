@@ -274,8 +274,12 @@ spec:
       # This must use additionalArguments because the Helm chart's native redirect
       # validates against entrypoint names, and redirecting to "websecure" would
       # produce Location headers with port 8443 instead of 443.
-      - "--entrypoints.web.http.redirections.entryPoint.to=:443"
-      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      #
+      # While it is best practice to disallow HTTP entirely and only listen on HTTPS, some
+      # we need HTTP support for cert-manager's HTTP-01 challenge, which requires responding
+      # to HTTP requests on port 80.
+      # - "--entrypoints.web.http.redirections.entryPoint.to=:443"
+      # - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
 ```
 
 The key settings control scheduling and network exposure:
