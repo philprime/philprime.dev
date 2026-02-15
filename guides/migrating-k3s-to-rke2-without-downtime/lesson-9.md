@@ -320,10 +320,10 @@ The token contains claims that describe the context of the workflow — which re
 
 We map these claims to Kubernetes identity as follows:
 
-- **Username**: `github-actions:<repository>` — gives each repository its own identity for audit trails
+- **Username**: `github-actions:repo:<repository>` — gives each repository its own identity for audit trails
 - **Groups**: `github-actions` (broad group for all GitHub Actions) and `github-actions:<repository_owner>` (organization-level group for RBAC bindings)
 
-This means a deployment from `kula-app/my-project` authenticates as user `github-actions:kula-app/my-project` in groups `github-actions` and `github-actions:kula-app`.
+This means a deployment from `kula-app/my-project` authenticates as user `github-actions:repo:kula-app/my-project` in groups `github-actions` and `github-actions:kula-app`. The URN-like format (`github-actions:repo:org/name`) makes the identity self-describing and consistent with GitHub's own `sub` claim structure.
 RBAC bindings target the organization group, so adding a new repository to the organization automatically grants it the same permissions without touching any cluster configuration.
 
 ## Configuring the Authentication
@@ -348,10 +348,10 @@ jwt:
   - issuer:
       url: https://token.actions.githubusercontent.com
       audiences:
-        - prod-hel1-2.k8s.kula.app
+        - api://prod-hel1-2.k8s.kula.app
     claimMappings:
       username:
-        expression: "'github-actions:' + claims.repository"
+        expression: "'github-actions:repo:' + claims.repository"
       groups:
         expression: "['github-actions', 'github-actions:' + claims.repository_owner]"
     claimValidationRules:
@@ -362,10 +362,10 @@ jwt:
 Replace `<your-github-org>` with your actual GitHub organization name (for example, `kula-app`).
 
 The `issuer.url` must exactly match the `iss` claim in GitHub's OIDC tokens.
-The `audiences` list defines what value the workflow must request as the token's `aud` claim — we use `prod-hel1-2.k8s.kula.app` as a custom audience that identifies this specific cluster.
+The `audiences` list defines what value the workflow must request as the token's `aud` claim — we use `api://prod-hel1-2.k8s.kula.app` as a custom audience that identifies this specific cluster. The `api://` scheme follows the convention for non-web API audiences, distinguishing it from the cluster's HTTPS endpoint.
 
 The `claimMappings` section uses CEL expressions to transform token claims into Kubernetes identity.
-The `username` expression concatenates the string `github-actions:` with the repository claim, producing identities like `github-actions:kula-app/my-project`.
+The `username` expression concatenates the string `github-actions:` with the repository claim, producing identities like `github-actions:repo:kula-app/my-project`.
 The `groups` expression builds a list of two groups — one for all GitHub Actions and one scoped to the organization.
 
 The `claimValidationRules` section acts as a gatekeeper.
@@ -480,7 +480,7 @@ steps:
   - name: Get OIDC token
     id: token
     run: |
-      TOKEN=$(curl -sLS "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=prod-hel1-2.k8s.kula.app" \
+      TOKEN=$(curl -sLS "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api://prod-hel1-2.k8s.kula.app" \
         -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}")
       echo "id_token=$(echo $TOKEN | jq -r '.value')" >> "$GITHUB_OUTPUT"
 ```
@@ -523,7 +523,7 @@ Once the cluster is back, fix the configuration and re-apply.
 
 If a GitHub Actions workflow receives a `401 Unauthorized` when authenticating:
 
-- Verify the audience matches — the workflow must request `prod-hel1-2.k8s.kula.app` as the audience, matching the `audiences` list in `auth-config.yaml`
+- Verify the audience matches — the workflow must request `api://prod-hel1-2.k8s.kula.app` as the audience, matching the `audiences` list in `auth-config.yaml`
 - Check the issuer URL — must be exactly `https://token.actions.githubusercontent.com` with no trailing slash
 - Review the claim validation rules — if `repository_owner` does not match, the token is rejected with the configured error message
 - Inspect the API server logs for detailed rejection reasons: `sudo journalctl -u rke2-server | grep -i oidc`
@@ -534,4 +534,4 @@ If an authenticated request receives `403 Forbidden`:
 
 - Verify the bootstrap ClusterRoleBinding exists: `kubectl get clusterrolebinding rbac-manager-admin -o yaml`
 - For application repositories, check that the RBAC pipeline has created the expected RoleBindings: `kubectl get rolebindings -A -l managed-by=rbac-manager`
-- Use `kubectl auth can-i` to test permissions for a specific identity: `kubectl auth can-i create deployments --as="github:repo:kula-app/my-repo:ref:refs/heads/main" -n <namespace>`
+- Use `kubectl auth can-i` to test permissions for a specific identity: `kubectl auth can-i create deployments --as="github-actions:repo:kula-app/my-repo" -n <namespace>`
