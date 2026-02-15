@@ -404,6 +404,102 @@ $ etcdctl endpoint health --cluster --write-out=table
 A single-node cluster shows one endpoint.
 As we add control plane nodes in later lessons, this table will grow to three entries.
 
+## Configuring CoreDNS Upstream DNS
+
+RKE2 bundles CoreDNS as its cluster DNS service.
+By default, CoreDNS forwards external DNS queries to whatever nameservers are listed in the node's `/etc/resolv.conf`.
+This works on most systems, but tools like Tailscale, VPN clients, and NetworkManager can overwrite `/etc/resolv.conf` with addresses that are only reachable from the host network namespace—not from inside pods.
+
+On our node, Tailscale has replaced `/etc/resolv.conf` with its MagicDNS resolver at `100.100.100.100`.
+CoreDNS pods cannot reach this address because Tailscale's DNS listener binds to the host network, not the pod network.
+Internal lookups like `kubernetes.default.svc.cluster.local` still work because CoreDNS resolves those directly, but any external domain—container registries, Helm repositories, package mirrors—fails with `server misbehaving`.
+
+The fix is to override CoreDNS's upstream forwarder with explicit public DNS servers using a `HelmChartConfig` resource—the same mechanism we use for Canal in [Lesson 9](/guides/migrating-k3s-to-rke2-without-downtime/lesson-9).
+
+Create the manifest at `/var/lib/rancher/rke2/server/manifests/rke2-coredns-config.yaml`:
+
+```yaml
+# /var/lib/rancher/rke2/server/manifests/rke2-coredns-config.yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: rke2-coredns
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    servers:
+    - zones:
+      - zone: .
+      port: 53
+      plugins:
+      - name: errors
+      - name: health
+        configBlock: |-
+          lameduck 5s
+      - name: ready
+      - name: kubernetes
+        parameters: cluster.local in-addr.arpa ip6.arpa
+        configBlock: |-
+          pods insecure
+          fallthrough in-addr.arpa ip6.arpa
+          ttl 30
+      - name: prometheus
+        parameters: 0.0.0.0:9153
+      - name: forward
+        parameters: . 8.8.8.8 1.1.1.1
+      - name: cache
+        parameters: 30
+      - name: loop
+      - name: reload
+      - name: loadbalance
+```
+
+The critical change is `forward . 8.8.8.8 1.1.1.1` which replaces the default `forward . /etc/resolv.conf`.
+CoreDNS queries Google DNS and Cloudflare DNS directly, bypassing whatever the host's resolv.conf contains.
+
+RKE2 detects the new manifest and upgrades the CoreDNS Helm release automatically.
+Restart the deployment to apply the change:
+
+```bash
+$ kubectl rollout restart deployment rke2-coredns-rke2-coredns -n kube-system
+$ kubectl rollout status deployment rke2-coredns-rke2-coredns -n kube-system --timeout=60s
+daemon set "rke2-coredns-rke2-coredns" successfully rolled out
+```
+
+Verify that external DNS resolution works from within the cluster:
+
+```bash
+$ kubectl run dns-test -n kube-system --rm -it --image=busybox:1.36 --restart=Never -- nslookup charts.longhorn.io
+Server:         10.43.0.10
+Address:        10.43.0.10:53
+
+Non-authoritative answer:
+charts.longhorn.io      canonical name = longhorn.github.io
+Name:   longhorn.github.io
+Address: 2606:50c0:8000::153
+Name:   longhorn.github.io
+Address: 2606:50c0:8001::153
+Name:   longhorn.github.io
+Address: 2606:50c0:8003::153
+Name:   longhorn.github.io
+Address: 2606:50c0:8002::153
+
+Non-authoritative answer:
+charts.longhorn.io      canonical name = longhorn.github.io
+Name:   longhorn.github.io
+Address: 185.199.110.153
+Name:   longhorn.github.io
+Address: 185.199.109.153
+Name:   longhorn.github.io
+Address: 185.199.108.153
+Name:   longhorn.github.io
+Address: 185.199.111.153
+
+pod "dns-test" deleted from kube-system namespace
+```
+
+If the lookup returns addresses, CoreDNS is forwarding correctly and the cluster can reach external services.
+
 ## Create Initial Backup
 
 Before making any further changes, back up the configuration files and take an etcd snapshot:
