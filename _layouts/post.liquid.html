@@ -26,6 +26,8 @@ layout: base.liquid
     {%- endif -%}
   </header>
 
+  {%- include series-navigation.liquid.html -%}
+
   <div class="post-content e-content" itemprop="articleBody">{{ content }}</div>
 
   <a class="u-url" href="{{ page.url | relative_url }}" hidden></a>
