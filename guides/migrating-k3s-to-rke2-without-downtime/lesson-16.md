@@ -4,13 +4,13 @@ title: Migration Complete
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
-guide_section_id: 5
-guide_lesson_id: 25
+guide_section_id: 4
+guide_lesson_id: 16
 guide_lesson_abstract: >
   Review the completed cluster architecture and explore what to build next on the new RKE2 platform.
 guide_lesson_conclusion: >
   The migration from k3s to RKE2 is complete, with a 4-node cluster running enterprise-grade Kubernetes.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-25.md
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-16.md
 ---
 
 The migration is done.

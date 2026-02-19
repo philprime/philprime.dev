@@ -4,13 +4,13 @@ title: Adding Node 1 as a Worker
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
-guide_section_id: 5
-guide_lesson_id: 24
+guide_section_id: 4
+guide_lesson_id: 15
 guide_lesson_abstract: >
   Install Rocky Linux 10 on Node 1 and join it to Cluster B as a dedicated worker node, completing the 4-node cluster.
 guide_lesson_conclusion: >
   Node 1 has joined Cluster B as a worker node, giving the cluster dedicated workload capacity alongside three control plane nodes.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-24.md
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-15.md
 ---
 
 Node 1 follows the same OS preparation as the previous node migrations — install Rocky Linux, configure networking, set up the firewall.

@@ -1,30 +1,23 @@
 ---
 layout: guide-section.liquid
-title: Workload Migration and Cutover
+title: Completing the Migration
 
 guide_component: section
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 4
 guide_section_abstract: >
-  Export workloads from the k3s cluster, set up storage and ingress on RKE2, migrate persistent volumes, and
-  perform the traffic cutover to complete the migration.
+  Decommission the k3s cluster, add Node 1 as an RKE2 worker, and finalize the 4-node cluster.
 guide_section_cta: >
-  learn how to migrate workloads and switch traffic to the new cluster.
+  learn how to decommission the old cluster and complete the migration.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/section-4.md
 ---
 
-This section covers the migration of your actual workloads from Cluster A (k3s) to Cluster B (RKE2). You will export
-manifests, set up storage classes, configure high-availability ingress, migrate persistent data, and perform the
-final DNS cutover.
+With Cluster B running a 3-node HA control plane and all workloads migrated, this section covers the final steps: safely removing the k3s cluster, adding its former node as an RKE2 worker, and reviewing the completed architecture.
 
 ## Topics Covered
 
-- Exporting workload manifests from the k3s cluster
-- Setting up Longhorn and local-path-provisioner storage classes
-- Configuring Traefik DaemonSet with Hetzner Cloud Load Balancer for HA ingress
-- Migrating persistent volumes and data
-- Deploying workloads to the new cluster
-- Performing DNS cutover and traffic switching
+- Decommissioning Cluster A and uninstalling k3s from Node 1
+- Installing Rocky Linux and joining Node 1 as a dedicated worker node
+- Reviewing the final cluster architecture and exploring next steps
 
-By the end of this section, all your workloads will be running on Cluster B with traffic flowing through the new
-ingress infrastructure.
+By the end of this section, the migration is complete — a 4-node RKE2 cluster with 3 control plane nodes and 1 worker node, fully replacing the original k3s cluster.
