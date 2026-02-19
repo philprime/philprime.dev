@@ -388,7 +388,8 @@ $ sudo dnf install -y \
     unzip \
     net-tools \
     bind-utils \
-    jq
+    jq \
+    wireguard-tools
 ```
 
 ### Optional: Tailscale
@@ -601,6 +602,20 @@ etcd-snapshot-schedule-cron: "0 */6 * * *"
 etcd-snapshot-retention: 5
 ```
 
+Each control plane node runs its own kube-apiserver, so the authentication configuration from [Lesson 9](/guides/migrating-k3s-to-rke2-without-downtime/lesson-9) must also be present.
+Copy `auth-config.yaml` from Node 4 and create the corresponding RKE2 config file:
+
+```bash
+# Copy the AuthenticationConfiguration from Node 4
+$ sudo scp node4:/etc/rancher/rke2/auth-config.yaml /etc/rancher/rke2/auth-config.yaml
+```
+
+```yaml
+# /etc/rancher/rke2/config.yaml.d/40-authentication.yaml
+kube-apiserver-arg:
+  - "authentication-config=/etc/rancher/rke2/auth-config.yaml"
+```
+
 {% include alert.liquid.html type='warning' title='Critical Configuration Must Match' content='
 The `cluster-cidr`, `service-cidr`, and `cluster-dns` values must match Node 4 exactly.
 RKE2 validates these on join and will refuse to start with: `failed to validate server configuration: critical configuration value mismatch`.
@@ -648,8 +663,8 @@ On the old node (Node 4), use the already installed `etcdctl` to verify that Nod
 
 ```bash
 $ sudo etcdctl member list
-54c89a02620017ab, started, doom-140709e8, https://10.1.0.14:2380, https://10.1.0.14:2379, false
-d1f9e4d777d20b26, started, mystique-39657d9b, https://10.1.0.13:2380, https://10.1.0.13:2379, false
+xxxx, started, node4-xxxx, https://10.1.0.14:2380, https://10.1.0.14:2379, false
+yyyy, started, node3-xxxx, https://10.1.0.13:2380, https://10.1.0.13:2379, false
 ```
 
 ### Check Canal and WireGuard
@@ -659,22 +674,22 @@ Canal automatically deploys to new nodes:
 ```bash
 $ kubectl get pods -n kube-system -l k8s-app=canal -o wide
 NAME               READY   STATUS    RESTARTS   AGE     IP          NODE       NOMINATED NODE   READINESS GATES
-rke2-canal-6qrrc   2/2     Running   0          7m45s   10.1.0.14   doom       <none>           <none>
-rke2-canal-ntzcl   2/2     Running   0          7m41s   10.1.0.13   mystique   <none>           <none>
+rke2-canal-6qrrc   2/2     Running   0          7m45s   10.1.0.14   node4   <none>           <none>
+rke2-canal-ntzcl   2/2     Running   0          7m41s   10.1.0.13   node3   <none>           <none>
 ```
 
 This is the first time we can verify that WireGuard tunnels actually work — until now, Node 4 had no peers.
 Check that both nodes see each other as WireGuard peers with a recent handshake:
 
 ```bash
-$ wg show flannel-wg
+$ sudo wg show flannel-wg
 interface: flannel-wg
-  public key: sfTiDoP99BbyAHkjDnwrOJ1XyM5Anbk+df5+ZvflBjQ=
+  public key: <node3-public-key>
   private key: (hidden)
   listening port: 51820
 
-peer: zfubqVPk+PTH7odctO8Y83xRGZRTsCoZt4yGbv7OuD0=
-  endpoint: 135.181.1.252:51820
+peer: <node4-public-key>
+  endpoint: 135.181.XX.XX:51820
   allowed ips: 10.42.0.0/24
   latest handshake: 1 minute, 47 seconds ago
   transfer: 727.82 KiB received, 615.54 KiB sent

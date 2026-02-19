@@ -304,7 +304,7 @@ Confirm that Traefik has one pod per node:
 ```bash
 $ kubectl get pods -n kube-system -l app.kubernetes.io/name=traefik -o wide
 NAME            READY   STATUS    RESTARTS   AGE   IP           NODE   NOMINATED NODE   READINESS GATES
-traefik-msgqz   1/1     Running   0          40s   10.42.0.50   doom   <none>           <none>
+traefik-msgqz   1/1     Running   0          40s   10.42.0.50   node4   <none>           <none>
 ```
 
 Also verify the NodePort service is exposing the expected ports:
