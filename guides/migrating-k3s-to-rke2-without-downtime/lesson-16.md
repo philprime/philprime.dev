@@ -7,14 +7,15 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 4
 guide_lesson_id: 16
 guide_lesson_abstract: >
-  Review the completed cluster architecture and explore what to build next on the new RKE2 platform.
+  The migration from k3s to RKE2 is complete.
+  This lesson reviews the final cluster architecture and outlines directions for hardening, automating, and extending the new platform.
 guide_lesson_conclusion: >
   The migration from k3s to RKE2 is complete, with a 4-node cluster running enterprise-grade Kubernetes.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-16.md
 ---
 
-The migration is done.
-What started as a single k3s cluster has become a 4-node RKE2 cluster with a highly available control plane, encrypted pod networking, and replicated storage — all without taking the old cluster offline until the new one was ready to serve traffic.
+With Node 1 added as a worker in the previous lesson, the full 4-node RKE2 cluster is operational.
+What started as a single k3s cluster has become a highly available control plane with encrypted pod networking and replicated storage — all without taking the old cluster offline until the new one was ready to serve traffic.
 
 {% include guide-overview-link.liquid.html %}
 
@@ -68,14 +69,14 @@ With the cluster running, there are several directions to take it further.
 ### Monitoring and Observability
 
 The cluster currently has no visibility into resource usage, pod health trends, or alerting.
-Setting up Prometheus and Grafana — either through the Rancher Monitoring stack or a standalone kube-prometheus-stack Helm chart — gives you dashboards for cluster health, resource consumption, and application metrics.
-Pair this with Alertmanager to get notified before problems become outages.
+Setting up Prometheus and Grafana — either through the Rancher Monitoring stack or a standalone kube-prometheus-stack Helm chart — provides dashboards for cluster health, resource consumption, and application metrics.
+Pairing this with Alertmanager means we get notified before problems become outages.
 
 ### GitOps
 
 Deploying workloads manually with `kubectl apply` works for getting started, but does not scale.
 A GitOps tool like Flux or ArgoCD watches a Git repository and automatically reconciles the cluster state to match.
-This turns your Git repository into the single source of truth for what runs on the cluster, with full audit trails and easy rollbacks.
+This turns our Git repository into the single source of truth for what runs on the cluster, with full audit trails and easy rollbacks.
 
 ### Automated Upgrades
 
@@ -84,11 +85,11 @@ The [System Upgrade Controller](https://docs.rke2.io/upgrade/automated_upgrade) 
 
 ### Backup Strategy
 
-etcd snapshots are configured to run every 6 hours (from Lesson 5), but a complete backup strategy should also cover Longhorn volumes and application data.
-Velero can snapshot both Kubernetes resources and persistent volumes to an external object store like S3, giving you disaster recovery across the entire cluster state.
+We configured etcd snapshots to run every 6 hours in Lesson 5, but a complete backup strategy should also cover Longhorn volumes and application data.
+Velero can snapshot both Kubernetes resources and persistent volumes to an external object store like S3, providing disaster recovery across the entire cluster state.
 
 ## More Guides
 
-If you are interested in building Kubernetes clusters from the ground up, check out [Building a production-ready Kubernetes cluster from scratch](/guides/building-a-production-ready-kubernetes-cluster-from-scratch) — a companion guide that walks through assembling a Raspberry Pi cluster, from hardware to a fully operational Kubernetes environment.
+For those interested in building Kubernetes clusters from the ground up, [Building a production-ready Kubernetes cluster from scratch](/guides/building-a-production-ready-kubernetes-cluster-from-scratch) is a companion guide that walks through assembling a Raspberry Pi cluster, from hardware to a fully operational Kubernetes environment.
 
 For the backstory on how this migration started, [New K3s agent node for our cluster](/2025-11-23-new-k3s-agent-node) covers the original k3s expansion that eventually led to the decision to move to RKE2.

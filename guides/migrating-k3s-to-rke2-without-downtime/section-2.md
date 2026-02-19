@@ -13,9 +13,8 @@ guide_section_cta: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/section-2.md
 ---
 
-This section covers the preparation of the new cluster environment. You will install Rocky Linux 10 on the first new
-node (Node 4), configure the Hetzner vSwitch networking, set up firewalld for Kubernetes, and bootstrap the initial
-RKE2 control plane with Canal as the CNI plugin.
+This section covers the preparation of the new cluster environment.
+You will install Rocky Linux 10 on the first new node (Node 4), configure the Hetzner vSwitch networking, set up firewalld for Kubernetes, and bootstrap the initial RKE2 control plane with Canal as the CNI plugin.
 
 ## Topics Covered
 
@@ -24,5 +23,4 @@ RKE2 control plane with Canal as the CNI plugin.
 - Configuring firewalld for RKE2 and Canal traffic
 - Installing and configuring the first RKE2 control plane node with Canal CNI
 
-By the end of this section, you will have a functional single-node RKE2 cluster ready to accept additional control
-plane nodes.
+The section concludes with a functional single-node RKE2 cluster ready to accept additional control plane nodes.

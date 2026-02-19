@@ -7,9 +7,11 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 5
 guide_lesson_abstract: >
-  Install and configure RKE2 as the first control plane node with dual-stack networking and security settings.
+  The first RKE2 control plane node forms the foundation of the new cluster.
+  This lesson walks through installing RKE2 on Node 4 with dual-stack networking, security hardening, and CoreDNS upstream DNS configuration.
+  It also covers etcdctl setup and verification of the running cluster.
 guide_lesson_conclusion: >
-  The first RKE2 control plane is running with dual-stack networking and Canal CNI.
+  Node 4 is running a single-node RKE2 control plane with dual-stack networking, secrets encryption, and verified etcd health.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-8.md
 ---
 
@@ -18,8 +20,8 @@ This establishes the foundation of Cluster B that will eventually replace the k3
 
 {% include guide-overview-link.liquid.html %}
 
-{% include alert.liquid.html type='warning' title='WARNING:' content='
-All commands used in this lesson require <code>sudo</code> privileges.
+{% include alert.liquid.html type='warning' title='Root Privileges Required' content='
+All commands in this lesson require <code>sudo</code> privileges.
 Either prepend <code>sudo</code> to each command or switch to the root user using <code>sudo -i</code>.
 ' %}
 
@@ -58,7 +60,8 @@ flowchart TB
     class KUB,CTD node
 ```
 
-Each RKE2 node runs as either a server (control plane) or an agent (worker), with the server embedding etcd directly:
+Each RKE2 node runs as either a server (control plane) or an agent (worker), with the server embedding etcd directly.
+The diagram above shows the components that make up a single RKE2 server node.
 
 | Component   | Description                                                    |
 | ----------- | -------------------------------------------------------------- |
@@ -69,10 +72,10 @@ Each RKE2 node runs as either a server (control plane) or an agent (worker), wit
 
 ### Security Features
 
-RKE2 includes several security features that should be configured during initial setup.
+RKE2 includes several security features that we configure during initial setup.
 
 Secrets encryption at rest protects Kubernetes secrets stored in etcd.
-Enabling this later requires re-encrypting all existing secrets, so it's best to turn it on from the start.
+Enabling this later requires re-encrypting all existing secrets, so we enable it from the start.
 
 Pod Security Standards (PSS) replace the deprecated PodSecurityPolicy and define three escalating profiles:
 
@@ -82,8 +85,8 @@ Pod Security Standards (PSS) replace the deprecated PodSecurityPolicy and define
 | baseline   | Prevents known privilege escalations                |
 | restricted | Heavily restricted, follows security best practices |
 
-You can start with `privileged` and tighten later, or start strict with `restricted`.
-For our use case we are going with `restricted` from the start to enforce security best practices.
+We go with `restricted` from the start to enforce security best practices.
+Starting strict avoids the effort of tightening policies later when workloads are already running.
 
 Network policies are enforced by the CNI plugin.
 Canal uses Calico's policy engine to provide L3-L4 network policies out of the box.
@@ -150,8 +153,8 @@ RKE2 stores its configuration, certificates, and data across several directories
 
 ### Run the Installer
 
-RKE2 provides an install script that downloads the correct binary for your architecture.
-You can explore the available options and flags in the [RKE2 installation guide](https://docs.rke2.io/install/).
+RKE2 provides an install script that downloads the correct binary for our architecture.
+The available options and flags are documented in the [RKE2 installation guide](https://docs.rke2.io/install/).
 
 ```bash
 $ curl -sfL https://get.rke2.io | sh -
@@ -253,7 +256,7 @@ systemd[1]: Started rke2-server.service - Rancher Kubernetes Engine v2 (server).
 ```
 
 The first start takes several minutes as RKE2 downloads images, initializes etcd, and generates certificates.
-Wait until you see the API server is ready:
+Wait until the log shows the API server is ready:
 
 ```bash
 rke2[108343]: time="2026-02-15T01:12:47+02:00" level=info msg="Kube API server is now running"
@@ -267,7 +270,7 @@ This token is needed when registering additional server or agent nodes to the cl
 ### Configure kubectl
 
 RKE2 generates a kubeconfig file at `/etc/rancher/rke2/rke2.yaml` and places the `kubectl` binary in `/var/lib/rancher/rke2/bin/`.
-Copy the kubeconfig to the standard location and add the binary path to your shell:
+We copy the kubeconfig to the standard location and add the binary path to our shell:
 
 ```bash
 # Create the kubeconfig directory with the correct permissions
@@ -290,7 +293,7 @@ Server Version: v1.34.3+rke2r3
 ### Install etcdctl
 
 RKE2 embeds etcd as a static pod but does not ship the `etcdctl` CLI on the host.
-We need `etcdctl` to inspect cluster health, list members, and debug issues—tasks that become essential once additional control plane nodes join.
+We need `etcdctl` to inspect cluster health, list members, and debug issues — tasks that become essential once additional control plane nodes join.
 
 Query the etcd pod image to determine the running version:
 
@@ -374,7 +377,7 @@ $ kubectl get nodes -o jsonpath='{.items[*].status.addresses}' | jq .
 ]
 ```
 
-You should see both `InternalIP` entries—one for `10.1.0.14` and one for `fd00::14`.
+We should see both `InternalIP` entries — one for `10.1.0.14` and one for `fd00::14`.
 
 Confirm the cluster CIDR configuration matches what we planned:
 
@@ -387,7 +390,7 @@ $ kubectl cluster-info dump | grep -E "cluster-cidr|service-cluster-ip-range"
                             "--cluster-cidr=10.42.0.0/16,fd00:42::/56",
 ```
 
-The output should show both IPv4 and IPv6 CIDRs for `cluster-cidr` and `service-cluster-ip-range`.
+The output shows both IPv4 and IPv6 CIDRs for `cluster-cidr` and `service-cluster-ip-range`.
 
 ### etcd Health
 
@@ -403,19 +406,19 @@ $ etcdctl endpoint health --cluster --write-out=table
 ```
 
 A single-node cluster shows one endpoint.
-As we add control plane nodes in later lessons, this table will grow to three entries.
+As we add control plane nodes in later lessons, this table grows to three entries.
 
 ## Configuring CoreDNS Upstream DNS
 
 RKE2 bundles CoreDNS as its cluster DNS service.
 By default, CoreDNS forwards external DNS queries to whatever nameservers are listed in the node's `/etc/resolv.conf`.
-This works on most systems, but tools like Tailscale, VPN clients, and NetworkManager can overwrite `/etc/resolv.conf` with addresses that are only reachable from the host network namespace—not from inside pods.
+This works on most systems, but tools like Tailscale, VPN clients, and NetworkManager can overwrite `/etc/resolv.conf` with addresses that are only reachable from the host network namespace — not from inside pods.
 
 On our node, Tailscale has replaced `/etc/resolv.conf` with its MagicDNS resolver at `100.100.100.100`.
 CoreDNS pods cannot reach this address because Tailscale's DNS listener binds to the host network, not the pod network.
-Internal lookups like `kubernetes.default.svc.cluster.local` still work because CoreDNS resolves those directly, but any external domain—container registries, Helm repositories, package mirrors—fails with `server misbehaving`.
+Internal lookups like `kubernetes.default.svc.cluster.local` still work because CoreDNS resolves those directly, but any external domain — container registries, Helm repositories, package mirrors — fails with `server misbehaving`.
 
-The fix is to override CoreDNS's upstream forwarder with explicit public DNS servers using a `HelmChartConfig` resource—the same mechanism we use for Canal in [Lesson 9](/guides/migrating-k3s-to-rke2-without-downtime/lesson-9).
+The fix is to override CoreDNS's upstream forwarder with explicit public DNS servers using a `HelmChartConfig` resource — the same mechanism we use for Canal in [Lesson 9](/guides/migrating-k3s-to-rke2-without-downtime/lesson-9).
 
 Create the manifest at `/var/lib/rancher/rke2/server/manifests/rke2-coredns-config.yaml`:
 
@@ -503,7 +506,7 @@ If the lookup returns addresses, CoreDNS is forwarding correctly and the cluster
 
 ## Create Initial Backup
 
-Before making any further changes, back up the configuration files and take an etcd snapshot:
+Before making any further changes, we back up the configuration files and take an etcd snapshot:
 
 ```bash
 $ mkdir -p /root/rke2-backup
@@ -518,7 +521,7 @@ This gives us a restore point in case anything goes wrong during subsequent conf
 
 ## Troubleshooting
 
-### RKE2 Won't Start
+### RKE2 Fails to Start
 
 If the service fails to start, check the status and logs for details:
 
@@ -528,12 +531,12 @@ $ journalctl -xeu rke2-server
 ```
 
 The most common cause is port `6443` already being in use by an existing k3s or Kubernetes installation.
-Firewall rules blocking required ports can also prevent startup—check that the vSwitch rule from Lesson 7 is in place.
+Firewall rules blocking required ports can also prevent startup — check that the vSwitch rule from Lesson 7 is in place.
 Another frequent issue is invalid CIDR format in the dual-stack configuration: IPv4 and IPv6 ranges must be comma-separated without spaces.
 
 ### Dual-Stack Issues
 
-If pods aren't receiving IPv6 addresses or the API server rejects dual-stack configurations, verify that IPv6 is enabled on the system—the value should be `0`:
+If pods are not receiving IPv6 addresses or the API server rejects dual-stack configurations, verify that IPv6 is enabled on the system — the value should be `0`:
 
 ```bash
 $ sysctl net.ipv6.conf.all.disable_ipv6
@@ -546,7 +549,7 @@ $ openssl s_client -connect 127.0.0.1:6443 -showcerts </dev/null 2>/dev/null | \
   openssl x509 -noout -text | grep -A1 "Subject Alternative Name"
 ```
 
-If `fd00::14` is missing from the output, the `tls-san` entries in `config.yaml` may not have been applied before the first start.
+If `fd00::14` is missing from the output, the `tls-san` entries in the configuration may not have been applied before the first start.
 
 ### Canal Flannel CrashLoopBackOff
 

@@ -8,13 +8,14 @@ guide_section_id: 3
 guide_lesson_id: 11
 guide_lesson_abstract: >
   Drain Node 3 from Cluster A, install Rocky Linux and RKE2, and join it to Cluster B as the second control plane node.
+  This is the first node migration and establishes the repeatable pattern used for every subsequent node.
 guide_lesson_conclusion: >
   Node 3 has been migrated from Cluster A to Cluster B, running RKE2 as the second control plane node with etcd showing 2 members.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-11.md
 ---
 
-Node 3 is the first node we'll move from Cluster A to Cluster B.
-The process involves analyzing what's running on the node, creating backups, draining it from the k3s cluster, reinstalling the OS, and joining it to RKE2.
+Node 3 is the first node we move from Cluster A to Cluster B.
+The process involves analyzing what runs on the node, creating backups, draining it from the k3s cluster, reinstalling the OS, and joining it to RKE2.
 Every subsequent node migration follows this same pattern, so this lesson covers each step in detail.
 
 {% include guide-overview-link.liquid.html %}
@@ -44,9 +45,9 @@ flowchart LR
 
 ## Understanding the Drain Process
 
-When you drain a node, Kubernetes evicts all pods and marks the node as unschedulable.
-Pods managed by controllers — Deployments, StatefulSets, DaemonSets — will be recreated on other nodes automatically.
-Standalone pods without controllers will be deleted permanently.
+When we drain a node, Kubernetes evicts all pods and marks the node as unschedulable.
+Pods managed by controllers — Deployments, StatefulSets, DaemonSets — are recreated on other nodes automatically.
+Standalone pods without controllers are deleted permanently.
 
 The drain happens in three stages:
 
@@ -83,15 +84,14 @@ flowchart LR
 
 Several factors can block or complicate a drain.
 Pod Disruption Budgets may prevent eviction if removing a pod would violate availability guarantees.
-Pods with local storage won't migrate their data automatically.
-Single-replica deployments will experience brief unavailability between eviction and rescheduling on another node.
-
+Pods with local storage will not migrate their data automatically.
+Single-replica deployments experience brief unavailability between eviction and rescheduling on another node.
 Understanding these factors before running the drain command prevents surprises during the migration.
 
 ## Analyzing Workloads on Node 3
 
 Every cluster is different.
-The workloads running on your Node 3 depend on your applications, scheduling constraints, and how pods were distributed.
+The workloads running on Node 3 depend on the applications deployed, scheduling constraints, and how pods were distributed.
 The commands below provide general guidance for discovering what needs attention before draining.
 
 ### Discovering Pods
@@ -107,8 +107,8 @@ monitoring    prometheus-0              1/1     Running   node3
 kube-system   canal-node3               1/1     Running   node3
 ```
 
-DaemonSet pods like `canal` run on every node and will be recreated automatically.
-Application pods managed by a Deployment or StatefulSet will be rescheduled to other nodes.
+DaemonSet pods like `canal` run on every node and are recreated automatically.
+Application pods managed by a Deployment or StatefulSet are rescheduled to other nodes.
 
 ### StatefulSets and Local Storage
 
@@ -121,10 +121,10 @@ database     postgres     1/1     30d
 monitoring   prometheus   1/1     15d
 ```
 
-If a StatefulSet pod runs on Node 3, Kubernetes will recreate it on another node.
+If a StatefulSet pod runs on Node 3, Kubernetes recreates it on another node.
 For databases, verify replication is healthy before proceeding.
 
-Pods with local storage — hostPath or emptyDir volumes — won't carry their data to the new node:
+Pods with local storage — hostPath or emptyDir volumes — will not carry their data to the new node:
 
 ```bash
 $ kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}: {.spec.volumes[*].name}{"\n"}{end}' | grep -E "local|hostPath"
@@ -145,9 +145,9 @@ database    postgres     1               N/A               0
 ```
 
 If `ALLOWED DISRUPTIONS` is `0`, the drain will wait or fail.
-You may need to temporarily relax the PDB or ensure enough replicas are running on other nodes first.
+We may need to temporarily relax the PDB or ensure enough replicas are running on other nodes first.
 
-Single-replica deployments will cause brief unavailability during the transition:
+Single-replica deployments cause brief unavailability during the transition:
 
 ```bash
 $ kubectl get deployments -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}: {.spec.replicas}{"\n"}{end}' | grep ": 1$"
@@ -155,7 +155,7 @@ default/backend-api: 1
 tools/cron-runner: 1
 ```
 
-These workloads will be unavailable between eviction and rescheduling, typically seconds to minutes.
+These workloads are unavailable between eviction and rescheduling, typically seconds to minutes.
 
 ### Capacity Verification
 
@@ -208,9 +208,9 @@ $ kubectl cordon node3
 $ kubectl get nodes
 ```
 
-Expected output shows `SchedulingDisabled`:
+The output shows `SchedulingDisabled` for Node 3:
 
-```
+```text
 NAME    STATUS                     ROLES    AGE   VERSION
 node1   Ready                      master   30d   v1.28.5+k3s1
 node2   Ready                      <none>   30d   v1.28.5+k3s1
@@ -235,29 +235,29 @@ $ kubectl drain node3 \
   --timeout=600s
 ```
 
-| Flag                     | Purpose                                                |
-| ------------------------ | ------------------------------------------------------ |
-| `--ignore-daemonsets`    | Skip DaemonSet pods (they'll be removed with the node) |
-| `--delete-emptydir-data` | Allow eviction of pods using emptyDir volumes          |
-| `--grace-period=300`     | Give pods 5 minutes to shut down gracefully            |
-| `--timeout=600s`         | Fail if drain doesn't complete in 10 minutes           |
+| Flag                     | Purpose                                              |
+| ------------------------ | ---------------------------------------------------- |
+| `--ignore-daemonsets`    | Skip DaemonSet pods (they are removed with the node) |
+| `--delete-emptydir-data` | Allow eviction of pods using emptyDir volumes        |
+| `--grace-period=300`     | Give pods 5 minutes to shut down gracefully          |
+| `--timeout=600s`         | Fail if drain does not complete in 10 minutes        |
 
 DaemonSet pods are a special case.
-The `--ignore-daemonsets` flag tells the drain to skip them since they're meant to run on every node and will be cleaned up when the node is removed.
+The `--ignore-daemonsets` flag tells the drain to skip them since they are meant to run on every node and are cleaned up when the node is removed.
 
 ### Handling Blocked Drains
 
-**PDB blocking eviction:**
+If a PDB is blocking eviction, check which one is responsible and — if safe — temporarily reduce the minimum:
 
 ```bash
 # Check which PDB is blocking
 $ kubectl get pdb -A
 
-# If safe, temporarily reduce the minimum (restore after drain!)
+# If safe, temporarily reduce the minimum (restore after drain)
 $ kubectl patch pdb <name> -n <namespace> -p '{"spec":{"minAvailable":0}}'
 ```
 
-**Stuck terminating pods:**
+If pods are stuck in `Terminating` state, force-delete them as a last resort:
 
 ```bash
 # Find stuck pods
@@ -267,9 +267,7 @@ $ kubectl get pods -A --field-selector spec.nodeName=node3 | grep Terminating
 $ kubectl delete pod <pod-name> -n <namespace> --grace-period=0 --force
 ```
 
-**Local storage preventing eviction:**
-
-Pods with hostPath or local-path-provisioner volumes may block the drain.
+Pods with hostPath or local-path-provisioner volumes may also block the drain.
 Back up any important data, then use `--force` or delete the pod manually.
 
 ## Removing Node 3 from Cluster A
@@ -300,20 +298,20 @@ $ sudo systemctl disable k3s-agent
 ```
 
 {% include alert.liquid.html type='info' title='Rollback Option' content='
-If issues arise and you need Node 3 back in Cluster A, restart the k3s agent and uncordon the node:
+If issues arise and Node 3 is needed back in Cluster A, restart the k3s agent and uncordon the node:
 `ssh root@node3 "sudo systemctl start k3s-agent"` followed by `kubectl uncordon node3`.
-Once you proceed with the OS reinstallation below, this rollback path is no longer available.
+Once the OS reinstallation below begins, this rollback path is no longer available.
 ' %}
 
 ## Preparing Node 3 for RKE2
 
 The setup follows the same process as Node 4.
-The full details for each step are covered in the referenced lessons — this quickstart lists every command needed to get Node 3 ready.
+The full details for each step are covered in the referenced lessons — this section lists every command needed to get Node 3 ready.
 
 ### Installing Rocky Linux 10
 
 Boot into the Hetzner Rescue System and run the installer.
-See [Lesson 2](/guides/migrating-k3s-to-rke2-without-downtime/lesson-2) for the full walkthrough.
+We cover the full walkthrough in [Lesson 2](/guides/migrating-k3s-to-rke2-without-downtime/lesson-2).
 
 ```bash
 $ installimage
@@ -321,7 +319,7 @@ $ installimage
 
 Select Rocky Linux 10, set the hostname to `node3`, and use a simple partition layout without swap:
 
-```
+```text
 PART  /boot  ext3   1024M
 PART  /      ext4   all
 ```
@@ -349,7 +347,7 @@ $ passwd k8sadmin
 $ usermod -aG wheel k8sadmin
 ```
 
-From your local machine, set up SSH key authentication:
+From the local machine, set up SSH key authentication:
 
 ```bash
 $ ssh-keygen -t ed25519 -f ~/.ssh/node3_k8sadmin_ed25519
@@ -358,7 +356,8 @@ $ ssh-copy-id -i ~/.ssh/node3_k8sadmin_ed25519 k8sadmin@<node3-public-ip>
 
 Add an entry to `~/.ssh/config`:
 
-```
+```text
+# ~/.ssh/config
 Host node3
   HostName <node3-public-ip>
   User k8sadmin
@@ -404,10 +403,10 @@ $ sudo tailscale up
 ### Configuring Dual-Stack vSwitch Networking
 
 Configure the VLAN interface with both IPv4 and IPv6 addresses.
-See [Lesson 3](/guides/migrating-k3s-to-rke2-without-downtime/lesson-3) for the full networking walkthrough.
+We cover the full networking walkthrough in [Lesson 3](/guides/migrating-k3s-to-rke2-without-downtime/lesson-3).
 
 ```bash
-# Replace enp35s0 with your actual interface name
+# Replace enp35s0 with the actual interface name
 $ sudo nmcli connection add \
     type vlan \
     con-name vswitch0 \
@@ -438,7 +437,7 @@ $ sudo nmcli connection up vswitch0
 Configure public IPv6 on the main interface:
 
 ```bash
-# Replace the address with your assigned IPv6 from Hetzner
+# Replace the address with the assigned IPv6 from Hetzner
 $ sudo nmcli connection modify "Wired connection 1" \
     ipv6.method manual \
     ipv6.addresses "2a01:4f9:XX:XX::2/64" \
@@ -459,7 +458,7 @@ $ sudo sysctl -p /etc/sysctl.d/99-ipv6-forward.conf
 ### Configuring the Firewall
 
 Configure the Hetzner Robot firewall for Node 3 with the same rules as Node 4.
-See [Lesson 4](/guides/migrating-k3s-to-rke2-without-downtime/lesson-4) for rule explanations and verification steps.
+We cover rule explanations and verification steps in [Lesson 4](/guides/migrating-k3s-to-rke2-without-downtime/lesson-4).
 
 | ID | Name               | Version | Protocol | Source IP   | Dest Port   | TCP Flags | Action |
 | -- | ------------------ | ------- | -------- | ----------- | ----------- | --------- | ------ |
@@ -506,7 +505,7 @@ The last command verifies the RKE2 supervisor port is reachable.
 
 ## Installing and Configuring RKE2
 
-When a new node joins an existing RKE2 cluster, the process differs from bootstrapping the first node:
+When a new node joins an existing RKE2 cluster, the process differs from bootstrapping the first node.
 
 | Aspect | First Node (Bootstrap)   | Additional Nodes (Join)     |
 | ------ | ------------------------ | --------------------------- |
@@ -633,7 +632,7 @@ The node contacts Node 4's supervisor API on port `9345`, retrieves cluster cert
 
 Watch for these log messages indicating success:
 
-```
+```text
 level=info msg="Starting etcd member..."
 level=info msg="etcd member started"
 level=info msg="Running kube-apiserver..."
@@ -649,9 +648,9 @@ Using the `kubectl` installed with RKE2, check that Node 3 has joined successful
 $ kubectl get nodes -o wide
 ```
 
-Expected output showing both nodes with dual-stack IPs:
+Both nodes should appear with dual-stack IPs:
 
-```
+```text
 NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
 node3   Ready    control-plane,etcd,master   2m    v1.31.x+rke2r1   10.1.0.13,fd00::13
 node4   Ready    control-plane,etcd,master   3h    v1.31.x+rke2r1   10.1.0.14,fd00::14
@@ -659,13 +658,15 @@ node4   Ready    control-plane,etcd,master   3h    v1.31.x+rke2r1   10.1.0.14,fd
 
 ### Check etcd Membership
 
-On the old node (Node 4), use the already installed `etcdctl` to verify that Node 3 has joined the etcd cluster:
+On Node 4, use `etcdctl` to verify that Node 3 has joined the etcd cluster:
 
 ```bash
 $ sudo etcdctl member list
 xxxx, started, node4-xxxx, https://10.1.0.14:2380, https://10.1.0.14:2379, false
 yyyy, started, node3-xxxx, https://10.1.0.13:2380, https://10.1.0.13:2379, false
 ```
+
+The output shows two etcd members, confirming the cluster has grown from a single node to a two-member cluster.
 
 ### Check Canal and WireGuard
 
@@ -738,7 +739,7 @@ $ /usr/local/bin/longhornctl --kubeconfig /etc/rancher/rke2/rke2.yaml check pref
 ```
 
 The check should report no errors for Node 3.
-See [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) for a detailed walkthrough of what each dependency does and how to troubleshoot failures.
+We cover a detailed walkthrough of what each dependency does and how to troubleshoot failures in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7).
 
 Once the preflight passes, verify that Longhorn recognizes Node 3 as schedulable:
 
@@ -750,8 +751,7 @@ node4   True    true              True          3h
 ```
 
 With two storage nodes, Longhorn can now replicate volumes across nodes.
-We'll increase the replica count once a third node joins the cluster in [Lesson 12](/guides/migrating-k3s-to-rke2-without-downtime/lesson-12).
-
+We increase the replica count once a third node joins the cluster in [Lesson 12](/guides/migrating-k3s-to-rke2-without-downtime/lesson-12).
 Repeat this `longhornctl` preflight process on every node that joins the cluster going forward.
 
 ## Current State
@@ -789,7 +789,7 @@ Proceed with Node 2 migration to achieve HA.
 If cross-node pod traffic fails with "no route to host" or "Required key not available", the most likely cause is a Flannel backend mismatch between nodes.
 
 This happens when the existing node is still running the VXLAN backend while the new node picks up the WireGuard configuration from the HelmChartConfig applied in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6).
-The new node creates a `flannel-wg` interface, but the existing node still uses `flannel.1` (VXLAN) — so the two nodes can't exchange pod traffic.
+The new node creates a `flannel-wg` interface, but the existing node still uses `flannel.1` (VXLAN) — so the two nodes cannot exchange pod traffic.
 
 Check which interfaces each node is using:
 

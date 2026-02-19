@@ -8,6 +8,7 @@ guide_section_id: 2
 guide_lesson_id: 9
 guide_lesson_abstract: >
   Configure authentication and RBAC on Cluster B using Structured Authentication Configuration for GitHub OIDC and client certificates for admin access.
+  This establishes identity and permissions before workloads arrive, ensuring CI/CD pipelines can deploy from day one.
 guide_lesson_conclusion: >
   Cluster B accepts GitHub OIDC tokens for CI/CD automation and uses group-based RBAC for authorization, with client certificates reserved for admin break-glass access.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-9.md
@@ -20,14 +21,10 @@ This lesson configures authentication — who can connect to the cluster — and
 
 ## Understanding Kubernetes Access Control
 
-Every request to the Kubernetes API server passes through three stages before it reaches the resource it targets:
-
-1. **Authentication** — Who are you?<br>
-   The API server validates the caller's identity using certificates, tokens, or other credentials.
-2. **Authorization** — What can you do?<br>
-   RBAC rules determine whether the authenticated identity is allowed to perform the requested action.
-3. **Admission** — Should this be allowed?<br>
-   Admission controllers enforce policies like Pod Security Standards and resource quotas.
+Every request to the Kubernetes API server passes through three stages before it reaches the resource it targets.
+First, authentication validates the caller's identity using certificates, tokens, or other credentials.
+Second, authorization evaluates RBAC rules to determine whether the authenticated identity is allowed to perform the requested action.
+Third, admission controllers enforce policies like Pod Security Standards and resource quotas.
 
 This lesson focuses on the first two stages.
 Admission control is handled by the Pod Security Standards configured in [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5).
@@ -90,6 +87,7 @@ Change: 2026-02-15 18:28:19.277113776 +0200
  Birth: 2026-02-15 01:04:10.320015075 +0200
 ```
 
+The `Access` line should show `0600/-rw-------`, confirming that only root can read the file.
 From this point on, use personal admin tokens for all cluster operations instead of the default kubeconfig.
 
 ### Bootstrapping the RBAC Repository
@@ -97,7 +95,7 @@ From this point on, use personal admin tokens for all cluster operations instead
 Rather than hand-crafting RoleBindings for every repository that deploys to the cluster, we delegate RBAC management to a dedicated repository.
 This repository uses infrastructure-as-code to create Kubernetes resources — custom ClusterRoles, namespace-scoped RoleBindings, and per-repo permissions — all versioned in Git and applied through CI/CD.
 
-To get started, the RBAC repository itself needs `cluster-admin` access.
+The RBAC repository itself needs `cluster-admin` access to function.
 This is a bootstrapping problem: the tool that manages permissions needs permissions before it can manage anything.
 We solve it with a ServiceAccount and a static ClusterRoleBinding deployed through the RKE2 manifests directory.
 
@@ -145,21 +143,22 @@ type: kubernetes.io/service-account-token
 
 Placing this file in `/var/lib/rancher/rke2/server/manifests/` makes RKE2 auto-deploy it — the same pattern used for Longhorn in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) and Traefik in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
 
-The manifest creates three resources:
-
-- A `ServiceAccount` that the RBAC repository's pipeline authenticates as
-- A `ClusterRoleBinding` granting it `cluster-admin` so it can create and modify RBAC resources across all namespaces
-- A `Secret` of type `kubernetes.io/service-account-token` that forces Kubernetes to generate a long-lived token for the ServiceAccount — since Kubernetes 1.24, tokens are no longer auto-created as secrets, so this explicit secret is needed for the infrastructure-as-code provider's kubeconfig
+The manifest creates three resources.
+The `ServiceAccount` is what the RBAC repository's pipeline authenticates as.
+The `ClusterRoleBinding` grants it `cluster-admin` so it can create and modify RBAC resources across all namespaces.
+The `Secret` of type `kubernetes.io/service-account-token` forces Kubernetes to generate a long-lived token for the ServiceAccount — since Kubernetes 1.24, tokens are no longer auto-created as secrets, so this explicit secret is needed for the infrastructure-as-code provider's kubeconfig.
 
 The `managed-by: manual-bootstrap` label marks these as the only hand-managed RBAC resources in the cluster.
-Everything else like custom ClusterRoles like `deployer` and `reader`, namespace-scoped `RoleBindings` for each application repository, and read-only access for pull requests, is created by the RBAC repository through infrastructure-as-code and is outside the scope of this lesson.
+Everything else — custom ClusterRoles like `deployer` and `reader`, namespace-scoped RoleBindings for each application repository, and read-only access for pull requests — is created by the RBAC repository through infrastructure-as-code and is outside the scope of this lesson.
 
 ### Creating a Personal Admin Token
 
 Each administrator gets their own `ServiceAccount` with `cluster-admin` privileges and a long-lived token.
 This provides the same level of access as the RKE2 kubeconfig, but with a named identity that appears in the API server audit logs.
 
-We are now creating a new admin credential for a user named `philprime`. You should replace this with your own name or a descriptive identifier for the person who will use this credential. Create the manifest at `/var/lib/rancher/rke2/server/manifests/rbac-admin-philprime.yaml`:
+The following example creates an admin credential for a user named `philprime`.
+Replace this with your own name or a descriptive identifier for the person who will use the credential.
+Create the manifest at `/var/lib/rancher/rke2/server/manifests/rbac-admin-philprime.yaml`:
 
 ```yaml
 # /var/lib/rancher/rke2/server/manifests/rbac-admin-philprime.yaml
@@ -255,17 +254,13 @@ node4   Ready    control-plane,etcd,master   2d    v1.34.3+rke2r3
 ```
 
 Repeat for each administrator who needs cluster access, using a different ServiceAccount name.
-All subsequent commands in this guide assume you are using a personal admin context rather than the default RKE2 kubeconfig.
+All subsequent commands in this guide assume we are using a personal admin context rather than the default RKE2 kubeconfig.
 
 ### Why OIDC for CI/CD
 
 The traditional approach to CI/CD authentication stores a kubeconfig or service account token as a repository secret.
-This works, but it creates a long-lived credential that:
-
-- Must be manually rotated
-- Grants the same permissions regardless of which workflow uses it
-- Cannot be traced back to a specific deployment without additional logging
-- Remains valid until explicitly revoked, even if the repository is compromised
+This works, but it creates a long-lived credential that must be manually rotated and grants the same permissions regardless of which workflow uses it.
+The credential cannot be traced back to a specific deployment without additional logging and remains valid until explicitly revoked, even if the repository is compromised.
 
 GitHub OIDC eliminates these problems.
 Each workflow run requests a fresh token from GitHub's OIDC provider, and the Kubernetes API server validates it directly — no shared secrets involved.
@@ -274,20 +269,16 @@ The token is scoped to the repository and workflow that requested it, expires wi
 ## Structured Authentication Configuration
 
 Kubernetes 1.29 introduced Structured Authentication Configuration as a replacement for the legacy `--oidc-*` command-line flags on the API server.
-Instead of passing issuer URL, client ID, and claim mappings as individual flags, you write a single configuration file that the API server reads at startup.
+Instead of passing issuer URL, client ID, and claim mappings as individual flags, we write a single configuration file that the API server reads at startup.
 
-The API is available as `apiserver.config.k8s.io/v1beta1` in Kubernetes 1.30–1.31 and graduated to `v1` in Kubernetes 1.32.
+The API is available as `apiserver.config.k8s.io/v1beta1` in Kubernetes 1.30 and 1.31 and graduated to `v1` in Kubernetes 1.32.
 Since RKE2 v1.34 ships Kubernetes 1.34, we use the stable `v1` version.
 
 ### Advantages Over Legacy Flags
 
 The legacy `--oidc-*` flags support exactly one JWT issuer and require an API server restart to change any setting.
-Structured Authentication Configuration improves on this in several ways:
-
-- Multiple JWT issuers in a single configuration file
-- CEL-based expressions for claim mapping — transform claims into Kubernetes usernames and groups using the Common Expression Language
-- Claim validation rules that reject tokens not matching specific criteria
-- The API server reads the configuration file at startup without needing separate flags for each field
+Structured Authentication Configuration supports multiple JWT issuers in a single configuration file, uses CEL-based expressions for claim mapping to transform claims into Kubernetes usernames and groups, and includes claim validation rules that reject tokens not matching specific criteria.
+The API server reads the configuration file at startup without needing separate flags for each field.
 
 ### Key Fields
 
@@ -318,12 +309,11 @@ The token contains claims that describe the context of the workflow — which re
 
 ### Mapping Claims to Kubernetes Identity
 
-We map these claims to Kubernetes identity as follows:
+We map the `repository` claim to a Kubernetes username of the form `github-actions:repo:<repository>`, giving each repository its own identity for audit trails.
+For groups, each token receives membership in two groups: `github-actions` as a broad group for all GitHub Actions and `github-actions:<repository_owner>` as an organization-level group for RBAC bindings.
 
-- **Username**: `github-actions:repo:<repository>` — gives each repository its own identity for audit trails
-- **Groups**: `github-actions` (broad group for all GitHub Actions) and `github-actions:<repository_owner>` (organization-level group for RBAC bindings)
-
-This means a deployment from `kula-app/my-project` authenticates as user `github-actions:repo:kula-app/my-project` in groups `github-actions` and `github-actions:kula-app`. The URN-like format (`github-actions:repo:org/name`) makes the identity self-describing and consistent with GitHub's own `sub` claim structure.
+A deployment from `kula-app/my-project` authenticates as user `github-actions:repo:kula-app/my-project` in groups `github-actions` and `github-actions:kula-app`.
+The URN-like format (`github-actions:repo:org/name`) makes the identity self-describing and consistent with GitHub's own `sub` claim structure.
 RBAC bindings target the organization group, so adding a new repository to the organization automatically grants it the same permissions without touching any cluster configuration.
 
 ## Configuring the Authentication
@@ -362,21 +352,22 @@ jwt:
 Replace `<your-github-org>` with your actual GitHub organization name (for example, `kula-app`).
 
 The `issuer.url` must exactly match the `iss` claim in GitHub's OIDC tokens.
-The `audiences` list defines what value the workflow must request as the token's `aud` claim — we use `api://prod-hel1-2.k8s.kula.app` as a custom audience that identifies this specific cluster. The `api://` scheme follows the convention for non-web API audiences, distinguishing it from the cluster's HTTPS endpoint.
+The `audiences` list defines what value the workflow must request as the token's `aud` claim — we use `api://prod-hel1-2.k8s.kula.app` as a custom audience that identifies this specific cluster.
+The `api://` scheme follows the convention for non-web API audiences, distinguishing it from the cluster's HTTPS endpoint.
 
 The `claimMappings` section uses CEL expressions to transform token claims into Kubernetes identity.
 The `username` expression concatenates the string `github-actions:` with the repository claim, producing identities like `github-actions:repo:kula-app/my-project`.
 The `groups` expression builds a list of two groups — one for all GitHub Actions and one scoped to the organization.
 
 The `claimValidationRules` section acts as a gatekeeper.
-The expression `claims.repository_owner == '<your-github-org>'` ensures that only tokens from your organization are accepted.
+The expression `claims.repository_owner == '<your-github-org>'` ensures that only tokens from our organization are accepted.
 A token from a forked repository in a different organization would be rejected with the message "token must come from your GitHub organization".
 
 ### Wiring It into RKE2
 
 RKE2 runs the kube-apiserver as a static pod, which normally cannot see files on the host filesystem.
-However, when a `kube-apiserver-arg` references a file path under `/etc/rancher/rke2/`, RKE2 automatically bind-mounts that file into the static pod — the same mechanism it uses for `rke2-pss.yaml` and other configuration files.
-This means we only need to pass the argument; no explicit `kube-apiserver-extra-mount` is required.
+When a `kube-apiserver-arg` references a file path under `/etc/rancher/rke2/`, RKE2 automatically bind-mounts that file into the static pod — the same mechanism it uses for `rke2-pss.yaml` and other configuration files.
+This means we only need to pass the argument and no explicit `kube-apiserver-extra-mount` is required.
 
 Create the RKE2 config file at `/etc/rancher/rke2/config.yaml.d/40-authentication.yaml`:
 
@@ -434,7 +425,7 @@ rke2-snapshot-controller-9fccd4467-ht975                1/1     Running     8 (1
 traefik-628vd                                           1/1     Running     0              73m
 ```
 
-All pods in `kube-system` should be in `Running` state.
+All pods in `kube-system` should be in `Running` state (except for completed Helm install jobs).
 If the API server fails to start, check the troubleshooting section below.
 
 ### Verify Authentication Configuration
@@ -467,10 +458,12 @@ NAME                 TYPE                                  DATA   AGE
 rbac-manager-token   kubernetes.io/service-account-token   3      30s
 ```
 
+All three resources should exist and show a recent creation time.
+
 ### Testing OIDC from GitHub Actions
 
 To use this authentication from a GitHub Actions workflow, the workflow requests an OIDC token with the configured audience and passes it as a bearer token in a kubeconfig.
-The workflow needs `id-token: write` permission and uses the `actions/github-script` or a direct API call to obtain the token:
+The workflow needs `id-token: write` permission and uses `actions/github-script` or a direct API call to obtain the token:
 
 ```yaml
 permissions:
@@ -486,7 +479,7 @@ steps:
 ```
 
 The token is then used as a bearer token in a kubeconfig that points to Cluster B's API server.
-The full workflow integration depends on your deployment tooling — the key requirement is that the `audience` parameter matches the value configured in `auth-config.yaml`.
+The full workflow integration depends on the deployment tooling — the key requirement is that the `audience` parameter matches the value configured in `auth-config.yaml`.
 
 ## Troubleshooting
 
@@ -504,11 +497,9 @@ If the journal shows no clear error, check the kubelet log — the apiserver run
 $ sudo tail -200 /var/lib/rancher/rke2/agent/logs/kubelet.log | grep -iE "apiserver|error|fail|mount"
 ```
 
-Common causes:
-
-- YAML syntax errors in `auth-config.yaml` — validate with `python3 -c "import yaml; yaml.safe_load(open('/etc/rancher/rke2/auth-config.yaml'))"`
-- Duplicate volume mounts — do not add `kube-apiserver-extra-mount` for the auth config file; RKE2 auto-mounts files referenced by `kube-apiserver-arg` and a duplicate mount causes the static pod manifest to be rejected
-- File permissions — the auth-config file must be readable by the rke2 process
+The most common causes are YAML syntax errors in `auth-config.yaml`, which can be validated with `python3 -c "import yaml; yaml.safe_load(open('/etc/rancher/rke2/auth-config.yaml'))"`.
+Duplicate volume mounts also cause problems — do not add `kube-apiserver-extra-mount` for the auth config file because RKE2 auto-mounts files referenced by `kube-apiserver-arg` and a duplicate mount causes the static pod manifest to be rejected.
+File permissions matter as well — the auth-config file must be readable by the rke2 process.
 
 To recover quickly, remove or rename the `40-authentication.yaml` file and restart:
 
@@ -521,17 +512,32 @@ Once the cluster is back, fix the configuration and re-apply.
 
 ### OIDC Token Rejected
 
-If a GitHub Actions workflow receives a `401 Unauthorized` when authenticating:
+If a GitHub Actions workflow receives a `401 Unauthorized` when authenticating, start by verifying the audience matches — the workflow must request `api://prod-hel1-2.k8s.kula.app` as the audience, matching the `audiences` list in `auth-config.yaml`.
+The issuer URL must be exactly `https://token.actions.githubusercontent.com` with no trailing slash.
+If the `repository_owner` in the token does not match the claim validation rule, the token is rejected with the configured error message.
 
-- Verify the audience matches — the workflow must request `api://prod-hel1-2.k8s.kula.app` as the audience, matching the `audiences` list in `auth-config.yaml`
-- Check the issuer URL — must be exactly `https://token.actions.githubusercontent.com` with no trailing slash
-- Review the claim validation rules — if `repository_owner` does not match, the token is rejected with the configured error message
-- Inspect the API server logs for detailed rejection reasons: `sudo journalctl -u rke2-server | grep -i oidc`
+Inspect the API server logs for detailed rejection reasons:
+
+```bash
+$ sudo journalctl -u rke2-server | grep -i oidc
+```
 
 ### RBAC Permission Denied
 
-If an authenticated request receives `403 Forbidden`:
+If an authenticated request receives `403 Forbidden`, verify the bootstrap ClusterRoleBinding exists:
 
-- Verify the bootstrap ClusterRoleBinding exists: `kubectl get clusterrolebinding rbac-manager-admin -o yaml`
-- For application repositories, check that the RBAC pipeline has created the expected RoleBindings: `kubectl get rolebindings -A -l managed-by=rbac-manager`
-- Use `kubectl auth can-i` to test permissions for a specific identity: `kubectl auth can-i create deployments --as="github-actions:repo:kula-app/my-repo" -n <namespace>`
+```bash
+$ kubectl get clusterrolebinding rbac-manager-admin -o yaml
+```
+
+For application repositories, check that the RBAC pipeline has created the expected RoleBindings:
+
+```bash
+$ kubectl get rolebindings -A -l managed-by=rbac-manager
+```
+
+To test permissions for a specific identity, use `kubectl auth can-i`:
+
+```bash
+$ kubectl auth can-i create deployments --as="github-actions:repo:kula-app/my-repo" -n <namespace>
+```

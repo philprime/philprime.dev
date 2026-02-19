@@ -22,4 +22,4 @@ Each node follows the same pattern — analyze workloads, create backups, drain,
 - Understanding etcd quorum and why 3 nodes is the HA threshold
 - Verifying the completed control plane with failover testing
 
-By the end of this section, Cluster B (RKE2) will have a fully operational 3-node high-availability control plane, while Cluster A (k3s) continues to serve traffic on its remaining node.
+The section concludes with Cluster B (RKE2) running a fully operational 3-node high-availability control plane, while Cluster A (k3s) continues to serve traffic on its remaining node.

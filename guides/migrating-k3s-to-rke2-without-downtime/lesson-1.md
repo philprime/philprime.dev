@@ -7,32 +7,33 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 1
 guide_lesson_id: 1
 guide_lesson_abstract: >
-  Understand the migration challenge, develop a phased migration strategy, and learn the risk considerations for each phase.
+  Migrating a production Kubernetes cluster from k3s to RKE2 without downtime demands careful phasing.
+  This lesson maps out the five migration phases, explains the topology changes at each step, and highlights where the risk is highest.
 guide_lesson_conclusion: >
-  You now have a detailed migration strategy with clear phases and understand the risk levels for each step.
+  We have a detailed migration strategy with five clear phases and understand the risk profile of each step.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-1.md
 ---
 
-A successful zero-downtime migration requires meticulous planning.
-This lesson establishes the context for our migration, develops a phased strategy, and maps the risks involved at each step.
+A successful zero-downtime migration requires careful planning before we touch a single node.
+This lesson develops a phased strategy for moving from k3s to RKE2 and maps the risks involved at each step.
 
 {% include guide-overview-link.liquid.html %}
 
 ## The Migration Challenge
 
-Migrating a production Kubernetes cluster is one of the most complex operations in infrastructure management.
-Our migration must maintain zero downtime while keeping services available, change the underlying distribution from k3s to RKE2, and reconfigure the topology from a single control plane with two workers to three control planes with one worker—all at the same time.
-We're also replacing the operating system with Rocky Linux 10 and upgrading to Canal for networking and Longhorn for storage.
+Migrating a production Kubernetes cluster is one of the most demanding operations in infrastructure management.
+Our migration must maintain zero downtime while keeping services available, change the underlying distribution from k3s to RKE2, and reconfigure the topology from a single control plane with two workers to three control planes with one worker — all at the same time.
+We are also replacing the operating system with Rocky Linux 10 and upgrading to Canal for networking and Longhorn for storage.
 
 {% include alert.liquid.html type='tip' title='Why not 5 nodes?' content='
 A 5-node setup would make this migration significantly easier.
-You could build a full 3-node HA control plane by removing only a single node from the original cluster while keeping 2 nodes running workloads.
+We could build a full 3-node HA control plane by removing only a single node from the original cluster while keeping 2 nodes running workloads.
 With only 4 nodes, we must navigate a critical phase where both clusters run with reduced redundancy.
 ' %}
 
 ## Current State vs Target State
 
-The current k3s cluster has Node 1 as its sole control plane—a single point of failure that puts the entire cluster at risk if that node goes down.
+The current k3s cluster has Node 1 as its sole control plane — a single point of failure that puts the entire cluster at risk if that node goes down.
 Storage relies on local volumes per node with no replication, and Flannel provides basic CNI networking with external ingress routed directly to fixed node IPs.
 
 The target RKE2 cluster addresses each of these limitations:
@@ -128,7 +129,7 @@ class after critical
 ```
 
 Node 3 leaves Cluster A and joins Cluster B as a second control plane, giving the new cluster its first step toward high availability.
-Before beginning, ensure all workloads run on Nodes 1 and 2, DNS does not point to Node 3, and external traffic is routed elsewhere.
+Before beginning, we verify that all workloads run on Nodes 1 and 2, DNS does not point to Node 3, and external traffic is routed elsewhere.
 
 {% include alert.liquid.html type='warning' title='etcd Quorum with 2 Nodes' content='
 etcd requires a strict majority for quorum.
@@ -137,7 +138,7 @@ Mitigate by minimizing time in this state and ensuring both nodes are stable bef
 ' %}
 
 The process involves cordoning and draining Node 3, removing it from Cluster A, optionally reinstalling the OS with Rocky Linux 10, and joining it as an RKE2 control plane.
-After verifying etcd cluster health, both clusters operate at minimum viable capacity—Cluster A with two nodes and Cluster B with two etcd members, neither of which tolerates losing a node.
+After verifying etcd cluster health, both clusters operate at minimum viable capacity — Cluster A with two nodes and Cluster B with two etcd members, neither of which tolerates losing a node.
 
 ## Phase 3: Second Node Migration
 
@@ -179,7 +180,7 @@ class after success
 ```
 
 Node 2 follows the same process: cordon, drain, remove from Cluster A, uninstall k3s, optionally reinstall the OS, and join Cluster B as the third control plane.
-With three etcd members, Cluster B achieves full high availability—it can tolerate the loss of one control plane node while maintaining quorum.
+With three etcd members, Cluster B achieves full high availability — it can tolerate the loss of one control plane node while maintaining quorum.
 Workload migration can now begin safely.
 
 ## Phase 4: Workload Migration
@@ -221,7 +222,7 @@ class bB,aB clusterB
 class after success
 ```
 
-With Cluster B running three control planes and both clusters fully operational, the risk of this phase is low—DNS can be switched back to Cluster A if issues arise.
+With Cluster B running three control planes and both clusters fully operational, the risk of this phase is low — DNS can be switched back to Cluster A if issues arise.
 We set up storage on Cluster B with Longhorn and local-path provisioner, configure ingress through Traefik and the Hetzner Cloud Load Balancer, and export workload manifests from Cluster A.
 After migrating any persistent data and deploying workloads to Cluster B, we switch DNS to point at the new cluster's ingress.
 All workloads now run on Cluster B while Cluster A sits idle with only Node 1.
@@ -266,8 +267,8 @@ The result is a complete 4-node RKE2 cluster with three control planes and one d
 ## Risk Considerations
 
 The highest-risk phase is Phase 2, when both clusters run at minimum viable capacity.
-Cluster A loses one of its three nodes, and Cluster B has only two etcd members—which has zero fault tolerance, the same as a single-node cluster.
-Minimize time in this state by ensuring both nodes are stable and proceeding to Phase 3 as quickly as practical.
+Cluster A loses one of its three nodes, and Cluster B has only two etcd members — which has zero fault tolerance, the same as a single-node cluster.
+We minimize time in this state by ensuring both nodes are stable and proceeding to Phase 3 as quickly as practical.
 
-Never proceed to workload migration until Cluster B achieves full HA with three control plane nodes.
-Before starting the migration, review all lessons thoroughly, practice the node installation process on a test system if possible, and ensure you have complete backups of all persistent data.
+We never proceed to workload migration until Cluster B achieves full HA with three control plane nodes.
+Before starting the migration, we review all lessons thoroughly, practice the node installation process on a test system if possible, and ensure we have complete backups of all persistent data.

@@ -7,9 +7,10 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 8
 guide_lesson_abstract: >
-  Deploy Traefik as a DaemonSet and configure Hetzner Cloud Load Balancer for highly available ingress.
+  A highly available ingress setup ensures services stay reachable even when individual nodes fail.
+  This lesson deploys Traefik as a DaemonSet across all cluster nodes and places a Hetzner Cloud Load Balancer in front of them, providing a single stable IP that automatically routes traffic to healthy backends.
 guide_lesson_conclusion: >
-  HA ingress is configured with Traefik running on all nodes and Hetzner Load Balancer distributing traffic.
+  Our cluster now has highly available ingress with Traefik running on every node and a Hetzner Cloud Load Balancer distributing external traffic across healthy backends.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-102.md
 ---
 
@@ -21,62 +22,60 @@ This lesson deploys Traefik as a DaemonSet across all nodes and places a Hetzner
 ## Why We Need a Load Balancer
 
 Our cluster runs on dedicated servers at Hetzner, each with its own public IP address.
-In the simplest ingress setup, you point a DNS record at one node's IP and run the ingress controller there.
-If that node goes down, every service behind it becomes unreachable until you update DNS and wait for propagation — which can take minutes to hours depending on TTL settings and resolver caching.
+In the simplest ingress setup, a DNS record points at one node's IP and the ingress controller runs there.
+If that node goes down, every service behind it becomes unreachable until the DNS record is updated and propagation completes — which can take minutes to hours depending on TTL settings and resolver caching.
 
 Running the ingress controller on every node helps, but does not solve the problem on its own.
 DNS still points to a specific set of IPs, and clients cache those records.
 What we need is a single stable IP address or DNS name that automatically routes traffic only to healthy nodes.
-
 That is the role of a load balancer.
 
-### Virtual IPs and Why They Don't Work Here
+### Virtual IPs and Why They Do Not Work Here
 
 The classic on-premise approach to high availability is a virtual IP (VIP) that floats between nodes using VRRP — typically implemented with Keepalived and HAProxy.
 One node holds the VIP and serves traffic.
 If it fails, another node claims the VIP via a gratuitous ARP announcement, and traffic continues within seconds.
 
-For our setup this would require all participating nodes to share a Layer 2 broadcast domain — the same switch or VLAN — so the ARP announcement reaches the network's switches and updates their MAC tables.
-Our Hetzner dedicated servers sit on the public internet, where you cannot send gratuitous ARP packets between hosts.
-The vSwitch connecting our servers does operate at Layer 2, but it assigns private IPs (10.x.x.x) that are not routable from the internet.
+This approach requires all participating nodes to share a Layer 2 broadcast domain — the same switch or VLAN — so the ARP announcement reaches the network's switches and updates their MAC tables.
+Our Hetzner dedicated servers sit on the public internet, where gratuitous ARP packets cannot be sent between hosts.
+The vSwitch connecting our servers does operate at Layer 2, but it assigns private IPs (`10.x.x.x`) that are not routable from the internet.
 A VIP on the vSwitch would be reachable between nodes but invisible to external clients.
 
-If you are still interested in this setup approach, you can find more about how to set this up in the [Lesson 15 - Configuring Load Balancing for the Control Plane](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-15.md) of our guide on [Building a production-ready Kubernetes cluster from scratch](/guides/building-a-production-ready-kubernetes-cluster-from-scratch), but due to our hosting environment, this approach is not viable for us.
+For readers interested in the VIP approach, [Lesson 15 - Configuring Load Balancing for the Control Plane](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-15.md) of our guide on [Building a production-ready Kubernetes cluster from scratch](/guides/building-a-production-ready-kubernetes-cluster-from-scratch) covers the setup in detail.
+Due to our hosting environment, this approach is not viable for us.
 
 ### Hetzner Failover IPs
 
-Hetzner offers failover IPs that are public addresses that can be reassigned between servers via an API call.
+Hetzner offers failover IPs — public addresses that can be reassigned between servers via an API call.
 This sounds like a managed VIP, but the switchover is not instant.
 The API call triggers a network reconfiguration on Hetzner's side that takes several seconds to minutes, during which traffic to that IP is dropped entirely.
-For a zero-downtime migration, even a brief gap in availability is unacceptable, therefore this approach is also not suitable.
+For a zero-downtime migration, even a brief gap in availability is unacceptable, so this approach is also not suitable.
 
 ### DNS Failover vs Traffic Failover
 
-Two broad strategies exist for routing around failed nodes:
+Two broad strategies exist for routing around failed nodes.
 
-**DNS failover**:
+#### DNS Failover
 
-In this approach, multiple A records are published — one per node — and relies on an external health checker to remove records for unhealthy nodes.
+Multiple A records are published — one per node — and an external health checker removes records for unhealthy nodes.
 The weakness is propagation time.
 Even with a low TTL, recursive resolvers and client-side caches may hold stale records for minutes.
 During that window, some clients continue sending traffic to the failed node and receive errors, with no way to force an immediate refresh.
 
-**Traffic failover**:
+#### Traffic Failover
 
 Traffic is sent through a load balancer, which operates at a different layer.
 The load balancer owns a single public IP, accepts all incoming connections, and forwards them to healthy backends.
 When a health check fails, the load balancer stops sending traffic to that backend within seconds — completely transparent to clients, who never see the individual node IPs.
 
-A Load Balancer can also become a single-point-of-failure if it goes down, that's why we need to choose a highly available, managed load balancer that can withstand failures without impacting traffic.
+A load balancer can also become a single point of failure if it goes down.
+That is why we need a highly available, managed load balancer that can withstand failures without impacting traffic.
 
 ### Why Hetzner Cloud Load Balancer
 
-We choose Hetzner's managed Cloud Load Balancer for several reasons:
-
-- It provides a stable public IP that is independent of any single server
-- It connects to our dedicated servers through the vSwitch private network, keeping backend traffic off the public internet
-- Health checks run over the private network and can detect failures within seconds
-- It stays within a single provider, avoiding external dependencies like Cloudflare
+We choose Hetzner's managed Cloud Load Balancer because it provides a stable public IP that is independent of any single server and connects to our dedicated servers through the vSwitch private network, keeping backend traffic off the public internet.
+Health checks run over the private network and can detect failures within seconds.
+Staying within a single provider also avoids external dependencies like Cloudflare.
 
 The following diagram shows the traffic path from the internet to a backend pod:
 
@@ -115,7 +114,7 @@ flowchart LR
 The client connects to the load balancer's public IP.
 The load balancer forwards the connection over the vSwitch private network to one of the healthy nodes.
 The node's Traefik instance receives the request and routes it to the appropriate backend service inside the cluster.
-This allows us to further abstract away the cluster's internal structure and provide a single stable endpoint for all ingress traffic.
+This architecture abstracts away the cluster's internal structure and provides a single stable endpoint for all ingress traffic.
 
 ## Understanding the Ingress Architecture
 
@@ -297,7 +296,7 @@ The `tolerations` setting with `operator: Exists` allows Traefik to schedule on 
 
 RKE2 detects the new manifest and installs the chart automatically within a few seconds.
 
-### Verify Installation
+### Verifying the Installation
 
 Confirm that Traefik has one pod per node:
 
@@ -317,13 +316,13 @@ traefik   NodePort   10.43.171.253   <none>        80:30080/TCP,443:30443/TCP   
 
 The `PORT(S)` column confirms that external ports `80` and `443` map to NodePorts `30080` and `30443`.
 
-## Configuring Hetzner Cloud Load Balancer
+## Configuring the Hetzner Cloud Load Balancer
 
 The load balancer sits in front of the cluster and provides a single static IP address for all ingress traffic.
 It distributes requests across the cluster nodes and removes unhealthy nodes from the rotation automatically.
 
 The Hetzner Cloud Load Balancer is a managed service that lives in the Hetzner Cloud platform — separate from the dedicated servers that run our cluster.
-We manage it through the `hcloud` CLI, but alternatively you can use the Hetzner Cloud Console web interface.
+We manage it through the `hcloud` CLI, though the Hetzner Cloud Console web interface works as well.
 
 ### Installing the Hetzner Cloud CLI
 
@@ -357,25 +356,25 @@ Hetzner Cloud organizes resources into projects.
 Each project has its own set of servers, load balancers, networks, and API tokens.
 A clear naming convention helps when managing multiple clusters — for example, `k8s-prod-hel1-2` identifies the second production cluster in the Helsinki region.
 
-Projects are created in the [Hetzner Cloud Console](https://console.hetzner.cloud):
+We create projects in the [Hetzner Cloud Console](https://console.hetzner.cloud):
 
 1. Open the Cloud Console and click **+ New Project**
 2. Name it something descriptive (for our example: `k8s-prod-hel1-2`)
-3. Open the new project, navigate to **Security** → **API Tokens**
+3. Open the new project, navigate to **Security** then **API Tokens**
 4. Click **Generate API Token**, select **Read & Write** permissions, and copy the token
 
 The token is shown only once — store it securely.
 
 ### Setting Up a CLI Context
 
-A CLI context links a name to an API token, letting you switch between projects without re-entering credentials.
+A CLI context links a name to an API token, letting us switch between projects without re-entering credentials.
 Create a context for the new project:
 
 ```bash
 $ hcloud context create k8s-prod-hel1-2
 ```
 
-The CLI will prompt for the API token.
+The CLI prompts for the API token.
 Paste the token from the previous step.
 
 Confirm the context is active and working:
@@ -385,13 +384,13 @@ $ hcloud datacenter list
 ```
 
 This should return a list of Hetzner datacenters, confirming that authentication is set up correctly.
-From now on, all `hcloud` commands will operate within the `k8s-prod-hel1-2` project context.
+From this point on, all `hcloud` commands operate within the `k8s-prod-hel1-2` project context.
 
-### Create Load Balancer and Add Targets
+### Creating the Load Balancer and Adding Targets
 
-With the CLI configured, create the load balancer in the same region as the cluster nodes.
-For our cluster we chose the Helsinki region (`hel1`), as our dedicated servers are located there.
-For the size of the load balancer, `lb11` is sufficient for basic ingress traffic, but you can choose a larger size if you expect higher throughput or need more concurrent connections.
+With the CLI configured, we create the load balancer in the same region as the cluster nodes.
+Our dedicated servers are located in the Helsinki region (`hel1`).
+The `lb11` size is sufficient for basic ingress traffic, but a larger size can be chosen if higher throughput or more concurrent connections are expected.
 
 ```bash
 $ hcloud load-balancer create \
@@ -407,7 +406,7 @@ IPv6: 2a01:4f9:c01d:54e::1
 Before adding targets, the load balancer must be attached to the Cloud Network that is connected to the vSwitch.
 Without this, the load balancer has no route to the nodes' private IPs and target registration will fail.
 
-First, identify the Cloud Network connected to your vSwitch:
+First, identify the Cloud Network connected to the vSwitch:
 
 ```bash
 $ hcloud network list
@@ -416,10 +415,10 @@ ID   NAME   IP RANGE   SERVERS   AGE
 
 In our case no Cloud Network exists yet, so we need to create one and connect it to the vSwitch.
 A Cloud Network is Hetzner's virtual network for Cloud resources.
-On its own it cannot reach dedicated servers — we bridge the two by adding a vswitch subnet.
+On its own it cannot reach dedicated servers — we bridge the two by adding a vSwitch subnet.
 
 Create the Cloud Network with an IP range that covers the vSwitch addresses.
-The network range must be broad enough to contain the vswitch subnet.
+The network range must be broad enough to contain the vSwitch subnet.
 Our nodes use `10.1.0.0/16`, so the Cloud Network needs at least a `/8` to encompass it:
 
 ```bash
@@ -430,9 +429,10 @@ Network 11937387 created
 ```
 
 Next, add a vSwitch subnet that links this Cloud Network to the Robot vSwitch.
-You can find your vSwitch ID in the Hetzner Robot panel under **vSwitches**:
+The vSwitch ID can be found in the Hetzner Robot panel under **vSwitches**:
 
 ```bash
+# Replace <your-vswitch-id> with the numeric ID from Robot
 $ hcloud network add-subnet k8s-network \
   --type vswitch \
   --ip-range 10.1.0.0/16 \
@@ -442,10 +442,9 @@ $ hcloud network add-subnet k8s-network \
 Subnet added to Network 11937387
 ```
 
-Replace `<your-vswitch-id>` with the numeric ID from Robot.
-The `--network-zone` must match the region where your dedicated servers are located.
+The `--network-zone` must match the region where the dedicated servers are located.
 
-Next, the load balancer needs a cloud type subnet to get an IP from — it can't use the vswitch subnet.
+The load balancer also needs a cloud type subnet to receive an IP from — it cannot use the vSwitch subnet.
 Add one to the same network:
 
 ```bash
@@ -486,11 +485,11 @@ $ hcloud load-balancer add-target k8s-ingress --ip 10.1.0.14
 Target added to Load Balancer 5820086
 ```
 
-Replace the IPs with your actual vSwitch addresses.
+Replace the IPs with the actual vSwitch addresses.
 The dedicated servers must belong to the same Hetzner account and their IPs must be managed through Hetzner Robot.
 Traffic between the load balancer and the nodes flows over the private vSwitch network, keeping it off the public internet.
 
-### Configure Services and Health Checks
+### Configuring Services and Health Checks
 
 The load balancer needs three services: HTTP on port `80`, HTTPS on port `443`, and the Kubernetes API on port `6443`.
 The first two forward traffic to Traefik's NodePorts, while the API service passes traffic directly to the kube-apiserver.
@@ -523,7 +522,7 @@ The third service forwards port `6443` directly to the Kubernetes API server, wh
 Worker nodes do not run the API server, so the health check on port `6443` naturally excludes them from the rotation.
 
 Health checks ensure the load balancer only sends traffic to nodes where Traefik is responding.
-Both services enable proxy protocol so the load balancer prepends a header with the real client IP — without it, Traefik would only see the load balancer's private address as the source.
+Both web services enable proxy protocol so the load balancer prepends a header with the real client IP — without it, Traefik would only see the load balancer's private address as the source.
 
 The health checks use TCP rather than HTTP.
 Since proxy protocol is enabled, Traefik expects a PROXY header as the first bytes of every connection from the load balancer's IP.
@@ -569,7 +568,7 @@ Authentication is handled via bearer tokens and certificates, not source IP addr
 
 With three retries at 15-second intervals, a failing node is removed from the rotation within 45 seconds.
 
-### Retrieve the Load Balancer IP
+### Retrieving the Load Balancer IP
 
 ```bash
 $ LB_IP=$(hcloud load-balancer describe k8s-ingress -o format='{{.PublicNet.IPv4.IP}}')
@@ -607,7 +606,7 @@ Point the `cluster.yourdomain.com` DNS record at the load balancer's public IP s
 
 ## Verification
 
-### Check Load Balancer Health
+### Checking Load Balancer Health
 
 ```bash
 $ hcloud load-balancer describe k8s-ingress
@@ -616,7 +615,7 @@ $ hcloud load-balancer describe k8s-ingress
 All targets should show healthy status.
 If any targets appear unhealthy, check the troubleshooting section below before continuing.
 
-### Test Kubernetes API via Load Balancer
+### Testing the Kubernetes API via Load Balancer
 
 Verify that the API server is reachable through the load balancer:
 
@@ -627,9 +626,9 @@ ok
 
 A response of `ok` confirms that the load balancer is forwarding port `6443` to a healthy control plane node and the API server certificate includes the LB IP in its SANs.
 
-### Test End-to-End
+### Testing End-to-End
 
-To confirm the full traffic path works — from the internet through the load balancer, into the NodePort, and to a backend pod via Traefik — deploy a temporary test service behind an Ingress resource.
+To confirm the full traffic path works — from the internet through the load balancer, into the NodePort, and to a backend pod via Traefik — we deploy a temporary test service behind an Ingress resource.
 The [nginxdemos/hello](https://github.com/nginxinc/NGINX-Demos/tree/master/nginx-hello) image returns the server name and pod IP in plain text, which makes it easy to verify routing without parsing HTML:
 
 ```bash
@@ -669,7 +668,7 @@ Store the load balancer's public IP for testing:
 $ LB_IP=$(hcloud load-balancer describe k8s-ingress -o format='{{.PublicNet.IPv4.IP}}')
 ```
 
-First, verify that HTTP requests are redirected to HTTPS on port 443:
+First, verify that HTTP requests are redirected to HTTPS on port `443`:
 
 ```bash
 $ curl -sI -H "Host: test.example.com" http://${LB_IP}/
@@ -679,7 +678,7 @@ Date: Sun, 15 Feb 2026 14:56:09 GMT
 Content-Length: 18
 ```
 
-The `Location` header should show `https://test.example.com/` without an explicit port number, confirming the redirect targets port 443.
+The `Location` header should show `https://test.example.com/` without an explicit port number, confirming the redirect targets port `443`.
 
 Next, verify the full HTTPS path returns a response from the backend pod:
 
@@ -692,8 +691,8 @@ URI: /
 Request ID: 13a2d801bb9cd12e1ed7e794e4c2391c
 ```
 
-The `Server address` shows the pod's cluster IP and the `Server name` matches the pod name, confirming that traffic flows through all layers: internet → load balancer → NodePort → Traefik → backend pod.
-Traefik responds with its default self-signed certificate since we haven't configured cert-manager yet.
+The `Server address` shows the pod's cluster IP and the `Server name` matches the pod name, confirming that traffic flows through all layers: internet, load balancer, NodePort, Traefik, and backend pod.
+Traefik responds with its default self-signed certificate since we have not configured cert-manager yet.
 The `-k` flag tells curl to accept the untrusted certificate.
 
 Remove the test resources once verified:
@@ -717,11 +716,14 @@ Common causes include port conflicts — another service already bound to `30080
 
 ### Load Balancer Shows Unhealthy Targets
 
-If the Hetzner load balancer reports targets as unhealthy, check these in order:
+If the Hetzner load balancer reports targets as unhealthy, work through these checks in order.
 
-**1. Cloud subnet route** — The most common cause is a missing route for the cloud subnet.
+#### Cloud Subnet Route
+
+The most common cause of unhealthy targets is a missing route for the cloud subnet.
 The load balancer's private IP (`10.0.0.2`) lives on the cloud subnet (`10.0.0.0/24`), which is separate from the vSwitch subnet (`10.1.0.0/16`).
 Without a route via the Cloud Network gateway (`10.1.0.1`), the node sends health check responses to the wrong destination and the handshake never completes.
+
 Verify the route exists:
 
 ```bash
@@ -736,10 +738,12 @@ $ nmcli connection modify vswitch +ipv4.routes "10.0.0.0/24 10.1.0.1"
 $ nmcli connection up vswitch
 ```
 
-**2. NodePort reachability** — Verify that the NodePort is reachable from each node's vSwitch address:
+#### NodePort Reachability
+
+Verify that the NodePort is reachable from each node's vSwitch address:
 
 ```bash
-# Replace with your actual vSwitch IPs
+# Replace with the actual vSwitch IPs
 $ for ip in 10.1.0.11 10.1.0.12 10.1.0.13 10.1.0.14; do
     echo "Testing $ip..."
     curl -s -o /dev/null -w "%{http_code}" http://$ip:30080/ping
@@ -756,9 +760,9 @@ Testing 10.1.0.14...
 301
 ```
 
-A `301` response confirms Traefik is responding on that node (the redirect is expected since we configured HTTP → HTTPS redirection).
-If you get connection refused, check that the Traefik pod is running on that node and the firewall allows traffic on the NodePort range.
-We are expecting some nodes to fail as they have not been migrated yet.
+A `301` response confirms Traefik is responding on that node — the redirect is expected since we configured HTTP to HTTPS redirection.
+If the response is a connection refused, check that the Traefik pod is running on that node and the firewall allows traffic on the NodePort range.
+Some nodes are expected to fail as they have not been migrated yet.
 
 ### 404 on All Requests
 

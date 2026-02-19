@@ -8,6 +8,7 @@ guide_section_id: 2
 guide_lesson_id: 2
 guide_lesson_abstract: >
   Install Rocky Linux 10 on Node 4 with security hardening, essential tools, and storage planning for the RKE2 cluster.
+  A freshly provisioned server needs OS installation, user accounts, SSH key authentication, and basic tooling before it can serve as a Kubernetes node.
 guide_lesson_conclusion: >
   Node 4 is now running Rocky Linux 10 with security hardening complete, ready for network configuration.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-5.md
@@ -28,7 +29,7 @@ This lesson covers the essential steps specific to our RKE2 migration.
 
 Before we can install the operating system, we need to configure the server identity in Hetzner's management interface.
 Log into the [Hetzner Robot](https://robot.hetzner.com/servers) web interface and set the server name (e.g., `node4`) along with a reverse DNS entry.
-Having a proper reverse DNS entry helps with server identification in logs and monitoring tools.
+A proper reverse DNS entry helps with server identification in logs and monitoring tools.
 
 After receiving the root credentials via email, access the server through SSH:
 
@@ -44,16 +45,16 @@ This tool handles disk partitioning, OS deployment, and basic configuration in o
 $ installimage
 ```
 
-In the configuration editor, select Rocky Linux 10 and set the hostname to match your naming convention.
+In the configuration editor, select Rocky Linux 10 and set the hostname to match our naming convention.
 We use a simple partition layout without swap, dedicating the entire disk to the root partition with a small separate `/boot`:
 
-```
+```text
 PART  /boot  ext3   1024M
 PART  /      ext4   all
 ```
 
-Kubernetes requires swap to be disabled, and RKE2 will verify this during installation.
-Rather than creating swap space we'd immediately disable, we allocate all available disk space to the root partition where container images and volumes will live.
+Kubernetes requires swap to be disabled, and RKE2 verifies this during installation.
+Rather than creating swap space we would immediately disable, we allocate all available disk space to the root partition where container images and volumes will live.
 
 After installation completes, reboot the server to boot into the new operating system:
 
@@ -61,8 +62,8 @@ After installation completes, reboot the server to boot into the new operating s
 $ reboot
 ```
 
-When reconnecting via SSH, you'll see a host key warning because the server's SSH keys changed with the new OS installation.
-This is expected—remove the old entries from `~/.ssh/known_hosts` on your local machine and accept the new key when prompted.
+When reconnecting via SSH, we see a host key warning because the server's SSH keys changed with the new OS installation.
+This is expected — remove the old entries from `~/.ssh/known_hosts` on the local machine and accept the new key when prompted.
 
 ## Essential Security Configuration
 
@@ -72,7 +73,7 @@ These steps protect the server from unauthorized access and establish good secur
 ### Change the Root Password
 
 The default root password was sent via email, which means it has already been transmitted over the network.
-Change it to something only you know:
+Change it immediately:
 
 ```bash
 $ whoami
@@ -95,7 +96,7 @@ $ dnf update -y
 
 ### Create a Dedicated User Account
 
-Running commands as root is dangerous as it provides unrestricted access to the system.
+Running commands as root is dangerous because it provides unrestricted access to the system.
 We create a dedicated admin account that requires explicit `sudo` for privileged operations, providing both safety and accountability.
 
 Choose a username that indicates the account's purpose and remains consistent across all cluster nodes.
@@ -112,7 +113,7 @@ $ usermod -aG wheel k8sadmin
 
 Adding the user to the `wheel` group grants sudo privileges on RHEL-based systems.
 
-Test that the new user account works by opening a new SSH session from your local machine:
+Test that the new user account works by opening a new SSH session from the local machine:
 
 ```bash
 $ ssh k8sadmin@<node4-public-ip>
@@ -121,18 +122,18 @@ $ ssh k8sadmin@<node4-public-ip>
 ### Set Up SSH Key Authentication
 
 Password authentication is vulnerable to brute-force attacks and requires typing credentials on every connection.
-SSH key authentication eliminates both problems—keys are far harder to crack and connect without password prompts.
+SSH key authentication eliminates both problems — keys are far harder to crack and connect without password prompts.
 
-Generate an ED25519 key pair on your local machine, which offers better security and performance than RSA:
+Generate an ED25519 key pair on the local machine, which offers better security and performance than RSA:
 
 ```bash
 $ ssh-keygen -t ed25519 -f ~/.ssh/node4_k8sadmin_ed25519
 $ ssh-copy-id -i ~/.ssh/node4_k8sadmin_ed25519 k8sadmin@<node4-public-ip>
 ```
 
-To avoid typing the full connection details every time, add an entry to your `~/.ssh/config` file:
+To avoid typing the full connection details every time, add an entry to the `~/.ssh/config` file:
 
-```
+```text
 Host node4
   HostName <node4-public-ip>
   User k8sadmin
@@ -140,7 +141,7 @@ Host node4
   IdentitiesOnly yes
 ```
 
-Now you can connect with just `ssh node4` and verify that key-based authentication works before proceeding:
+Verify that key-based authentication works by connecting with just the host alias:
 
 ```bash
 $ ssh node4
@@ -149,7 +150,7 @@ $ ssh node4
 ### Disable Root Login
 
 With SSH key authentication working for our admin user, we can now disable root login entirely.
-This is a critical security measure as automated bots constantly scan the internet for servers accepting root SSH connections:
+Automated bots constantly scan the internet for servers accepting root SSH connections, making this a critical security measure:
 
 ```bash
 $ sudo vi /etc/ssh/sshd_config
@@ -159,16 +160,14 @@ $ sudo vi /etc/ssh/sshd_config
 $ sudo systemctl restart sshd
 ```
 
-From this point forward, only the `k8sadmin` account can be used to access the server, and all administrative tasks require explicit `sudo` elevation.
+From this point forward, only the `k8sadmin` account can access the server, and all administrative tasks require explicit `sudo` elevation.
 Using `sudo` also logs all privileged commands to the system journal, providing an audit trail of who did what and when.
 
 ## Optional: Set Up Tailscale
 
 Managing bare-metal servers often means dealing with changing IP addresses, firewall rules, and VPN configurations.
 Tailscale simplifies this by creating a secure mesh network that works regardless of network topology.
-
-With Tailscale, you can access your cluster nodes using consistent hostnames (like `node4.tailnet-name.ts.net`) from anywhere, even behind NAT or firewalls.
-This is especially valuable when you're troubleshooting cluster issues remotely.
+With Tailscale, we can access cluster nodes using consistent hostnames (like `node4.tailnet-name.ts.net`) from anywhere, even behind NAT or firewalls.
 
 ```bash
 $ sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/fedora//tailscale.repo
@@ -177,7 +176,7 @@ $ sudo systemctl enable --now tailscaled
 $ sudo tailscale up
 ```
 
-Follow the authentication URL provided in the output to connect the machine to your Tailscale network.
+Follow the authentication URL provided in the output to connect the machine to the Tailscale network.
 After authentication, verify the Tailscale IP address:
 
 ```bash
@@ -185,12 +184,12 @@ $ tailscale ip -4
 ```
 
 For servers that should remain permanently accessible, consider disabling key expiry in the Tailscale admin console.
-This removes the need for periodic re-authentication, but it also means a compromised server could maintain access indefinitely—use this option with caution.
+This removes the need for periodic re-authentication, but it also means a compromised server could maintain access indefinitely — use this option with caution.
 
 ## Configure Timezone and Hostname
 
 Consistent timezone configuration across all cluster nodes is important for log correlation and debugging.
-When investigating issues, you need timestamps to match across nodes, so set all nodes to their correct local timezone.
+When investigating issues, we need timestamps to match across nodes, so we set all nodes to their correct local timezone.
 
 As our cluster nodes are located in Helsinki, we set the timezone to `Europe/Helsinki`:
 
@@ -198,7 +197,7 @@ As our cluster nodes are located in Helsinki, we set the timezone to `Europe/Hel
 $ sudo timedatectl set-timezone Europe/Helsinki
 ```
 
-The hostname should already be set from the installation, but verify it matches your naming convention:
+The hostname should already be set from the installation, but we verify it matches our naming convention:
 
 ```bash
 $ hostname
@@ -211,7 +210,7 @@ $ sudo hostnamectl set-hostname node4
 ## Install Essential Tools
 
 A Kubernetes node needs various tools for administration, troubleshooting, and automation.
-Install these now so they're available when you need them:
+We install these now so they are available when needed during later lessons:
 
 ```bash
 $ sudo dnf install -y \
@@ -235,8 +234,8 @@ $ sudo dnf install -y \
 
 ## Verify System Readiness
 
-Before proceeding, verify that the system is properly configured and can communicate with the outside world.
-These checks catch common issues like DNS misconfiguration or firewall problems:
+Before proceeding to network configuration in Lesson 3, we verify that the system is properly configured and can communicate with the outside world.
+These checks catch common issues like DNS misconfiguration or firewall problems early:
 
 ```bash
 # Check kernel version (should be 6.12+ for Rocky 10)

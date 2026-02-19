@@ -7,7 +7,8 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 3
 guide_lesson_id: 13
 guide_lesson_abstract: >
-  Verify that the 3-node RKE2 control plane is truly highly available by testing API server redundancy, leader election, and individual node failure scenarios.
+  A running control plane is not necessarily a highly available one.
+  This lesson tests API server redundancy, leader election failover, and individual node failure scenarios to confirm that our 3-node RKE2 cluster can survive losing any single node.
 guide_lesson_conclusion: >
   Every node in the cluster can go down individually without breaking the control plane, confirming true high availability.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-13.md
@@ -65,7 +66,7 @@ node_ddfe2115-9b91-4bf3-a293-522659cd0edc
 ```
 
 Each command prints the name of the node currently holding the lease.
-Note which node holds each lease before the failover tests — you will see these change when that node goes down.
+Note which node holds each lease before the failover tests — we will see these change when that node goes down.
 
 ## Testing Node Failure
 
@@ -73,14 +74,13 @@ The real test of high availability is stopping a node and confirming the cluster
 With three control plane nodes, the cluster should tolerate any single node going down while continuing to serve API requests, schedule pods, and maintain etcd consensus.
 
 {% include alert.liquid.html type='warning' title='Workload Availability' content='
-If you have already deployed application workloads to the new cluster, ensure they are highly available through replication before testing node failures.
+If application workloads are already deployed to the new cluster, ensure they are highly available through replication before testing node failures.
 A single-replica Deployment will go down when its node stops.
-How to achieve this depends on your workloads — run multiple replicas, configure Pod Disruption Budgets, or use StatefulSet replication as appropriate.
 ' %}
 
 ### Preparation
 
-Open a terminal on your workstation and start a continuous watch:
+Open a terminal on the workstation and start a continuous watch:
 
 ```bash
 $ watch -n 2 kubectl get nodes
@@ -99,7 +99,7 @@ $ ssh root@node3 "sudo systemctl stop rke2-server"
 ```
 
 Within about a minute, the watch terminal shows Node 3 as `NotReady`.
-Verify that `kubectl` still works — the client connects through one of the two remaining API servers:
+We can verify that `kubectl` still works — the client connects through one of the two remaining API servers:
 
 ```bash
 $ kubectl get nodes

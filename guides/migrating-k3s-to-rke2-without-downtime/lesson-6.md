@@ -7,13 +7,14 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 6
 guide_lesson_abstract: >
-  Verify the Canal CNI, enable WireGuard encryption for inter-node traffic, and configure Calico network policies for pod-level security.
+  Canal was installed automatically with RKE2, but it needs verification and hardening before we build on top of it.
+  This lesson confirms dual-stack networking is working, enables WireGuard encryption for inter-node traffic, and configures Calico network policies to secure pod communication.
 guide_lesson_conclusion: >
-  Canal is providing encrypted dual-stack pod networking with namespace-level network policies. Node 4 is Ready and Cluster B can accept additional nodes.
+  Canal is providing encrypted dual-stack pod networking with namespace-level network policies, and Node 4 is Ready to accept additional nodes into Cluster B.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-9.md
 ---
 
-Canal was installed automatically when RKE2 started in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
+Canal was installed automatically when RKE2 started in Lesson 5.
 This lesson verifies that dual-stack networking is working, enables WireGuard encryption for inter-node traffic, and configures Calico network policies to secure pod communication.
 
 {% include guide-overview-link.liquid.html %}
@@ -22,7 +23,8 @@ This lesson verifies that dual-stack networking is working, enables WireGuard en
 
 ### Architecture
 
-Canal is a composite CNI that combines two well-established projects: [Flannel](https://github.com/flannel-io/flannel) handles inter-node traffic by creating a VXLAN overlay network, while [Calico](https://www.tigera.io/project-calico/) manages intra-node routing and enforces network policies.
+Canal is a composite CNI that combines two well-established projects.
+[Flannel](https://github.com/flannel-io/flannel) handles inter-node traffic by creating a VXLAN overlay network, while [Calico](https://www.tigera.io/project-calico/) manages intra-node routing and enforces network policies.
 This separation of concerns gives Canal the simplicity of Flannel's overlay networking with the power of Calico's policy engine.
 
 | Component      | Role                  | Responsibility                                       |
@@ -44,7 +46,7 @@ Rather than traversing rule chains, eBPF programs use hash maps for O(1) lookups
 CNI plugins like Cilium and newer versions of Calico support eBPF natively, replacing iptables entirely.
 
 Canal does not use eBPF — it relies on the traditional iptables/nftables stack.
-For most clusters this performs well, but it's worth understanding the trade-off:
+For most clusters this performs well, but understanding the trade-off helps when evaluating future CNI options:
 
 | Aspect             | iptables (Canal)                  | eBPF (Cilium, Calico eBPF)         |
 | ------------------ | --------------------------------- | ---------------------------------- |
@@ -55,7 +57,8 @@ For most clusters this performs well, but it's worth understanding the trade-off
 | Maturity           | Battle-tested, decades of use     | Rapidly maturing, production-ready |
 
 We chose Canal because it is the RKE2 default, auto-detects dual-stack, and requires no additional installation or kernel dependencies.
-If your workloads eventually need L7 policy enforcement or eBPF performance, RKE2 also bundles Cilium and Calico with eBPF support as alternative CNI options, but switching CNI requires rebuilding the cluster.
+If your workloads eventually need L7 policy enforcement or eBPF performance, RKE2 also bundles Cilium and Calico with eBPF support as alternative CNI options.
+Switching CNI requires rebuilding the cluster.
 
 ### IPAM (IP Address Management)
 
@@ -69,11 +72,11 @@ Different CNI plugins support different allocation strategies:
 | multi-pool   | Multiple pools with different CIDRs per node                 |
 
 Canal uses the `kubernetes` mode exclusively.
-RKE2 configures the pod CIDRs at startup (we set `cluster-cidr: 10.42.0.0/16,fd00:42::/56` in Lesson 8), and the Kubernetes controller manager assigns each node a subnet from that range.
+RKE2 configures the pod CIDRs at startup (we set `cluster-cidr: 10.42.0.0/16,fd00:42::/56` in Lesson 5), and the Kubernetes controller manager assigns each node a subnet from that range.
 When a pod starts, it receives one IPv4 and one IPv6 address from its node's allocated subnets.
 
-This means the CNI never makes allocation decisions itself and it simply uses the addresses that Kubernetes provides.
-You can see this in action by inspecting any running pod's IP assignments:
+The CNI never makes allocation decisions itself — it simply uses the addresses that Kubernetes provides.
+We can see this in action by inspecting any running pod's IP assignments:
 
 ```bash
 $ kubectl -n kube-system get pod etcd-node4 -o jsonpath='{.status.podIPs}' | jq .
@@ -148,16 +151,16 @@ flowchart LR
 ```
 
 The diagram shows how the original pod-to-pod packet is nested inside VXLAN encapsulation for transit across the vSwitch.
-The underlying infrastructure only needs to route between node IPs—it never sees the pod CIDRs directly.
+The underlying infrastructure only needs to route between node IPs — it never sees the pod CIDRs directly.
 
-The trade-off is a small overhead per packet (approximately 50 bytes for the VXLAN + UDP + outer IP headers) and the fact that the encapsulated traffic is unencrypted by default.
-On a private vSwitch this is generally acceptable, but for defense in depth we'll enable WireGuard encryption later in this lesson.
+The trade-off is a small overhead per packet (approximately 50 bytes for the VXLAN + UDP + outer IP headers) and the fact that encapsulated traffic is unencrypted by default.
+On a private vSwitch this is generally acceptable, but for defense in depth we enable WireGuard encryption later in this lesson.
 
 ## Verification
 
 ### Canal Pod Status
 
-Verify that both containers in the Canal pod are running on every node:
+We start by verifying that both containers in the Canal pod are running on every node:
 
 ```bash
 $ kubectl get pods -n kube-system -l k8s-app=canal -o wide
@@ -165,7 +168,7 @@ NAME               READY   STATUS    RESTARTS   AGE   IP         NODE
 rke2-canal-xxxxx   2/2     Running   0          30m   10.1.0.14   node4
 ```
 
-Both containers must show `2/2` in the `READY` column—one for Calico and one for Flannel.
+Both containers must show `2/2` in the `READY` column — one for Calico and one for Flannel.
 A single-node cluster shows one pod; this grows to one per node as additional nodes join.
 
 ### Dual-Stack Pod Test
@@ -296,7 +299,7 @@ $ lsmod | grep wireguard
 wireguard             118784  0
 ```
 
-If the module fails to load, your kernel may need the WireGuard package installed.
+If the module fails to load, the kernel may need the WireGuard package installed.
 On Rocky Linux 10, WireGuard is included in the default kernel.
 
 RKE2 bundles Canal as a Helm chart, and customizations are applied through a `HelmChartConfig` resource placed in the auto-deploy manifests directory:
@@ -329,7 +332,7 @@ daemon set "rke2-canal" successfully rolled out
 ### Installing WireGuard Tools
 
 The WireGuard kernel module is built into Rocky Linux 10's default kernel, but the `wg` userspace tool for inspecting tunnels is a separate package.
-Install it now so it's available when we verify cross-node tunnels later:
+Install it now so it is available when we verify cross-node tunnels later:
 
 ```bash
 $ sudo dnf install -y wireguard-tools
@@ -353,7 +356,7 @@ interface: flannel-wg
 
 The `flannel-wg` and `flannel-wg-v6` interfaces confirm that Canal switched from VXLAN to WireGuard.
 The `wg show` output should list the interface with a public key and listening port, but no peers yet.
-Peers will appear automatically as additional nodes join the cluster in [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11).
+Peers appear automatically as additional nodes join the cluster in Lesson 11.
 
 {% include alert.liquid.html type='warning' title='Missing flannel-wg Interface' content='
 If `ip link show` still shows `flannel.1` (VXLAN) instead of `flannel-wg`, the Canal DaemonSet did not fully pick up the new backend.
@@ -376,7 +379,7 @@ Canal enforces these policies through Calico's policy engine, which supports sta
 | Pod-to-pod traffic | `NetworkPolicy`  | Calico (in Canal) |
 | Host-level traffic | Hetzner firewall | Hetzner network   |
 
-Unlike Cilium, Canal does not provide host-level network policies—the Hetzner firewall configured in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) serves that role.
+Unlike Cilium, Canal does not provide host-level network policies — the Hetzner firewall configured in Lesson 7 serves that role.
 
 ### Default Deny per Namespace
 
@@ -386,7 +389,8 @@ This policy selects all pods in a namespace and permits only traffic from within
 Pods also need to reach CoreDNS (in `kube-system`) to resolve service names, so a companion egress policy must allow DNS traffic.
 Without it, pods cannot look up any service addresses.
 
-We place both policies in the RKE2 auto-deploy manifests directory so they are applied on every cluster start and survive node rebuilds—consistent with how we deployed the Canal HelmChartConfig. Create a file at `/var/lib/rancher/rke2/server/manifests/default-network-policies.yaml` with the following content:
+We place both policies in the RKE2 auto-deploy manifests directory so they are applied on every cluster start and survive node rebuilds — consistent with how we deployed the Canal `HelmChartConfig`.
+Create a file at `/var/lib/rancher/rke2/server/manifests/default-network-policies.yaml` with the following content:
 
 ```yaml
 # Default deny ingress: only allow traffic from within the same namespace
@@ -428,15 +432,15 @@ spec:
 RKE2 picks up the manifest automatically within a few seconds.
 The `default-deny-ingress` policy restricts pods in the `default` namespace to only accept traffic from other pods in the same namespace, while `allow-dns` ensures DNS resolution continues to work.
 
-For additional namespaces you create, apply the same pair of policies by duplicating the manifest with the appropriate `namespace` field—or use the CIS hardening profile described below.
+For additional namespaces, apply the same pair of policies by duplicating the manifest with the appropriate `namespace` field — or use the CIS hardening profile described below.
 
 ### CIS Hardening Profile
 
 RKE2 can automatically apply namespace-level network policies and stricter Pod Security Standards when started with the `profile: cis` configuration option.
-This applies a default-deny ingress policy and a DNS-allow policy to the `kube-system`, `kube-public`, and `default` namespaces—similar to the manual policies above but managed by RKE2 itself.
+This applies a default-deny ingress policy and a DNS-allow policy to the `kube-system`, `kube-public`, and `default` namespaces — similar to the manual policies above but managed by RKE2 itself.
 
-For namespaces you create, you are still responsible for applying appropriate network policies.
-The manual policies shown above serve as a template for securing your application namespaces.
+For namespaces we create, we are still responsible for applying appropriate network policies.
+The manual policies shown above serve as a template for securing application namespaces.
 
 ### Verifying Network Policies
 
@@ -479,7 +483,7 @@ pod "policy-test" deleted from default namespace
 
 ## Troubleshooting
 
-For Canal pod startup failures and dual-stack IPv6 issues, refer to the troubleshooting section in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
+For Canal pod startup failures and dual-stack IPv6 issues, refer to the troubleshooting section in Lesson 5.
 The sections below cover issues specific to this lesson's configuration.
 
 ### Network Policy Not Blocking Traffic

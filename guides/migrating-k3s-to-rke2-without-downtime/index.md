@@ -41,17 +41,17 @@ As our migration from bare-metal GitHub Action runners to Kubernetes GitHub Acti
 I decided to add two additional Hetzner dedicated servers as worker nodes to our cluster and looked into getting them production-ready, using inter-node communication via vSwitch (see my existing blog post [New K3s agent node for our cluster](/2025-11-23-new-k3s-agent-node) if you want to learn more).
 
 This enabled us to move additional development and proof-of-concept workloads from a comparably expensive Elastic Kubernetes Service (EKS) in Amazon Web Services (AWS) to our self-managed infrastructure, saving us a fortune.
-However, as we continued to grow, we started to feel the limitations of k3s—it was not designed for larger, complex clusters with high availability requirements, but instead focused on simplicity and ease of use for edge and IoT environments.
+However, as we continued to grow, we started to feel the limitations of k3s — it was not designed for larger, complex clusters with high availability requirements, but instead focused on simplicity and ease of use for edge and IoT environments.
 
-This made me look into alternatives and that's when I came across RKE2, a robust and enterprise-grade Kubernetes distribution also maintained by SUSE/Rancher, the same company behind k3s.
-While k3s offers a lot of built-in features and convenience tools, I wanted to be closer to enterprise-level Kubernetes behavior and have greater control over the components as our environment grows—exactly what RKE2 provides.
+This made me look into alternatives, and RKE2 stood out as a robust and enterprise-grade Kubernetes distribution also maintained by SUSE/Rancher, the same company behind k3s.
+While k3s offers a lot of built-in features and convenience tools, I wanted to be closer to enterprise-level Kubernetes behavior and have greater control over the components as our environment grows — exactly what RKE2 provides.
 
 On top of that, the etcd component in k3s was showing stability issues, especially since I had not yet migrated to high availability.
 With RKE2, I can set up a proper HA control plane with multiple etcd nodes, significantly improving reliability.
-Furthermore, RKE2's focus on security and compliance gives me a stronger foundation—crucial as we continue adding production workloads.
+RKE2's focus on security and compliance also gives me a stronger foundation — crucial as we continue adding production workloads.
 
 The final push to migrate came when we decided to add another bare-metal dedicated server.
-This allowed me to bootstrap RKE2 on the new node without touching the existing k3s nodes—enabling a zero-downtime migration.
+This allowed me to bootstrap RKE2 on the new node without touching the existing k3s nodes — enabling a zero-downtime migration.
 
 ## What You Will Learn
 
@@ -74,5 +74,3 @@ To follow this guide, you must have:
 - Familiarity with k3s cluster management
 - Access to 4 dedicated servers in Hetzner for exact networking replication
 - A working k3s cluster to migrate from
-
-Let's begin the migration journey!

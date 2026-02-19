@@ -7,7 +7,8 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 3
 guide_lesson_id: 12
 guide_lesson_abstract: >
-  Migrate Node 2 from Cluster A to Cluster B, achieving high availability with 3 control plane nodes and etcd quorum.
+  Migrate Node 2 from Cluster A to Cluster B, bringing the RKE2 cluster to three control plane nodes with full etcd quorum tolerance.
+  This lesson focuses on what changes compared to the Node 3 migration and the significance of reaching high availability.
 guide_lesson_conclusion: >
   Node 2 has joined Cluster B as the third control plane node, achieving full high availability with etcd quorum tolerance.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-12.md
@@ -15,7 +16,7 @@ repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-12.md
 
 Node 2 follows the same migration path as Node 3 — backup, drain, reinstall, join.
 Rather than repeating every step in detail, this lesson focuses on what changes: the impact on Cluster A's remaining capacity, the configuration values specific to Node 2, and the significance of reaching three control plane nodes for etcd quorum.
-Refer to [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11) for full explanations of each stage.
+Refer to Lesson 11 for full explanations of each stage.
 
 {% include guide-overview-link.liquid.html %}
 
@@ -57,8 +58,8 @@ This majority is called quorum.
 | 3     | 2             | 1        | HA        |
 | 5     | 3             | 2        | Better HA |
 
-With only 2 nodes, losing either one breaks quorum — the cluster becomes read-only and eventually stops serving requests entirely.
-With 3 nodes, one can fail while the remaining two still form a majority and continue operating normally.
+With only two nodes, losing either one breaks quorum — the cluster becomes read-only and eventually stops serving requests entirely.
+With three nodes, one can fail while the remaining two still form a majority and continue operating normally.
 This is why reaching three control plane nodes is the critical milestone for production readiness.
 
 ## Draining Node 2 from Cluster A
@@ -168,7 +169,7 @@ It then joins the etcd cluster as the third member — bringing the cluster to q
 Canal deploys automatically and establishes WireGuard tunnels to both Node 3 and Node 4.
 
 Unlike the Node 3 join in Lesson 11, there should be no WireGuard/VXLAN backend mismatch because all existing nodes are already running the WireGuard backend.
-If you do see "no route to host" errors, restart the Canal DaemonSet as described in [Lesson 11's troubleshooting section](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11#wireguard--vxlan-backend-mismatch).
+If we do see "no route to host" errors, restart the Canal DaemonSet as described in [Lesson 11's troubleshooting section](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11#wireguard--vxlan-backend-mismatch).
 
 ## Verification
 
@@ -195,8 +196,8 @@ yyyy, started, node3-xxxx, https://10.1.0.13:2380, https://10.1.0.13:2379, false
 zzzz, started, node4-xxxx, https://10.1.0.14:2380, https://10.1.0.14:2379, false
 ```
 
-The last column indicates the learner flag — `false` means the member is a full voting participant.
-Check cluster health to confirm all endpoints are responsive:
+The last column is the learner flag — `false` means the member is a full voting participant.
+We can also check cluster health to confirm all endpoints are responsive:
 
 ```bash
 $ sudo etcdctl endpoint health --cluster
@@ -357,8 +358,8 @@ node4   True    true              True          4h
 ```
 
 With three storage nodes available, Longhorn can now replicate volumes across different nodes for redundancy.
-In [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) we set `defaultReplicaCount` to `1` because only a single node existed.
-Update the Longhorn `HelmChart` manifest to increase the replica count to `2`:
+We set `defaultReplicaCount` to `1` in Lesson 7 because only a single node existed at the time.
+Now we update the Longhorn `HelmChart` manifest to increase the replica count to `2`:
 
 ```yaml
 # /var/lib/rancher/rke2/server/manifests/longhorn.yaml
@@ -389,10 +390,10 @@ spec:
 ```
 
 RKE2's Helm controller detects the change and upgrades the release automatically.
-New volumes will now be created with 2 replicas — one on the node running the workload and one on a different node for redundancy.
+New volumes will now be created with two replicas — one on the node running the workload and one on a different node for redundancy.
 Existing single-replica volumes are not affected; increase their replica count individually through the Longhorn UI or API if needed.
 
-## Final State
+## Resulting Cluster State
 
 ```mermaid!
 flowchart LR

@@ -20,4 +20,4 @@ With Cluster B running a 3-node HA control plane and all workloads migrated, thi
 - Installing Rocky Linux and joining Node 1 as a dedicated worker node
 - Reviewing the final cluster architecture and exploring next steps
 
-By the end of this section, the migration is complete — a 4-node RKE2 cluster with 3 control plane nodes and 1 worker node, fully replacing the original k3s cluster.
+The section concludes with a completed migration — a 4-node RKE2 cluster with 3 control plane nodes and 1 worker node, fully replacing the original k3s cluster.

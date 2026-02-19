@@ -7,13 +7,15 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 2
 guide_lesson_id: 4
 guide_lesson_abstract: >
-  Configure Hetzner Robot firewall rules to allow RKE2 cluster traffic while maintaining security.
+  Before any RKE2 component can communicate across nodes, the Hetzner firewall must permit cluster traffic.
+  This lesson explains the three-layer security model, walks through each firewall rule, and verifies that the configuration works from both the private vSwitch and the public internet.
 guide_lesson_conclusion: >
-  The Hetzner firewall is configured to allow cluster communication over the vSwitch and necessary public services.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-7.md
+  Our Hetzner firewall now permits all necessary cluster, service, and return traffic while keeping unused ports blocked.
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-4.md
 ---
 
-Before installing RKE2, we need to configure firewall rules that allow cluster components to communicate.
+With the vSwitch network in place from Lesson 3, our nodes can reach each other over a private Layer 2 link.
+Traffic on that link still passes through Hetzner's firewall infrastructure, though, so we need explicit rules before RKE2 components can communicate.
 This lesson covers the first layer of our three-layer security model: the Hetzner network firewall.
 
 {% include guide-overview-link.liquid.html %}
@@ -28,49 +30,47 @@ We use a layered approach to network security, with each layer serving a specifi
 | 2     | Calico Network Policies    | Fine-grained port control on the host                            |
 | 3     | Kubernetes NetworkPolicies | Pod-to-pod isolation and service-level access control            |
 
-This architecture provides defense-in-depth: if one layer fails or is misconfigured, the others still provide protection.
+This architecture provides defense-in-depth.
+If one layer fails or is misconfigured, the others still provide protection.
 
 ### Why Layers?
 
 Hetzner's firewall has a 10-rule limit, which forces us to use broad port ranges.
-For example, opening ports `22-587` allows SSH, SMTP, HTTP, and HTTPS, but also opens unused ports like `23-24` and `81-442`.
+Opening ports `22-587`, for example, allows SSH, SMTP, HTTP, and HTTPS but also opens unused ports like `23-24` and `81-442`.
 
-Calico Network Policies (configured in Lesson 9) close this gap by explicitly allowing only the specific ports we need.
+We configure Calico Network Policies in Lesson 9 to close this gap by explicitly allowing only the specific ports we need.
 Even though Hetzner permits the range, Calico blocks everything except SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`).
-
 If Calico fails, the system falls back to Hetzner rules only, which are broader but still reasonably secure.
 
 ## Understanding Hetzner's Firewall
 
-Hetzner's dedicated server firewall operates at the network level, filtering packets before they reach your server.
-This is more secure than host-based firewalls because malicious traffic never touches your machine's network stack.
+Hetzner's dedicated server firewall operates at the network level, filtering packets before they reach the server.
+This is more secure than host-based firewalls because malicious traffic never touches the machine's network stack.
 The firewall is stateless, meaning it evaluates each packet independently without tracking connection state.
 
-This stateless design has an important implication: you need explicit rules to allow return traffic from outbound connections.
-When your server makes an HTTPS request to download a container image, the response packets need a rule that permits them.
-We'll handle this with a rule that allows TCP packets with the `ACK` flag set on ephemeral ports.
+This stateless design has an important implication: we need explicit rules to allow return traffic from outbound connections.
+When the server makes an HTTPS request to download a container image, the response packets need a rule that permits them.
+We handle this with a rule that allows TCP packets with the `ACK` flag set on ephemeral ports.
 
 ### vSwitch Traffic
 
-A critical point that's easy to overlook: **vSwitch traffic passes through Hetzner's firewall**.
-Even though the vSwitch is a private Layer 2 network between your servers, packets still traverse the firewall infrastructure.
-Without a rule explicitly allowing traffic from your vSwitch subnet, pod-to-pod communication across nodes will fail and your cluster won't function.
+A critical point that is easy to overlook: **vSwitch traffic passes through Hetzner's firewall**.
+Even though the vSwitch is a private Layer 2 network between servers, packets still traverse the firewall infrastructure.
+Without a rule explicitly allowing traffic from the vSwitch subnet, pod-to-pod communication across nodes will fail and the cluster will not function.
 
 ### Ephemeral Ports and NodePorts
 
-When your server makes an outbound connection (downloading container images, querying APIs), the kernel assigns a temporary source port from the ephemeral port range.
+When the server makes an outbound connection — downloading container images, querying APIs — the kernel assigns a temporary source port from the ephemeral port range.
 The response packets return to this port, so the firewall must allow them through.
-
-You can check your system's ephemeral port range:
+We can check the system's ephemeral port range:
 
 ```bash
-cat /proc/sys/net/ipv4/ip_local_port_range
-# Output: 32768    60999
+$ cat /proc/sys/net/ipv4/ip_local_port_range
+32768	60999
 ```
 
 Linux defaults to `32768-60999` for ephemeral ports.
 Kubernetes defaults to `30000-32767` for NodePort services.
-
 These ranges are intentionally non-overlapping:
 
 | Range         | Purpose                  | Used by      |
@@ -79,7 +79,7 @@ These ranges are intentionally non-overlapping:
 | `32768-60999` | Ephemeral (source) ports | Linux kernel |
 
 The boundary at `32767`/`32768` is `2^15 - 1` / `2^15`, a deliberate design choice to prevent conflicts.
-Our firewall rules respect this boundary: the `tcp established` rule covers `32768-65535` for return traffic, while the `nodeports` rule covers `30000-32767` for inbound service access.
+Our firewall rules respect this boundary: the tcp-established rule covers `32768-65535` for return traffic, while the nodeports rule covers `30000-32767` for inbound service access.
 
 ### Port Strategy
 
@@ -95,33 +95,33 @@ Some ports are dictated by protocol standards and must use specific numbers:
 | `6443` | Kubernetes API  | RKE2 default                      |
 
 Services without protocol-mandated ports must use the Kubernetes NodePort range (`30000-32767`).
-For example, PostgreSQL can run on port `30432` instead of `5432`, and Redis on `30379` instead of `6379`.
-Ports outside this range (like `35432`) won't be accessible through the firewall.
+PostgreSQL can run on port `30432` instead of `5432`, and Redis on `30379` instead of `6379`.
+Ports outside this range (like `35432`) will not be accessible through the firewall.
 Calico Network Policies control which specific ports within this range are actually accessible.
 
 ### IPv6 Considerations
 
 Hetzner's firewall has some limitations with IPv6.
 ICMPv6 traffic is always allowed and cannot be filtered, which is actually helpful since IPv6 requires ICMPv6 for neighbor discovery.
-However, you cannot filter IPv6 traffic by source or destination IP address, only by protocol and port.
-For our dual-stack cluster, the vSwitch rule only applies to IPv4, but since our ULA addresses (`fd00::/64`) are not routable on the public internet, this isn't a security concern.
+However, we cannot filter IPv6 traffic by source or destination IP address — only by protocol and port.
+For our dual-stack cluster, the vSwitch rule only applies to IPv4, but since our ULA addresses (`fd00::/64`) are not routable on the public internet, this is not a security concern.
 
 ## Configuring the Firewall
 
-Navigate to the [Hetzner Robot](https://robot.hetzner.com/server) interface, select your server (node4), and click "Firewall" to access the rules configuration.
+Navigate to the [Hetzner Robot](https://robot.hetzner.com/server) interface, select the server (node4), and click "Firewall" to access the rules configuration.
 
 ### Firewall Settings
 
 | Setting                     | Value  | Notes                                  |
 | --------------------------- | ------ | -------------------------------------- |
 | Status                      | active | Enable the firewall                    |
-| Filter IPv6 packets         | ☑      | Enable IPv6 filtering                  |
-| Hetzner Services (incoming) | ☑      | Allow rescue system, DNS, SysMon, etc. |
+| Filter IPv6 packets         | yes    | Enable IPv6 filtering                  |
+| Hetzner Services (incoming) | yes    | Allow rescue system, DNS, SysMon, etc. |
 
 ### Rules (incoming)
 
 The firewall has a **10-rule limit**.
-ICMPv6 is always allowed and cannot be blocked, so we don't need a rule for it.
+ICMPv6 is always allowed and cannot be blocked, so we do not need a rule for it.
 Most rules are mirrored for IPv4 and IPv6 to provide full dual-stack coverage.
 
 | ID | Name               | Version | Protocol | Source IP   | Source Port | Dest Port   | TCP Flags | Action |
@@ -147,32 +147,31 @@ Calico Network Policies (Layer 2) handle fine-grained filtering within these ran
 
 ### Rule Explanations
 
-**Rule #1 (vswitch)** is the most critical rule for cluster operation.
+Rule #1 (vswitch) is the most critical rule for cluster operation.
 It allows all traffic from the private vSwitch network, enabling Kubernetes API communication between nodes, etcd cluster synchronization, Calico's pod networking, and kubelet communication.
-Without this rule, your cluster cannot function.
+Without this rule, the cluster cannot function.
 
-**Rules #2-3 (tcp established)** handle return traffic for outbound TCP connections.
-When your server connects to external services (container registries, package repositories, APIs), the responses arrive as packets with the `ACK` flag set.
+Rules #2-3 (tcp established) handle return traffic for outbound TCP connections.
+When the server connects to external services — container registries, package repositories, APIs — the responses arrive as packets with the `ACK` flag set.
 These rules allow those responses on ephemeral ports (`32768-65535`) for both IPv4 and IPv6.
 
-**Rule #4 (dns responses)** permits DNS reply packets.
+Rule #4 (dns responses) permits DNS reply packets.
 DNS queries go out on a random high port, and responses come back from port `53`.
-This rule ensures those responses reach your server.
+This rule ensures those responses reach the server.
 
-**Rules #5-6 (well-known)** cover SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`) for both IPv4 and IPv6.
+Rules #5-6 (well-known) cover SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`) for both IPv4 and IPv6.
 This opens some unused ports (`23-24`, `26-79`, `81-442`, `444-586`), but Calico Network Policies block those at Layer 2.
 
-**Rules #7-8 (k8s-api)** open port `6443` for Kubernetes API access over both IPv4 and IPv6.
-This allows `kubectl` commands and other API clients to reach your cluster from outside the vSwitch network.
+Rules #7-8 (k8s-api) open port `6443` for Kubernetes API access over both IPv4 and IPv6.
+This allows `kubectl` commands and other API clients to reach the cluster from outside the vSwitch network.
 
-**Rule #9 (nodeports)** opens the standard Kubernetes NodePort range (`30000-32767`) for both IPv4 and IPv6.
+Rule #9 (nodeports) opens the standard Kubernetes NodePort range (`30000-32767`) for both IPv4 and IPv6.
 It uses wildcard version (`*`) and protocol (`*`) to cover both address families in a single rule.
-PostgreSQL (`30432`), Redis (`30379`), and other services can use ports in this range.
-Calico Network Policies control which specific ports are accessible.
+PostgreSQL (`30432`), Redis (`30379`), and other services can use ports in this range, with Calico Network Policies controlling which specific ports are accessible.
 
 Tailscale is not listed because it uses NAT traversal with outbound connections.
 Since we allow all outbound traffic, Tailscale works without an inbound rule.
-ICMP is omitted to stay within the limit; you can still ping via the vSwitch since Rule #1 allows all traffic from that subnet.
+ICMP is omitted to stay within the limit; we can still ping via the vSwitch since Rule #1 allows all traffic from that subnet.
 
 ### Applying the Rules
 
@@ -183,8 +182,7 @@ Changes typically propagate within 30-60 seconds.
 
 ### vSwitch Connectivity
 
-Test that nodes can communicate over the private network using both IPv4 and IPv6.
-
+We test that nodes can communicate over the private network using IPv4.
 From node1, ping node4:
 
 ```bash
@@ -209,10 +207,10 @@ IPv6 connectivity over the vSwitch is not configured on the existing nodes yet, 
 
 ### Port Scan from vSwitch
 
-Install nmap on node1 if it's not already available:
+Install nmap on node1 if it is not already available:
 
 ```bash
-dnf install -y nmap
+$ dnf install -y nmap
 ```
 
 Verify that the vSwitch rule allows unrestricted access by scanning node4 from node1:
@@ -230,7 +228,7 @@ PORT   STATE SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 1.33 seconds
 ```
 
-Only SSH (port 22) is open since it's the only service running on the fresh server.
+Only SSH (port `22`) is open since it is the only service running on the fresh server.
 The remaining 65534 ports show as `closed` (reachable but no service listening), and none show as `filtered`.
 This confirms Rule #1 permits all traffic from the vSwitch subnet regardless of port or protocol.
 
@@ -281,7 +279,7 @@ Ports showing `filtered` are blocked by the firewall and never reach the server.
 To scan all 65535 ports from the public internet, use `--min-rate` to prevent nmap from slowing down on filtered ports:
 
 ```bash
-nmap -Pn -sT -v --min-rate 1000 <node4-public-ip> -p-
+$ nmap -Pn -sT -v --min-rate 1000 <node4-public-ip> -p-
 ```
 
 {% include alert.liquid.html type='warning' title='Long Running Scan' content='
@@ -289,10 +287,3 @@ A full port scan against a firewalled host can take 30 minutes or more, even wit
 Filtered ports cause timeouts that slow the scan significantly.
 The targeted scan above covers all firewall zone boundaries and is sufficient for verification.
 ' %}
-
-## What's Next
-
-The Hetzner firewall provides coarse filtering at Layer 1.
-In Lesson 9, we'll configure Calico Network Policies (Layer 2) to provide fine-grained port control, blocking the unused ports within the ranges we opened here.
-
-With the network-level firewall configured, we're ready to install RKE2 in the next lesson.
