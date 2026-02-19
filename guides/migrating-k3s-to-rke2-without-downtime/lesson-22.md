@@ -1,34 +1,35 @@
 ---
 layout: guide-lesson.liquid
-title: Final Validation Before Decommissioning
+title: Validating Cluster B Before Decommissioning
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 5
 guide_lesson_id: 22
 guide_lesson_abstract: >
-  Perform comprehensive validation of Cluster B before decommissioning the k3s cluster.
+  Confirm that all workloads, data, and traffic have been migrated to Cluster B before decommissioning the k3s cluster.
 guide_lesson_conclusion: >
-  Cluster B is fully validated and ready for the final phase of migration.
+  Cluster B is fully validated and serving all production traffic, making it safe to decommission Cluster A.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-22.md
 ---
 
-Before decommissioning Cluster A, perform thorough validation of Cluster B to ensure you won't need to rollback.
+The previous lessons built a fully operational RKE2 cluster with three control plane nodes, verified high availability, and configured storage and ingress.
+Before decommissioning Cluster A, we need to confirm that everything has been migrated and that Cluster B is healthy enough to stand on its own.
 
 {% include guide-overview-link.liquid.html %}
 
-## Validation Timeline
+## Completing the Workload Migration
 
-After the DNS cutover, allow time for confidence building:
+This guide covers the infrastructure migration — building Cluster B, moving nodes, and configuring the platform.
+The actual workload migration — deploying your applications, secrets, and persistent data to Cluster B — depends entirely on your setup.
 
-| Time Since Cutover | Focus                                 |
-| ------------------ | ------------------------------------- |
-| 0-4 hours          | Active monitoring, quick fixes        |
-| 4-24 hours         | Extended monitoring, verify stability |
-| 24-48 hours        | Final validation                      |
-| 48+ hours          | Ready for decommissioning             |
+{% include alert.liquid.html type='warning' title='All Workloads Must Be Migrated' content='
+Do not proceed with decommissioning Cluster A until all your applications, persistent data, and DNS records have been moved to Cluster B.
+How you accomplish this depends on your deployment method (Helm, GitOps, manual manifests) and data migration strategy (database replication, backup/restore, volume copy).
+This is your responsibility to complete before continuing.
+' %}
 
-## Current State
+Once your workloads are running on Cluster B, the cluster should look like this:
 
 ```mermaid!
 flowchart LR
@@ -51,116 +52,100 @@ flowchart LR
   class B clusterB
 ```
 
-Cluster A remains on standby for rollback while Cluster B serves all traffic.
+All production traffic flows to Cluster B.
+Cluster A remains on standby with only Node 1, serving as a rollback option until we are confident in the new cluster.
 
-## Validation Areas
+## Validating the Cluster
 
-### Cluster Health
+Give Cluster B at least 24-48 hours of serving production traffic before decommissioning Cluster A.
+This allows time for issues to surface that only appear under real load — memory leaks, certificate renewals, cron jobs, and edge cases in application behavior.
 
-Verify all core components are healthy:
+### Control Plane Health
+
+Verify that all three nodes are `Ready` and that etcd has full quorum:
 
 ```bash
-# All nodes Ready
-kubectl get nodes
-
-# etcd cluster healthy
-etcdctl endpoint health --cluster
-
-# All system pods Running
-kubectl get pods -n kube-system
+$ kubectl get nodes
+NAME    STATUS   ROLES                       AGE
+node2   Ready    control-plane,etcd,master   2d
+node3   Ready    control-plane,etcd,master   6d
+node4   Ready    control-plane,etcd,master   7d
 ```
+
+```bash
+$ sudo etcdctl endpoint health --cluster
+https://10.1.0.12:2379 is healthy: successfully committed proposal: took = 3.0ms
+https://10.1.0.13:2379 is healthy: successfully committed proposal: took = 4.1ms
+https://10.1.0.14:2379 is healthy: successfully committed proposal: took = 3.8ms
+```
+
+All three nodes should be `Ready` and all three etcd endpoints should report as healthy.
 
 ### Workload Health
 
-Check application workloads:
+Check that no pods are stuck in a failed state:
 
 ```bash
-# All pods Running (no CrashLoopBackOff, Pending, etc.)
-kubectl get pods -A | grep -v Running | grep -v Completed
-
-# No excessive restarts
-kubectl get pods -A | awk '$5 > 5'
-
-# All deployments at desired replicas
-kubectl get deployments -A
+$ kubectl get pods -A | grep -v Running | grep -v Completed
 ```
+
+This command filters out healthy pods.
+If the output shows pods in `CrashLoopBackOff`, `Pending`, or `Error` state, investigate and resolve them before proceeding.
+
+Excessive restarts indicate instability even when pods show `Running`:
+
+```bash
+$ kubectl get pods -A --sort-by='.status.containerStatuses[0].restartCount' | tail -10
+```
+
+A handful of restarts during initial deployment is normal.
+Pods that keep restarting after 24 hours need attention.
 
 ### Storage Health
 
-Verify persistent storage:
+Confirm that all PersistentVolumeClaims are bound and that Longhorn is healthy:
 
 ```bash
-# All PVCs bound
-kubectl get pvc -A | grep -v Bound
-
-# Longhorn healthy
-kubectl get pods -n longhorn-system
+$ kubectl get pvc -A
 ```
 
-### Network Health
-
-Check networking and ingress:
+Every PVC should show `Bound` status.
+An `Unbound` or `Pending` PVC means the volume was not provisioned correctly — check the Longhorn manager logs for details.
 
 ```bash
-# Canal healthy
-kubectl get pods -n kube-system -l k8s-app=canal
-
-# Traefik running on all nodes
-kubectl get pods -n traefik -o wide
-
-# Load balancer targets healthy
-hcloud load-balancer describe k8s-ingress
+$ kubectl get pods -n longhorn-system
 ```
 
-### Application Testing
+All Longhorn components — manager, driver, and engine images — should be `Running` across the cluster.
 
-Run application-specific tests:
+### Networking and Ingress
 
-- Health check endpoints
-- Database connectivity
-- Critical user flows
-- API functionality
+Verify that Canal is running on all nodes and that Traefik is serving traffic through the load balancer:
 
-## Decision Point
+```bash
+$ kubectl get pods -n kube-system -l k8s-app=canal -o wide
+```
 
-**If validation passes:** Proceed to decommissioning Cluster A.
+Three Canal pods should appear — one per node, all `Running`.
 
-**If validation fails:**
+```bash
+$ kubectl get pods -n traefik -o wide
+```
 
-- Document issues
-- Fix problems before proceeding
-- Re-validate after fixes
-- Consider rollback if issues are severe
+Traefik should be running on each node that receives traffic from the load balancer.
+Test a request through the load balancer to confirm end-to-end connectivity:
 
-## Validation Checklist
+```bash
+$ curl -s -o /dev/null -w "%{http_code}" -H "Host: your-domain.com" https://<load-balancer-ip>/
+200
+```
 
-### Infrastructure
+A `200` response confirms the full path — load balancer to Traefik to your application — is working.
 
-- [ ] All 3 control plane nodes healthy
-- [ ] etcd cluster healthy (3 members)
-- [ ] All nodes have sufficient resources
+## Deciding to Proceed
 
-### Workloads
+If all validation checks pass and Cluster B has been stable for at least 24 hours, it is safe to decommission Cluster A.
+Keep in mind that once Node 1 is wiped and reinstalled, there is no rollback path to the k3s cluster.
 
-- [ ] All pods Running
-- [ ] No excessive restarts
-- [ ] All services have endpoints
-
-### Storage
-
-- [ ] All PVCs bound
-- [ ] Longhorn healthy
-
-### Networking
-
-- [ ] Canal healthy
-- [ ] Ingress working
-- [ ] Load balancer healthy
-
-### Applications
-
-- [ ] Health checks passing
-- [ ] No application errors
-- [ ] User-facing functionality working
-
-In the next lesson, we'll safely decommission Cluster A.
+If validation reveals issues, fix them while Cluster A is still available as a fallback.
+There is no rush — Cluster A costs nothing extra to keep running in standby.
