@@ -13,10 +13,16 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-23.md
 ---
 
-With Cluster B validated and stable, we can safely decommission Cluster A.
-This is the point of no return for the k3s cluster.
+This guide covers the infrastructure migration — building Cluster B, moving nodes, and configuring the platform.
+The actual workload migration — deploying your applications, secrets, and persistent data to Cluster B — depends entirely on your setup and must be completed before this lesson.
 
 {% include guide-overview-link.liquid.html %}
+
+{% include alert.liquid.html type='warning' title='All Workloads Must Be Migrated' content='
+Do not proceed until all your applications, persistent data, and DNS records have been moved to Cluster B.
+How you accomplish this depends on your deployment method (Helm, GitOps, manual manifests) and data migration strategy (database replication, backup/restore, volume copy).
+Give Cluster B at least 24-48 hours of serving production traffic before decommissioning — this allows time for issues to surface that only appear under real load.
+' %}
 
 ## Current State
 
@@ -40,15 +46,6 @@ flowchart LR
   class A clusterA
   class B clusterB
 ```
-
-## Pre-Decommissioning Checklist
-
-Before proceeding, confirm:
-
-- [ ] Cluster B validation passed
-- [ ] At least 24-48 hours since DNS cutover
-- [ ] No traffic going to Cluster A
-- [ ] All stakeholders notified
 
 ## Final Backup
 
