@@ -13,7 +13,7 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-20.md
 ---
 
-With storage configured and data migrated, deploy your workloads to Cluster B using the manifests exported in [Lesson 16](/guides/migrating-k3s-to-rke2-without-downtime/lesson-16).
+With storage configured and data migrated, deploy your workloads to Cluster B.
 
 {% include guide-overview-link.liquid.html %}
 
