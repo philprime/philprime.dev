@@ -1,25 +1,24 @@
 ---
 layout: guide-lesson.liquid
-title: Post-Migration Cleanup and Documentation
+title: Migration Complete
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
 guide_section_id: 5
 guide_lesson_id: 25
 guide_lesson_abstract: >
-  Complete post-migration tasks including cleanup, documentation updates, and operational handoff.
+  Review the completed cluster architecture and explore what to build next on the new RKE2 platform.
 guide_lesson_conclusion: >
-  The migration is complete with all cleanup tasks finished and documentation updated.
+  The migration from k3s to RKE2 is complete, with a 4-node cluster running enterprise-grade Kubernetes.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-25.md
 ---
 
-Congratulations!
-You have successfully migrated from k3s to RKE2 without downtime.
-This final lesson covers post-migration cleanup and documentation.
+The migration is done.
+What started as a single k3s cluster has become a 4-node RKE2 cluster with a highly available control plane, encrypted pod networking, and replicated storage — all without taking the old cluster offline until the new one was ready to serve traffic.
 
 {% include guide-overview-link.liquid.html %}
 
-## Final Cluster State
+## Final Architecture
 
 ```mermaid!
 flowchart TB
@@ -49,111 +48,47 @@ flowchart TB
   class N2,N3,N4 cp
 ```
 
-**Components:**
-
 | Component    | Technology                      |
 | ------------ | ------------------------------- |
 | Distribution | RKE2                            |
-| CNI          | Canal (dual-stack)              |
-| Storage      | Longhorn (default), local-path  |
+| OS           | Rocky Linux 10                  |
+| CNI          | Canal with WireGuard encryption |
+| Storage      | Longhorn (2 replicas)           |
 | Ingress      | Traefik + Hetzner Load Balancer |
+| Certificates | cert-manager with Let's Encrypt |
 
-## Cleanup Tasks
+The three control plane nodes provide etcd quorum tolerance — any single node can go down without affecting cluster operations.
+Node 1 serves as a dedicated worker, keeping workload scheduling separate from control plane responsibilities.
+All four nodes participate in the WireGuard mesh and Longhorn storage pool.
 
-### Remove Migration Artifacts
+## What's Next
 
-```bash
-# Remove exported manifests and temporary files
-rm -rf /root/cluster-a-export
+With the cluster running, there are several directions to take it further.
 
-# Securely delete exported secrets
-find /root -name "secrets" -type d -exec rm -rf {} \; 2>/dev/null
-```
+### Monitoring and Observability
 
-### Remove Test Resources
+The cluster currently has no visibility into resource usage, pod health trends, or alerting.
+Setting up Prometheus and Grafana — either through the Rancher Monitoring stack or a standalone kube-prometheus-stack Helm chart — gives you dashboards for cluster health, resource consumption, and application metrics.
+Pair this with Alertmanager to get notified before problems become outages.
 
-```bash
-kubectl delete namespace ingress-test 2>/dev/null || true
-kubectl delete pod -l purpose=test -A 2>/dev/null || true
-```
+### GitOps
 
-### Restore DNS TTL
+Deploying workloads manually with `kubectl apply` works for getting started, but does not scale.
+A GitOps tool like Flux or ArgoCD watches a Git repository and automatically reconciles the cluster state to match.
+This turns your Git repository into the single source of truth for what runs on the cluster, with full audit trails and easy rollbacks.
 
-Change DNS TTL back to normal values (e.g., 3600 seconds) in your DNS provider.
+### Automated Upgrades
 
-## Documentation Updates
+RKE2 releases new versions regularly with security patches and Kubernetes updates.
+The [System Upgrade Controller](https://docs.rke2.io/upgrade/automated_upgrade) automates rolling upgrades across the cluster, draining nodes one at a time and upgrading them in sequence without downtime.
 
-### Update Runbooks
+### Backup Strategy
 
-Document the new cluster for operations:
+etcd snapshots are configured to run every 6 hours (from Lesson 5), but a complete backup strategy should also cover Longhorn volumes and application data.
+Velero can snapshot both Kubernetes resources and persistent volumes to an external object store like S3, giving you disaster recovery across the entire cluster state.
 
-- Node information (IPs, roles)
-- Access procedures (kubeconfig, SSH)
-- Important paths (`/etc/rancher/rke2/`, `/var/lib/longhorn/`)
-- Backup procedures
-- Common operations (adding/removing nodes, upgrades)
+## More Guides
 
-### Update CI/CD
+If you are interested in building Kubernetes clusters from the ground up, check out [Building a production-ready Kubernetes cluster from scratch](/guides/building-a-production-ready-kubernetes-cluster-from-scratch) — a companion guide that walks through assembling a Raspberry Pi cluster, from hardware to a fully operational Kubernetes environment.
 
-- Replace k3s kubeconfig with RKE2 kubeconfig
-- Update service account tokens if needed
-- Test automated deployments
-
-### Update Monitoring
-
-- Update Prometheus/Grafana targets
-- Configure alerts for new cluster
-- Archive old k3s dashboards
-
-## Operational Handoff
-
-### Team Training
-
-- [ ] Team trained on RKE2 operations
-- [ ] Runbook reviewed
-- [ ] Emergency procedures practiced
-- [ ] On-call rotation updated
-
-### Credential Handoff
-
-Securely share:
-
-- Kubeconfig location and access
-- SSH keys and authorized users
-- RKE2 token for node join operations
-
-## Retention
-
-| Item                  | Retention | Notes           |
-| --------------------- | --------- | --------------- |
-| k3s backups           | 90 days   | Then delete     |
-| Migration logs        | 1 year    | For reference   |
-| Configuration backups | Permanent | Version control |
-
-## Migration Complete Checklist
-
-- [ ] Migration artifacts removed
-- [ ] Test resources cleaned up
-- [ ] DNS TTL restored
-- [ ] Monitoring updated
-- [ ] CI/CD updated
-- [ ] Documentation created
-- [ ] Team trained
-- [ ] Credentials handed off
-
-## What You Accomplished
-
-1. **Planned** a comprehensive zero-downtime migration strategy
-2. **Built** a new RKE2 cluster with 3-node HA control plane
-3. **Migrated** nodes one by one without service interruption
-4. **Configured** Canal CNI for dual-stack networking
-5. **Configured** Longhorn for replicated storage
-6. **Implemented** HA ingress with Traefik and Hetzner Load Balancer
-7. **Migrated** all workloads and data
-8. **Switched** traffic with zero downtime
-9. **Decommissioned** the old cluster safely
-10. **Documented** everything for operations
-
-Your infrastructure now runs on an enterprise-grade RKE2 cluster with high availability, advanced networking, and replicated storage.
-
-Thank you for following this guide!
+For the backstory on how this migration started, [New K3s agent node for our cluster](/2025-11-23-new-k3s-agent-node) covers the original k3s expansion that eventually led to the decision to move to RKE2.
