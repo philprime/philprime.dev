@@ -433,7 +433,7 @@ On our node, Tailscale has replaced `/etc/resolv.conf` with its MagicDNS resolve
 CoreDNS pods cannot reach this address because Tailscale's DNS listener binds to the host network, not the pod network.
 Internal lookups like `kubernetes.default.svc.cluster.local` still work because CoreDNS resolves those directly, but any external domain — container registries, Helm repositories, package mirrors — fails with `server misbehaving`.
 
-The fix is to override CoreDNS's upstream forwarder with explicit public DNS servers using a `HelmChartConfig` resource — the same mechanism we use for Canal in [Lesson 9](/guides/migrating-k3s-to-rke2-without-downtime/lesson-9).
+The fix is to override CoreDNS's upstream forwarder with explicit public DNS servers using a `HelmChartConfig` resource — the same mechanism we use for Canal elsewhere in this guide.
 
 Create the manifest at `/var/lib/rancher/rke2/server/manifests/rke2-coredns-config.yaml`:
 

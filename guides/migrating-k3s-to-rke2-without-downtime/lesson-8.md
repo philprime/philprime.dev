@@ -41,7 +41,7 @@ Our Hetzner dedicated servers sit on the public internet, where gratuitous ARP p
 The vSwitch connecting our servers does operate at Layer 2, but it assigns private IPs (`10.x.x.x`) that are not routable from the internet.
 A VIP on the vSwitch would be reachable between nodes but invisible to external clients.
 
-For readers interested in the VIP approach, [Lesson 15 - Configuring Load Balancing for the Control Plane](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-15.md) of our guide on [Building a production-ready Kubernetes cluster from scratch](/guides/building-a-production-ready-kubernetes-cluster-from-scratch) covers the setup in detail.
+For readers interested in the VIP approach, [Lesson 15 - Configuring Load Balancing for the Control Plane](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-15) of our guide on [Building a production-ready Kubernetes cluster from scratch](/guides/building-a-production-ready-kubernetes-cluster-from-scratch) covers the setup in detail.
 Due to our hosting environment, this approach is not viable for us.
 
 ### Hetzner Failover IPs
@@ -667,8 +667,8 @@ spec:
 EOF
 ```
 
-The Ingress targets the `websecure` entrypoint because the `web` entrypoint redirects all traffic to HTTPS at the entrypoint level — before Traefik evaluates any routing rules.
-No Ingress rules are needed on `web` for the redirect to work.
+The Ingress targets the `websecure` entrypoint because HTTPS is the intended access method for all services.
+The `web` entrypoint remains open without an HTTP-to-HTTPS redirect so that cert-manager's HTTP-01 challenge solver can respond to ACME validation requests on port `80` (configured in [Lesson 10](/guides/migrating-k3s-to-rke2-without-downtime/lesson-10)).
 
 Store the load balancer's public IP for testing:
 
@@ -676,19 +676,7 @@ Store the load balancer's public IP for testing:
 $ LB_IP=$(hcloud load-balancer describe k8s-ingress -o format='{{.PublicNet.IPv4.IP}}')
 ```
 
-First, verify that HTTP requests are redirected to HTTPS on port `443`:
-
-```bash
-$ curl -sI -H "Host: test.example.com" http://${LB_IP}/
-HTTP/1.1 308 Permanent Redirect
-Location: https://test.example.com/
-Date: Sun, 15 Feb 2026 14:56:09 GMT
-Content-Length: 18
-```
-
-The `Location` header should show `https://test.example.com/` without an explicit port number, confirming the redirect targets port `443`.
-
-Next, verify the full HTTPS path returns a response from the backend pod:
+First, verify that the HTTPS path returns a response from the backend pod:
 
 ```bash
 $ curl -sk -H "Host: test.example.com" https://${LB_IP}/
@@ -765,10 +753,10 @@ Testing 10.1.0.12...
 Testing 10.1.0.13...
 000
 Testing 10.1.0.14...
-301
+404
 ```
 
-A `301` response confirms Traefik is responding on that node — the redirect is expected since we configured HTTP to HTTPS redirection.
+A `404` response confirms Traefik is responding on that node — the "not found" status is expected because no Ingress routes are defined on the `web` entrypoint.
 If the response is a connection refused, check that the Traefik pod is running on that node and the firewall allows traffic on the NodePort range.
 Some nodes are expected to fail as they have not been migrated yet.
 
