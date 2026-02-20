@@ -171,6 +171,92 @@ rke2 version v1.34.3+rke2r3 (7598946e0086a9131564ccbb3c142b3fa54516ad)
 go version go1.24.11 X:boringcrypto
 ```
 
+### Patching runc (Workaround for Container Exec Failures)
+
+RKE2 v1.34.x ships with runc v1.4.0, which has a [known regression](https://github.com/opencontainers/runc/issues/5089) on systems using cgroup v2.
+Containers that move themselves into a child cgroup — such as BuildKit — cause systemd to garbage-collect the original cgroup scope.
+When runc tries to exec into the container (for readiness probes or `kubectl exec`), it fails with:
+
+```
+can't open cgroup: openat2 /sys/fs/cgroup/kubepods.slice/...: no such file or directory
+```
+
+The fix is merged in runc and will ship as v1.4.1, but no RKE2 release bundles it yet.
+Until then, we replace the bundled runc binary with v1.3.4 directly.
+
+RKE2 stores its binaries in a versioned data directory under `/var/lib/rancher/rke2/data/`.
+Find the runc binary path and verify the current version:
+
+```bash
+# Find the most recent RKE2 data directory (there may be older ones from previous versions)
+$ RKE2_DATA_DIR=$(ls -dt /var/lib/rancher/rke2/data/v*/bin 2>/dev/null | head -1)
+$ echo $RKE2_DATA_DIR
+/var/lib/rancher/rke2/data/v1.34.4-rke2r1-0d52262ea640/bin
+
+$ $RKE2_DATA_DIR/runc --version
+runc version 1.4.0
+...
+```
+
+Download runc v1.3.4 to `/etc/rancher/rke2/` so it is clearly visible as a manual patch, back up the original, and hardlink the patched binary into the data directory:
+
+```bash
+$ curl -fL https://github.com/opencontainers/runc/releases/download/v1.3.4/runc.amd64 \
+    -o /etc/rancher/rke2/runc-v1.3.4
+$ chmod +x /etc/rancher/rke2/runc-v1.3.4
+
+# Verify the download
+$ /etc/rancher/rke2/runc-v1.3.4 --version
+runc version 1.3.4
+commit: v1.3.4-0-g63757986
+...
+
+# Back up the original and replace with a hardlink
+$ cp $RKE2_DATA_DIR/runc $RKE2_DATA_DIR/runc.v1.4.0.bak
+$ ln -f /etc/rancher/rke2/runc-v1.3.4 $RKE2_DATA_DIR/runc
+$ $RKE2_DATA_DIR/runc --version
+runc version 1.3.4
+commit: v1.3.4-0-gd6d73eb8
+spec: 1.2.1
+go: go1.24.10
+libseccomp: 2.5.6
+```
+
+Using a hardlink means both paths point to the same file on disk.
+Verify the hardlink is in place by checking that the patched binary and the active runc share the same inode, while the backup has a different one:
+
+```bash
+$ ls -li $RKE2_DATA_DIR/runc $RKE2_DATA_DIR/runc.v1.4.0.bak /etc/rancher/rke2/runc-v1.3.4
+12060145 -rwxr-xr-x. 2 root root 13031032 Feb 21 00:45 /var/lib/rancher/rke2/data/v1.34.4-rke2r1-0d52262ea640/bin/runc
+12060145 -rwxr-xr-x. 2 root root 13031032 Feb 21 00:45 /etc/rancher/rke2/runc-v1.3.4
+43647257 -rwxr-xr-x. 1 root root 14227840 Feb 21 00:54 /var/lib/rancher/rke2/data/v1.34.4-rke2r1-0d52262ea640/bin/runc.v1.4.0.bak
+```
+
+The first column is the inode number — `runc` and `runc-v1.3.4` share inode `12060145` with a link count of `2`, confirming they are the same file.
+The backup has a different inode and a link count of `1`.
+
+The copy in `/etc/rancher/rke2/` makes it obvious that a patch is in place — if you see `runc-v1.3.4` there, you know the node is patched.
+
+RKE2 creates a new versioned data directory on upgrade, so the hardlink is automatically undone when a new RKE2 release is installed — that release should include runc v1.4.1 with the fix.
+At that point, clean up the leftover file:
+
+```bash
+$ rm /etc/rancher/rke2/runc-v1.3.4
+```
+
+Restart RKE2 to pick up the new binary:
+
+```bash
+$ systemctl restart rke2-server.service
+$ journalctl -u rke2-server -f
+# Wait for: "rke2 is up and running"
+```
+
+{% include alert.liquid.html type='note' title='Apply on every node' content='
+This workaround must be applied on every node after installing RKE2 and before starting it for the first time, or before restarting it on existing nodes.
+The same steps apply to Lessons 11, 12, and 15 when joining additional nodes.
+' %}
+
 ### Create Configuration
 
 RKE2 reads configuration from `/etc/rancher/rke2/config.yaml` and `/etc/rancher/rke2/config.yaml.d/*.yaml` in alphabetical order.

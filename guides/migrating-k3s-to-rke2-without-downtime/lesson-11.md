@@ -528,6 +528,11 @@ $ sudo systemctl enable rke2-server.service
 
 This installs the `rke2-server` service (the default type) and places additional utilities — `kubectl`, `crictl`, and `ctr` — in `/var/lib/rancher/rke2/bin/`.
 
+### Patch runc
+
+Apply the runc v1.3.4 workaround from [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5#patching-runc-workaround-for-container-exec-failures) before starting RKE2.
+Download the binary to `/etc/rancher/rke2/runc-v1.3.4` and create the containerd config template at `/var/lib/rancher/rke2/agent/etc/containerd/config-v3.toml.tmpl`.
+
 ### Create Configuration
 
 Retrieve the cluster token from Node 4.

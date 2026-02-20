@@ -118,6 +118,8 @@ $ curl -sfL https://get.rke2.io | sudo sh -
 $ sudo systemctl enable rke2-server.service
 ```
 
+Apply the runc v1.3.4 workaround from [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5#patching-runc-workaround-for-container-exec-failures) before starting RKE2.
+
 Create the configuration directory using the same multi-file layout as Nodes 3 and 4:
 
 ```bash

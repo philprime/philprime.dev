@@ -79,6 +79,8 @@ $ sudo systemctl enable rke2-agent.service
 
 The `INSTALL_RKE2_TYPE="agent"` environment variable tells the installer to set up the agent service instead of the server.
 
+Apply the runc v1.3.4 workaround from [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5#patching-runc-workaround-for-container-exec-failures) before starting RKE2.
+
 We create the configuration directory next:
 
 ```bash
