@@ -1,9 +1,4 @@
 {
-  "cSpell.words": [
-    "installimage",
-    "Traefik",
-    "usermod"
-  ],
   "editor.defaultFormatter": "dprint.dprint",
   "files.associations": {
     "*.liquid.html": "liquid"
