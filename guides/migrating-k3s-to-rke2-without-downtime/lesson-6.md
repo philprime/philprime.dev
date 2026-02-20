@@ -427,6 +427,88 @@ Run `kubectl rollout restart ds rke2-canal -n kube-system` again and wait for th
 Verify the old VXLAN interfaces are gone before adding new nodes — a backend mismatch between nodes will prevent cross-node pod traffic.
 ' %}
 
+### TCP MSS Clamping
+
+Matching the pod veth MTU to the WireGuard tunnel prevents pods from _sending_ oversized packets, but it does not protect against Path MTU Discovery (PMTUD) failures on the return path.
+Although the pod correctly advertises a reduced MSS during the TCP handshake, PMTUD must still function across the entire network path for the remote side to respect the effective MTU.
+In environments where ICMP "Fragmentation Needed" (IPv4) or "Packet Too Big" (IPv6) messages are filtered — which is common with Hetzner's stateless firewall, cloud overlays, and WireGuard encapsulation — large return packets may be silently dropped.
+The result is connections that work fine for small requests but stall or time out when transferring larger payloads.
+
+The standard fix is TCP MSS clamping: an iptables rule in the mangle table that rewrites the MSS value in TCP SYN and SYN-ACK packets to match the path MTU.
+With `--clamp-mss-to-pmtu`, the kernel automatically calculates the correct MSS from the outgoing interface's MTU, ensuring that neither side of the connection ever sends segments too large for the tunnel.
+
+Calico Felix manages MTU on tunnel interfaces and veth devices but [does not insert MSS clamping rules](https://docs.tigera.io/calico/latest/networking/configuring/mtu).
+We deploy the rule ourselves using a privileged DaemonSet — the same pattern the guide uses for Canal, Longhorn, and Traefik.
+A DaemonSet runs on every node automatically, including nodes that join the cluster later, so no per-node manual setup is needed.
+
+Create the manifest at `/var/lib/rancher/rke2/server/manifests/mss-clamp.yaml`:
+
+```yaml
+# /var/lib/rancher/rke2/server/manifests/mss-clamp.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: mss-clamp
+  namespace: kube-system
+  labels:
+    k8s-app: mss-clamp
+spec:
+  selector:
+    matchLabels:
+      k8s-app: mss-clamp
+  template:
+    metadata:
+      labels:
+        k8s-app: mss-clamp
+    spec:
+      hostNetwork: true
+      tolerations:
+        - operator: Exists
+      initContainers:
+        - name: mss-clamp
+          image: rancher/hardened-calico:v3.31.3-build20260206
+          command:
+            - /bin/sh
+            - -c
+            - |
+              iptables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null \
+                || iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+              ip6tables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null \
+                || ip6tables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["NET_ADMIN", "NET_RAW"]
+      containers:
+        - name: pause
+          image: rancher/mirrored-pause:3.6
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+```
+
+The DaemonSet uses an init container to apply the iptables rules on the host's network namespace (`hostNetwork: true`), then idles with a minimal pause container.
+The `tolerations` with `operator: Exists` ensures it schedules on every node, including control plane nodes — matching the Traefik DaemonSet configuration from [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
+We use the `rancher/hardened-calico` image that Canal already pulls on every node, so no additional image download is required.
+
+The `-C` flag checks whether the rule already exists before `-A` appends it, preventing duplicate entries if the pod restarts.
+
+RKE2 detects the new manifest and deploys the DaemonSet automatically.
+Verify the rules are in place on any node:
+
+```bash
+$ sudo iptables -t mangle -L FORWARD -v -n
+Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 TCPMSS     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp flags:0x06/0x02 TCPMSS clamp to PMTU
+```
+
+The rule matches TCP packets with the `SYN` flag set and rewrites the MSS option to fit the outgoing interface's MTU.
+
 ## Network Policies
 
 ### Understanding Network Policies
@@ -581,3 +663,58 @@ $ ip link show flannel-wg | grep mtu
 ```
 
 If the pod veth shows `1450` while `flannel-wg` shows `1420`, add `calico.vethuMTU: 1420` to the Canal `HelmChartConfig` as described in the "Applying the Configuration" section above, restart the Canal DaemonSet, and then restart all workload pods so they pick up the new MTU.
+
+If the MTU values match but timeouts persist, verify that MSS clamping is active on the node handling the traffic:
+
+```bash
+$ sudo iptables -t mangle -L FORWARD -v -n | grep TCPMSS
+    0     0 TCPMSS     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp flags:0x06/0x02 TCPMSS clamp to PMTU
+```
+
+If no `TCPMSS` rule appears, follow the "TCP MSS Clamping" section above to install it.
+Without MSS clamping, external servers may send TCP segments sized for the node's 1500-byte physical MTU rather than the 1420-byte tunnel MTU, causing large responses to stall.
+
+### DNS Failures and Fragmented UDP Packets
+
+If pods fail to resolve external domains through CoreDNS — returning `getaddrinfo` errors or timing out — but `nslookup` from the same pod succeeds, the cause is likely fragmented UDP packets being dropped by conntrack.
+
+The `nf_conntrack` kernel module loads `nf_defrag_ipv4`, which intercepts IP fragments in PREROUTING and attempts to reassemble them before they enter the iptables chains.
+When reassembly fails — due to missing fragments, reordering, or timeout — the individual fragments pass through unassembled and `nf_conntrack` marks them as `INVALID` because they cannot be matched to a tracked connection.
+
+Three independent sets of rules then drop these INVALID packets:
+
+| Rule source | Chain | Effect |
+| --- | --- | --- |
+| kube-proxy | `KUBE-FORWARD` | Drops all INVALID packets in the FORWARD chain |
+| Calico (Felix) | `cali-fw-*` per pod | Drops INVALID packets leaving each pod |
+| Calico (Felix) | `cali-tw-*` per pod | Drops INVALID packets entering each pod |
+
+This affects any protocol that produces fragments — most commonly DNS responses over UDP with EDNS0, which can exceed the tunnel MTU when returning large record sets.
+TCP traffic is not affected when MSS clamping is in place, because the clamped MSS prevents segments from exceeding the tunnel capacity in the first place.
+
+Check whether fragment reassembly is failing on the node:
+
+```bash
+$ cat /proc/net/snmp | grep "^Ip:"
+Ip: Forwarding DefaultTTL InReceives ... ReasmReqds ReasmOKs ReasmFails ...
+Ip: 1 64 281405114 ... 62 0 46 ...
+```
+
+A non-zero `ReasmFails` with `ReasmOKs` at zero confirms that every reassembly attempt is failing and the fragments are being dropped as INVALID.
+
+Confirm the INVALID drop rules are present:
+
+```bash
+$ sudo iptables-save | grep "INVALID"
+-A KUBE-FORWARD -m conntrack --ctstate INVALID -j DROP
+-A cali-fw-cali0463b04862f ... --ctstate INVALID -j DROP
+...
+```
+
+The `KUBE-FORWARD` rule is added by kube-proxy and cannot be removed without patching kube-proxy.
+The Calico per-pod rules are managed by Felix and regenerated automatically.
+The practical fix is to prevent fragmentation from occurring rather than trying to remove these rules.
+
+For TCP, MSS clamping (described earlier in this lesson) eliminates fragmentation entirely.
+For UDP, ensure that applications and DNS resolvers use response sizes that fit within the 1420-byte tunnel MTU.
+CoreDNS can be configured to limit EDNS0 buffer sizes by adding a `bufsize` plugin to the Corefile, which prevents upstream DNS servers from sending responses large enough to require fragmentation.
