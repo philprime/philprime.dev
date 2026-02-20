@@ -92,6 +92,18 @@ The agent needs only two things — where to connect and how to authenticate:
 server: https://10.1.0.14:9345
 token: <paste-token-from-node4>
 node-ip: 10.1.0.11,fd00::11
+
+kubelet-arg:
+  - "resolv-conf=/etc/rancher/rke2/resolv.conf"
+```
+
+Create the clean resolv.conf to isolate pod DNS from Tailscale on the host, as in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6#isolating-host-dns-from-pod-dns):
+
+```bash
+$ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
+nameserver 8.8.8.8
+nameserver 1.1.1.1
+EOF
 ```
 
 We retrieve the token from any control plane node at `/var/lib/rancher/rke2/server/node-token`.

@@ -509,6 +509,79 @@ Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)
 
 The rule matches TCP packets with the `SYN` flag set and rewrites the MSS option to fit the outgoing interface's MTU.
 
+### Isolating Host DNS from Pod DNS
+
+Kubelet reads the host's `/etc/resolv.conf` to build each pod's DNS configuration.
+It copies the `search` domains into the pod's `/etc/resolv.conf` and combines them with the cluster DNS service address and Kubernetes search domains (`svc.cluster.local`, `cluster.local`).
+On a clean host this adds the machine's own domain — typically the hosting provider's domain like `your-server.de` for Hetzner — which is harmless.
+
+When Tailscale is installed on the host, it takes ownership of `/etc/resolv.conf` and replaces it with its MagicDNS configuration:
+
+```text
+# /etc/resolv.conf (managed by Tailscale)
+nameserver 100.100.100.100
+search tailc7bf.ts.net your-server.de
+```
+
+Kubelet then injects both `tailc7bf.ts.net` and `your-server.de` into every pod's search domain list.
+Combined with the Kubernetes default of `ndots:5`, any external hostname with fewer than five dots — which is virtually all of them — triggers search domain expansion before attempting an absolute lookup.
+A simple resolution of `api.github.com` becomes six sequential DNS queries:
+
+1. `api.github.com.renovate-bots.svc.cluster.local` — answered locally by CoreDNS
+2. `api.github.com.svc.cluster.local` — answered locally
+3. `api.github.com.cluster.local` — answered locally
+4. `api.github.com.tailc7bf.ts.net` — forwarded to upstream DNS
+5. `api.github.com.your-server.de` — forwarded to upstream DNS
+6. `api.github.com.` — forwarded to upstream, returns the actual result
+
+The first three queries are answered instantly from CoreDNS's local zone data.
+The last three require round-trips to the upstream forwarders (`8.8.8.8` and `1.1.1.1` in our configuration) and back.
+When a pod opens many concurrent connections — as dependency management tools like Renovate, npm, or Maven do during startup — the glibc resolver serializes hundreds of these expanded queries and some inevitably time out, causing cascading `ETIMEDOUT` and `getaddrinfo EAI_AGAIN` errors.
+
+The fix is to give kubelet a clean resolv.conf that contains only the upstream nameservers and no search domains.
+Create the file on every node:
+
+```bash
+$ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
+nameserver 8.8.8.8
+nameserver 1.1.1.1
+EOF
+```
+
+Then add the `kubelet-arg` to the RKE2 network configuration we created in Lesson 5.
+Append the following line to `/etc/rancher/rke2/config.yaml.d/10-network.yaml`:
+
+```yaml
+# /etc/rancher/rke2/config.yaml.d/10-network.yaml (append to existing file)
+kubelet-arg:
+  - "resolv-conf=/etc/rancher/rke2/resolv.conf"
+```
+
+Restart the RKE2 service for the change to take effect:
+
+```bash
+$ sudo systemctl restart rke2-server
+```
+
+After the restart, new pods receive a resolv.conf with only the Kubernetes search domains and no Tailscale or provider domains:
+
+```text
+search renovate-bots.svc.cluster.local svc.cluster.local cluster.local
+nameserver 10.43.0.10
+options ndots:5
+```
+
+The same `api.github.com` lookup now tries only four queries instead of six, and the three cluster-local queries are answered instantly by CoreDNS.
+The absolute lookup at the end is the only one that requires upstream forwarding.
+
+Existing pods keep their original resolv.conf until they are recreated.
+CronJob pods pick up the change on their next scheduled run, while long-running Deployments and StatefulSets need a rollout restart.
+
+{% include alert.liquid.html type='note' title='Apply to Every Node' content='
+The resolv.conf file and kubelet-arg must be set on every node in the cluster.
+For nodes joining later (Lessons 11, 12, and 15), include both the file and the kubelet-arg in the initial OS preparation before starting RKE2.
+' %}
+
 ## Network Policies
 
 ### Understanding Network Policies

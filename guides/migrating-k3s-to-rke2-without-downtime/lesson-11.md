@@ -572,6 +572,18 @@ bind-address: 10.1.0.13
 cluster-cidr: 10.42.0.0/16,fd00:42::/56
 service-cidr: 10.43.0.0/16,fd00:43::/112
 cluster-dns: 10.43.0.10
+
+kubelet-arg:
+  - "resolv-conf=/etc/rancher/rke2/resolv.conf"
+```
+
+Create the clean resolv.conf for kubelet to isolate pod DNS from Tailscale's MagicDNS on the host, as described in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6#isolating-host-dns-from-pod-dns):
+
+```bash
+$ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
+nameserver 8.8.8.8
+nameserver 1.1.1.1
+EOF
 ```
 
 The external access configuration adds Node 3's names and IPs to the API server certificate:

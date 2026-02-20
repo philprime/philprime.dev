@@ -203,6 +203,24 @@ bind-address: 10.1.0.14
 cluster-cidr: 10.42.0.0/16,fd00:42::/56
 service-cidr: 10.43.0.0/16,fd00:43::/112
 cluster-dns: 10.43.0.10
+
+# Use a clean resolv.conf so Tailscale's MagicDNS does not leak search domains into pods
+kubelet-arg:
+  - "resolv-conf=/etc/rancher/rke2/resolv.conf"
+```
+
+Kubelet normally reads the host's `/etc/resolv.conf` to build each pod's DNS configuration.
+When Tailscale is installed on the host, it replaces `/etc/resolv.conf` with its MagicDNS proxy and adds search domains like `tailc7bf.ts.net` that leak into every pod.
+Combined with the Kubernetes default of `ndots:5`, this causes pod DNS lookups for external hostnames to generate unnecessary queries against these search domains, leading to intermittent timeouts under concurrent load.
+The `resolv-conf` kubelet argument points to a static file with only the upstream nameservers — we explain the full mechanism in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6#isolating-host-dns-from-pod-dns).
+
+Create the clean resolv.conf:
+
+```bash
+$ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
+nameserver 8.8.8.8
+nameserver 1.1.1.1
+EOF
 ```
 
 The external access configuration adds SANs to the API server certificate so `kubectl` can connect via hostname, IP, or a public DNS name without TLS errors:
