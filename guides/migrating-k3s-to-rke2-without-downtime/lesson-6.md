@@ -156,6 +156,25 @@ The underlying infrastructure only needs to route between node IPs — it never 
 The trade-off is a small overhead per packet (approximately 50 bytes for the VXLAN + UDP + outer IP headers) and the fact that encapsulated traffic is unencrypted by default.
 On a private vSwitch this is generally acceptable, but for defense in depth we enable WireGuard encryption later in this lesson.
 
+### MTU and Encapsulation Overhead
+
+Every layer of encapsulation adds headers to each packet, reducing the maximum payload that fits within the physical network's MTU.
+Our Hetzner vSwitch interface has a standard MTU of 1500 bytes, and each overlay technology subtracts its header size from that budget:
+
+| Backend   | Header Overhead | Tunnel MTU | Pod veth MTU |
+| --------- | --------------- | ---------- | ------------ |
+| VXLAN     | ~50 bytes       | 1450       | 1450         |
+| WireGuard | ~80 bytes       | 1420       | 1420         |
+
+When Flannel uses VXLAN, it creates a `flannel.1` interface at MTU 1450 and sets the pod veth to match.
+When Flannel switches to the WireGuard backend, it creates `flannel-wg` interfaces at MTU 1420 — but Canal's default `veth_mtu` remains at 1450 unless explicitly overridden.
+
+This mismatch is critical: if pod interfaces have a higher MTU than the WireGuard tunnel, packets between 1421 and 1450 bytes that cross nodes will exceed the tunnel capacity.
+TCP relies on Path MTU Discovery (PMTUD) to detect this and reduce the segment size, but PMTUD depends on ICMP "Packet Too Big" messages reaching the sender — which can fail when packets traverse multiple encapsulation layers.
+The result is intermittent connection stalls and timeouts that are difficult to diagnose because small requests succeed while larger transfers hang.
+
+We avoid this entirely by setting `mtu: 1420` in the Canal configuration when enabling WireGuard, ensuring pod interfaces never send packets larger than the tunnel can carry.
+
 ## Verification
 
 ### Canal Pod Status
@@ -315,8 +334,14 @@ spec:
   valuesContent: |-
     flannel:
       backend: "wireguard"
+    calico:
+      vethuMTU: 1420
 EOF
 ```
+
+The `calico.vethuMTU: 1420` setting aligns the pod veth MTU with the WireGuard tunnel MTU, preventing the mismatch described in the MTU section above.
+Without this, Canal defaults to a veth MTU of 1450 (the `calico.vethuMTU` default in the Helm chart), which exceeds the WireGuard tunnel capacity of 1420 and causes intermittent packet loss for cross-node traffic.
+Note that `flannel.mtu` controls the WireGuard tunnel's own MTU (which already defaults to 1420), while `calico.vethuMTU` controls the pod-facing veth interfaces — both must match for reliable cross-node communication.
 
 RKE2 detects the new manifest and upgrades the Canal Helm release automatically.
 Restart the Canal DaemonSet to apply the new backend:
@@ -328,6 +353,29 @@ $ kubectl rollout status ds rke2-canal -n kube-system --timeout=120s
 Waiting for daemon set "rke2-canal" rollout to finish: 0 of 1 updated pods are available...
 daemon set "rke2-canal" successfully rolled out
 ```
+
+Verify the ConfigMap reflects the new MTU:
+
+```bash
+$ kubectl get configmap -n kube-system rke2-canal-config -o jsonpath='{.data.veth_mtu}'
+1420
+```
+
+Existing pods keep the MTU they were created with, so all workloads must be restarted to pick up the new veth MTU.
+Restart all Deployments, StatefulSets, and DaemonSets across the cluster:
+
+```bash
+$ kubectl get deployments --all-namespaces --no-headers -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name | \
+    while read ns name; do kubectl rollout restart deployment "$name" -n "$ns"; done
+
+$ kubectl get statefulsets --all-namespaces --no-headers -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name | \
+    while read ns name; do kubectl rollout restart statefulset "$name" -n "$ns"; done
+
+$ kubectl get daemonsets --all-namespaces --no-headers -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name | \
+    while read ns name; do kubectl rollout restart daemonset "$name" -n "$ns"; done
+```
+
+Standalone pods (such as CronJob-created pods) will pick up the new MTU when they are next recreated.
 
 ### Installing WireGuard Tools
 
@@ -355,8 +403,23 @@ interface: flannel-wg
 ```
 
 The `flannel-wg` and `flannel-wg-v6` interfaces confirm that Canal switched from VXLAN to WireGuard.
+Both interfaces should show `mtu 1420`, matching the value we configured.
 The `wg show` output should list the interface with a public key and listening port, but no peers yet.
 Peers appear automatically as additional nodes join the cluster in Lesson 11.
+
+Verify that the pod veth MTU also matches the WireGuard tunnel MTU by deploying a test pod:
+
+```bash
+$ kubectl run mtu-test --image=busybox:1.36 --restart=Never -- sleep 60
+pod/mtu-test created
+$ kubectl exec mtu-test -- cat /sys/class/net/eth0/mtu
+1420
+$ kubectl delete pod mtu-test
+pod "mtu-test" deleted
+```
+
+The pod's `eth0` interface must report `1420`.
+If it shows `1450` instead, the `calico.vethuMTU: 1420` setting in the `HelmChartConfig` was not applied — verify the manifest contents and restart the Canal DaemonSet.
 
 {% include alert.liquid.html type='warning' title='Missing flannel-wg Interface' content='
 If `ip link show` still shows `flannel.1` (VXLAN) instead of `flannel-wg`, the Canal DaemonSet did not fully pick up the new backend.
@@ -498,3 +561,23 @@ $ kubectl get networkpolicies -n <namespace>
 
 If traffic is still flowing despite a deny policy, check that no other policy in the namespace is allowing it.
 Kubernetes network policies are additive, meaning any policy that allows traffic takes precedence.
+
+### Intermittent Timeouts After Enabling WireGuard
+
+If pods experience sporadic connection timeouts — especially for large downloads or HTTP requests that succeed for small payloads but hang on larger ones — the most likely cause is an MTU mismatch between the pod veth and the WireGuard tunnel.
+
+Check the pod veth MTU and the WireGuard tunnel MTU:
+
+```bash
+# Pod veth MTU (should be 1420)
+$ kubectl run mtu-check --image=busybox:1.36 --restart=Never -- sleep 60
+pod/mtu-check created
+$ kubectl exec mtu-check -- cat /sys/class/net/eth0/mtu
+1420
+
+# WireGuard tunnel MTU (should also be 1420)
+$ ip link show flannel-wg | grep mtu
+862: flannel-wg: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 qdisc noqueue state UNKNOWN mode DEFAULT group default
+```
+
+If the pod veth shows `1450` while `flannel-wg` shows `1420`, add `calico.vethuMTU: 1420` to the Canal `HelmChartConfig` as described in the "Applying the Configuration" section above, restart the Canal DaemonSet, and then restart all workload pods so they pick up the new MTU.
