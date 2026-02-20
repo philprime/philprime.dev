@@ -4,14 +4,14 @@ title: Configuring Hetzner vSwitch Networking
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
-guide_section_id: 2
+guide_section_id: 1
 guide_lesson_id: 3
 guide_lesson_abstract: >
   Dual-stack networking is nearly impossible to retrofit into an existing Kubernetes cluster, so this lesson tackles it during the initial build.
   We plan IPv4 and IPv6 CIDR allocations for all three Kubernetes networks and configure the Hetzner vSwitch private interface on Node 4.
 guide_lesson_conclusion: >
   Node 4 is now connected to the vSwitch with both IPv4 and IPv6 addresses, ready for dual-stack Kubernetes networking.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-6.md
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-3.md
 ---
 
 Hetzner's vSwitch provides Layer 2 private networking between dedicated servers, allowing cluster nodes to communicate without traversing the public internet.

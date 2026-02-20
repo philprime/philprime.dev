@@ -51,9 +51,9 @@ Standalone pods without controllers are deleted permanently.
 
 The drain happens in three stages:
 
-1. **Cordon** marks the node as unschedulable so no new pods land on it
-2. **Evict** sends termination signals to all pods, respecting Pod Disruption Budgets
-3. **Reschedule** controllers recreate evicted pods on remaining nodes
+1. Cordon marks the node as unschedulable so no new pods land on it
+2. Evict sends termination signals to all pods, respecting Pod Disruption Budgets
+3. Reschedule — controllers recreate evicted pods on remaining nodes
 
 ```mermaid!
 flowchart LR
@@ -581,8 +581,8 @@ Create the clean resolv.conf for kubelet to isolate pod DNS from Tailscale's Mag
 
 ```bash
 $ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
-nameserver 8.8.8.8
 nameserver 1.1.1.1
+nameserver 1.0.0.1
 EOF
 ```
 
@@ -664,16 +664,16 @@ Both nodes should appear with dual-stack IPs:
 
 ```text
 NAME    STATUS   ROLES                       AGE   VERSION          INTERNAL-IP
-node3   Ready    control-plane,etcd,master   2m    v1.31.x+rke2r1   10.1.0.13,fd00::13
-node4   Ready    control-plane,etcd,master   3h    v1.31.x+rke2r1   10.1.0.14,fd00::14
+node3   Ready    control-plane,etcd,master   2m    v1.34.3+rke2r3   10.1.0.13,fd00::13
+node4   Ready    control-plane,etcd,master   3h    v1.34.3+rke2r3   10.1.0.14,fd00::14
 ```
 
 ### Check etcd Membership
 
-On Node 4, use `etcdctl` to verify that Node 3 has joined the etcd cluster:
+On Node 4, use the `etcdctl` alias configured in [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5#install-etcdctl) to verify that Node 3 has joined the etcd cluster:
 
 ```bash
-$ sudo etcdctl member list
+$ etcdctl member list
 xxxx, started, node4-xxxx, https://10.1.0.14:2380, https://10.1.0.14:2379, false
 yyyy, started, node3-xxxx, https://10.1.0.13:2380, https://10.1.0.13:2379, false
 ```

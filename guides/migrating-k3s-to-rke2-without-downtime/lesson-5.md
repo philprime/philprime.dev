@@ -12,7 +12,7 @@ guide_lesson_abstract: >
   It also covers etcdctl setup and verification of the running cluster.
 guide_lesson_conclusion: >
   Node 4 is running a single-node RKE2 control plane with dual-stack networking, secrets encryption, and verified etcd health.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-8.md
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-5.md
 ---
 
 With networking and firewall configured, Node 4 is ready to run the first RKE2 control plane with dual-stack networking.
@@ -218,8 +218,8 @@ Create the clean resolv.conf:
 
 ```bash
 $ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
-nameserver 8.8.8.8
 nameserver 1.1.1.1
+nameserver 1.0.0.1
 EOF
 ```
 
@@ -235,9 +235,6 @@ tls-san:
   - fd00::14
   - cluster.yourdomain.com # Optional: a public DNS name for external kubectl access
 
-# Allow non-root users to read the generated kubeconfig during initial setup.
-# This is tightened to the default 0600 in Lesson 9 once personal admin tokens are configured.
-write-kubeconfig-mode: "0644"
 ```
 
 The security configuration enables secrets encryption from the start, disables bundled components we replace ourselves, and schedules automatic etcd backups:
@@ -468,7 +465,7 @@ spec:
       - name: prometheus
         parameters: 0.0.0.0:9153
       - name: forward
-        parameters: . 8.8.8.8 1.1.1.1
+        parameters: . 1.1.1.1 1.0.0.1 2606:4700:4700::1111 2606:4700:4700::1001
       - name: cache
         parameters: 30
       - name: loop
@@ -476,8 +473,8 @@ spec:
       - name: loadbalance
 ```
 
-The critical change is `forward . 8.8.8.8 1.1.1.1` which replaces the default `forward . /etc/resolv.conf`.
-CoreDNS queries Google DNS and Cloudflare DNS directly, bypassing whatever the host's resolv.conf contains.
+The critical change is `forward . 1.1.1.1 1.0.0.1 2606:4700:4700::1111 2606:4700:4700::1001` which replaces the default `forward . /etc/resolv.conf`.
+CoreDNS queries Cloudflare DNS directly over both IPv4 and IPv6, bypassing whatever the host's resolv.conf contains.
 
 RKE2 detects the new manifest and upgrades the CoreDNS Helm release automatically.
 Restart the deployment to apply the change:
@@ -485,7 +482,7 @@ Restart the deployment to apply the change:
 ```bash
 $ kubectl rollout restart deployment rke2-coredns-rke2-coredns -n kube-system
 $ kubectl rollout status deployment rke2-coredns-rke2-coredns -n kube-system --timeout=60s
-daemon set "rke2-coredns-rke2-coredns" successfully rolled out
+deployment "rke2-coredns-rke2-coredns" successfully rolled out
 ```
 
 Verify that external DNS resolution works from within the cluster:
@@ -528,6 +525,7 @@ Before making any further changes, we back up the configuration files and take a
 
 ```bash
 $ mkdir -p /root/rke2-backup
+$ chmod 700 /root/rke2-backup
 $ cp -r /etc/rancher/rke2/config.yaml.d /root/rke2-backup/
 $ cp /var/lib/rancher/rke2/server/node-token /root/rke2-backup/
 $ cp ~/.kube/config /root/rke2-backup/kubeconfig
@@ -549,7 +547,7 @@ $ journalctl -xeu rke2-server
 ```
 
 The most common cause is port `6443` already being in use by an existing k3s or Kubernetes installation.
-Firewall rules blocking required ports can also prevent startup — check that the vSwitch rule from Lesson 7 is in place.
+Firewall rules blocking required ports can also prevent startup — check that the vSwitch rule from Lesson 4 is in place.
 Another frequent issue is invalid CIDR format in the dual-stack configuration: IPv4 and IPv6 ranges must be comma-separated without spaces.
 
 ### Dual-Stack Issues

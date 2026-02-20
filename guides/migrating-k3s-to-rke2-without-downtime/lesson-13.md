@@ -95,7 +95,7 @@ Start with a non-leader node to see the simplest failure scenario.
 If Node 3 does not hold the controller manager or scheduler lease, it is a good candidate:
 
 ```bash
-$ ssh root@node3 "sudo systemctl stop rke2-server"
+$ ssh node3 "sudo systemctl stop rke2-server"
 ```
 
 Within about a minute, the watch terminal shows Node 3 as `NotReady`.
@@ -112,7 +112,7 @@ node4   Ready      control-plane,etcd,master   5d
 Check etcd health from one of the remaining nodes:
 
 ```bash
-$ sudo etcdctl endpoint health --cluster
+$ etcdctl endpoint health --cluster
 https://10.1.0.12:2379 is healthy: successfully committed proposal: took = 3.1ms
 https://10.1.0.14:2379 is healthy: successfully committed proposal: took = 4.2ms
 https://10.1.0.13:2379 is unhealthy: context deadline exceeded
@@ -124,7 +124,7 @@ The unhealthy endpoint confirms that Node 3's etcd member is down, which is expe
 Restore Node 3 before testing the next node:
 
 ```bash
-$ ssh root@node3 "sudo systemctl start rke2-server"
+$ ssh node3 "sudo systemctl start rke2-server"
 ```
 
 Wait until Node 3 returns to `Ready` in the watch terminal before continuing.
@@ -135,7 +135,7 @@ Node 4 was the bootstrap node — the first control plane node in the cluster.
 Stopping it confirms there is nothing special about the original node:
 
 ```bash
-$ ssh root@node4 "sudo systemctl stop rke2-server"
+$ ssh node4 "sudo systemctl stop rke2-server"
 ```
 
 Again, verify that `kubectl` commands still succeed and that etcd reports two healthy endpoints.
@@ -150,7 +150,7 @@ The holder should now be a different node than before.
 Restore Node 4:
 
 ```bash
-$ ssh root@node4 "sudo systemctl start rke2-server"
+$ ssh node4 "sudo systemctl start rke2-server"
 ```
 
 ### Stopping Node 2
@@ -158,14 +158,14 @@ $ ssh root@node4 "sudo systemctl start rke2-server"
 Repeat the same process for Node 2:
 
 ```bash
-$ ssh root@node2 "sudo systemctl stop rke2-server"
+$ ssh node2 "sudo systemctl stop rke2-server"
 ```
 
 Verify `kubectl` still works, check etcd health, and confirm lease failover if applicable.
 Restore Node 2:
 
 ```bash
-$ ssh root@node2 "sudo systemctl start rke2-server"
+$ ssh node2 "sudo systemctl start rke2-server"
 ```
 
 ### After All Tests
@@ -181,7 +181,7 @@ node4   Ready    control-plane,etcd,master   5d
 ```
 
 ```bash
-$ sudo etcdctl endpoint health --cluster
+$ etcdctl endpoint health --cluster
 https://10.1.0.12:2379 is healthy: successfully committed proposal: took = 3.0ms
 https://10.1.0.13:2379 is healthy: successfully committed proposal: took = 4.1ms
 https://10.1.0.14:2379 is healthy: successfully committed proposal: took = 3.8ms

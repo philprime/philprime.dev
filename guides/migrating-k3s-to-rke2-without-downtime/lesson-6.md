@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson confirms dual-stack networking is working, enables WireGuard encryption for inter-node traffic, and configures Calico network policies to secure pod communication.
 guide_lesson_conclusion: >
   Canal is providing encrypted dual-stack pod networking with namespace-level network policies, and Node 4 is Ready to accept additional nodes into Cluster B.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-9.md
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-6.md
 ---
 
 Canal was installed automatically when RKE2 started in Lesson 5.
@@ -535,7 +535,7 @@ A simple resolution of `api.github.com` becomes six sequential DNS queries:
 6. `api.github.com.` — forwarded to upstream, returns the actual result
 
 The first three queries are answered instantly from CoreDNS's local zone data.
-The last three require round-trips to the upstream forwarders (`8.8.8.8` and `1.1.1.1` in our configuration) and back.
+The last three require round-trips to the upstream forwarders (`1.1.1.1` and `1.0.0.1` in our configuration) and back.
 When a pod opens many concurrent connections — as dependency management tools like Renovate, npm, or Maven do during startup — the glibc resolver serializes hundreds of these expanded queries and some inevitably time out, causing cascading `ETIMEDOUT` and `getaddrinfo EAI_AGAIN` errors.
 
 The fix is to give kubelet a clean resolv.conf that contains only the upstream nameservers and no search domains.
@@ -543,8 +543,8 @@ Create the file on every node:
 
 ```bash
 $ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
-nameserver 8.8.8.8
 nameserver 1.1.1.1
+nameserver 1.0.0.1
 EOF
 ```
 
@@ -597,7 +597,7 @@ Canal enforces these policies through Calico's policy engine, which supports sta
 | Pod-to-pod traffic | `NetworkPolicy`  | Calico (in Canal) |
 | Host-level traffic | Hetzner firewall | Hetzner network   |
 
-Unlike Cilium, Canal does not provide host-level network policies — the Hetzner firewall configured in Lesson 7 serves that role.
+Unlike Cilium, Canal does not provide host-level network policies — the Hetzner firewall configured in Lesson 4 serves that role.
 
 ### Default Deny per Namespace
 

@@ -64,10 +64,10 @@ $ ssh root@node1
 $ sudo k3s etcd-snapshot save --name final-backup-$(date +%Y%m%d-%H%M%S)
 
 # Copy backups to safe location
-$ scp -r /var/lib/rancher/k3s/server/db/snapshots/* root@node4:/root/k3s-final-backups/
+$ scp -r /var/lib/rancher/k3s/server/db/snapshots/* k8sadmin@node4:/tmp/k3s-final-backups/
 ```
 
-With the backup safely stored on Node 4, we can verify that no traffic is still hitting the old cluster.
+With the backup safely stored on Node 4 (move it to a permanent location with `sudo mv /tmp/k3s-final-backups/ /root/`), we can verify that no traffic is still hitting the old cluster.
 
 ## Verifying No Active Traffic
 

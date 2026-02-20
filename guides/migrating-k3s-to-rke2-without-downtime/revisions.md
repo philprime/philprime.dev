@@ -7,8 +7,6 @@ guide_id: migrating-k3s-to-rke2-without-downtime
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/revisions.md
 ---
 
-## Revision History
-
 This page tracks all changes and updates to this guide.
 
 ## Changes

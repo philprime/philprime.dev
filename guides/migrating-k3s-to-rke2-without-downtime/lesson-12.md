@@ -149,8 +149,8 @@ Create the clean resolv.conf as in [Lesson 6](/guides/migrating-k3s-to-rke2-with
 
 ```bash
 $ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
-nameserver 8.8.8.8
 nameserver 1.1.1.1
+nameserver 1.0.0.1
 EOF
 ```
 
@@ -199,10 +199,10 @@ node4   Ready    control-plane,etcd   4d23h   v1.34.3+rke2r3   10.1.0.14     135
 
 ### etcd Health
 
-On Node 4, where `etcdctl` is available, verify that all three members are present and started:
+On Node 4, use the `etcdctl` alias configured in [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5#install-etcdctl) to verify that all three members are present and started:
 
 ```bash
-$ sudo etcdctl member list
+$ etcdctl member list
 xxxx, started, node2-xxxx, https://10.1.0.12:2380, https://10.1.0.12:2379, false
 yyyy, started, node3-xxxx, https://10.1.0.13:2380, https://10.1.0.13:2379, false
 zzzz, started, node4-xxxx, https://10.1.0.14:2380, https://10.1.0.14:2379, false
@@ -212,7 +212,7 @@ The last column is the learner flag — `false` means the member is a full votin
 We can also check cluster health to confirm all endpoints are responsive:
 
 ```bash
-$ sudo etcdctl endpoint health --cluster
+$ etcdctl endpoint health --cluster
 https://10.1.0.14:2379 is healthy: successfully committed proposal: took = 2.961089ms
 https://10.1.0.12:2379 is healthy: successfully committed proposal: took = 4.425593ms
 https://10.1.0.13:2379 is healthy: successfully committed proposal: took = 14.330272ms

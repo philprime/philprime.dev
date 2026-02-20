@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson configures two storage classes on Cluster B: Longhorn for replicated block storage with data redundancy, and local-path-provisioner for high-performance local volumes that serve caching and ephemeral data.
 guide_lesson_conclusion: >
   Cluster B now has Longhorn and local-path storage classes provisioned, verified, and ready for workload deployment.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-101.md
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-7.md
 ---
 
 With Canal networking verified and network policies in place from Lesson 6, Cluster B can route traffic between pods and enforce security boundaries.
@@ -82,6 +82,10 @@ Download the CLI matching the Longhorn version we install:
 ```bash
 $ curl -fL -o /usr/local/bin/longhornctl \
     https://github.com/longhorn/cli/releases/download/v1.11.0/longhornctl-linux-amd64
+$ curl -fL -o /tmp/longhornctl-linux-amd64.sha256 \
+    https://github.com/longhorn/cli/releases/download/v1.11.0/longhornctl-linux-amd64.sha256
+$ echo "$(cat /tmp/longhornctl-linux-amd64.sha256 | awk '{print $1}')  /usr/local/bin/longhornctl" | sha256sum --check
+/usr/local/bin/longhornctl: OK
 $ chmod +x /usr/local/bin/longhornctl
 $ /usr/local/bin/longhornctl version
 v1.11.0

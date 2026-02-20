@@ -4,14 +4,14 @@ title: Installing Rocky Linux 10 on Node 4
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
-guide_section_id: 2
+guide_section_id: 1
 guide_lesson_id: 2
 guide_lesson_abstract: >
   Install Rocky Linux 10 on Node 4 with security hardening, essential tools, and storage planning for the RKE2 cluster.
   A freshly provisioned server needs OS installation, user accounts, SSH key authentication, and basic tooling before it can serve as a Kubernetes node.
 guide_lesson_conclusion: >
   Node 4 is now running Rocky Linux 10 with security hardening complete, ready for network configuration.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-5.md
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-2.md
 ---
 
 Node 4 needs a fresh operating system before it can serve as the first RKE2 control plane.
@@ -21,7 +21,7 @@ We chose it for its open source nature, stability, and first-class support by He
 {% include guide-overview-link.liquid.html %}
 
 {% include alert.liquid.html type='note' title='Detailed Node Setup Guide' content='
-For a comprehensive walkthrough of adding nodes to a Hetzner bare-metal cluster, see my blog post <a href="/2025-11-23-new-k3s-agent-node">New K3s agent node for our cluster</a>.
+For a comprehensive walkthrough of adding nodes to a Hetzner bare-metal cluster, see the blog post <a href="/2025-11-23-new-k3s-agent-node">New K3s agent node for our cluster</a>.
 This lesson covers the essential steps specific to our RKE2 migration.
 ' %}
 

@@ -26,12 +26,12 @@ author: Philip Niedertscheider
 Welcome to my guide on migrating from k3s to RKE2 while keeping downtime to a minimum.
 Follow along as I walk through the complete process of transitioning a 3-node k3s setup to a 4-node RKE2 cluster with high availability, using enterprise-grade tools and practices.
 
-{% include alert.liquid.html type='note' title='Please read this!' content='
+{% include alert.liquid.html type='note' title='Please read this' content='
 
 <p>I originally planned to offer this guide as a paid online course, but as a strong believer in free open source resources, I made it available for free instead.</p>
   <p>Please, if my guides helped you, I would be very grateful if you could support my work by becoming a <a href="https://github.com/sponsors/philprime" style="color: #000;">GitHub Sponsor</a> and by sharing the guides in your network. 🙏</p>
   <p>Eventually I might offer additional guides as paid online courses, but for now, I want to focus on providing free guides.</p>
-  <p>Thank you! ❤️</p>
+  <p>Thank you ❤️</p>
 ' %}
 
 ## Why Migrate from k3s to RKE2?
@@ -53,16 +53,13 @@ RKE2's focus on security and compliance also gives me a stronger foundation — 
 The final push to migrate came when we decided to add another bare-metal dedicated server.
 This allowed me to bootstrap RKE2 on the new node without touching the existing k3s nodes — enabling a zero-downtime migration.
 
-## What You Will Learn
-
-In this guide, you will learn to:
+## What This Guide Covers
 
 - Plan and execute a zero-downtime Kubernetes cluster migration
 - Deploy RKE2 with high-availability control plane configuration
 - Configure dual-stack IPv4/IPv6 networking with Canal CNI for large-scale cluster communication
 - Set up dual storage classes with Longhorn (highly available) and local-path-provisioner (fast)
 - Implement highly available ingress using Traefik DaemonSet with Hetzner Cloud Load Balancer
-- Migrate workloads and persistent volumes between clusters
 - Handle the critical 2-node transition phase safely
 
 ## Prerequisites

@@ -4,7 +4,7 @@ title: Firewall Configuration
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
-guide_section_id: 2
+guide_section_id: 1
 guide_lesson_id: 4
 guide_lesson_abstract: >
   Before any RKE2 component can communicate across nodes, the Hetzner firewall must permit cluster traffic.

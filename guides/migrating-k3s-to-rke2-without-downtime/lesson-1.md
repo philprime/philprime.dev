@@ -10,7 +10,7 @@ guide_lesson_abstract: >
   Migrating a production Kubernetes cluster from k3s to RKE2 without downtime demands careful phasing.
   This lesson maps out the five migration phases, explains the topology changes at each step, and highlights where the risk is highest.
 guide_lesson_conclusion: >
-  We have a detailed migration strategy with five clear phases and understand the risk profile of each step.
+  Our migration plan defines five phases, each with clear entry and exit criteria, and maps the risk profile from bootstrap through final consolidation.
 repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-1.md
 ---
 

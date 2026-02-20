@@ -101,8 +101,8 @@ Create the clean resolv.conf to isolate pod DNS from Tailscale on the host, as i
 
 ```bash
 $ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
-nameserver 8.8.8.8
 nameserver 1.1.1.1
+nameserver 1.0.0.1
 EOF
 ```
 

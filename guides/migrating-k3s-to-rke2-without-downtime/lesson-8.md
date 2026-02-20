@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson deploys Traefik as a DaemonSet across all cluster nodes and places a Hetzner Cloud Load Balancer in front of them, providing a single stable IP that automatically routes traffic to healthy backends.
 guide_lesson_conclusion: >
   Our cluster now has highly available ingress with Traefik running on every node and a Hetzner Cloud Load Balancer distributing external traffic across healthy backends.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-102.md
+repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-8.md
 ---
 
 A highly available ingress setup ensures that services remain accessible even when individual nodes fail.
@@ -274,7 +274,7 @@ spec:
       # validates against entrypoint names, and redirecting to "websecure" would
       # produce Location headers with port 8443 instead of 443.
       #
-      # While it is best practice to disallow HTTP entirely and only listen on HTTPS, some
+      # While it is best practice to disallow HTTP entirely and only listen on HTTPS,
       # we need HTTP support for cert-manager's HTTP-01 challenge, which requires responding
       # to HTTP requests on port 80.
       # - "--entrypoints.web.http.redirections.entryPoint.to=:443"
@@ -289,7 +289,7 @@ The key settings control scheduling and network exposure:
 | service.type    | NodePort    | Fixed ports for load balancer     |
 | nodePort        | 30080/30443 | Predictable ports for LB targets  |
 | tolerations     | Exists      | Run on control plane nodes too    |
-| HTTP redirect   | :443        | Force HTTPS for all traffic       |
+| HTTP redirect   | Disabled    | Commented out for HTTP-01 challenge |
 | proxyProtocol   | 10.0.0.0/8  | Trust proxy protocol from vSwitch |
 
 The `tolerations` setting with `operator: Exists` allows Traefik to schedule on control plane nodes as well, maximizing the number of nodes available for ingress.
@@ -593,7 +593,6 @@ tls-san:
   - fd00::14
   - 65.109.40.190 # Hetzner Cloud LB public IP
   - cluster.yourdomain.com # Public DNS name pointing to LB
-write-kubeconfig-mode: "0644"
 ```
 
 Restart RKE2 to regenerate the API server certificate with the new SANs:
@@ -624,7 +623,16 @@ $ curl -sk https://${LB_IP}:6443/readyz
 ok
 ```
 
+The `-s` flag silences progress output and `-k` skips TLS verification — this is acceptable here because we are testing connectivity, not establishing a trusted connection.
+All subsequent `kubectl` access uses proper certificate validation.
+
 A response of `ok` confirms that the load balancer is forwarding port `6443` to a healthy control plane node and the API server certificate includes the LB IP in its SANs.
+
+{% include alert.liquid.html type='warning' title='Restrict Access to Port 6443' content='
+The Kubernetes API server is now publicly reachable through the load balancer on port 6443.
+Restrict access to trusted IP ranges using the Hetzner Cloud Load Balancer firewall or network policies.
+Unauthenticated requests are rejected by the API server, but reducing exposure limits the attack surface.
+' %}
 
 ### Testing End-to-End
 

@@ -54,27 +54,10 @@ OIDC tokens are the best fit for CI/CD pipelines where short-lived, per-workflow
 ### Restricting the Default Kubeconfig
 
 The RKE2-generated kubeconfig at `/etc/rancher/rke2/rke2.yaml` authenticates as `kubernetes-admin` with full `cluster-admin` privileges.
-In [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5) we set `write-kubeconfig-mode: "0644"` so non-root users could read it during initial setup.
-Now that we are configuring proper access control, this file should be locked down to root only.
-
-Update `/etc/rancher/rke2/config.yaml.d/20-external-access.yaml` and remove the `write-kubeconfig-mode` line:
-
-```yaml
-# /etc/rancher/rke2/config.yaml.d/20-external-access.yaml
-tls-san:
-  - node4
-  - node4.k8s.local
-  - 10.1.0.14
-  - fd00::14
-  - 65.109.40.190 # Hetzner Cloud LB public IP
-  - cluster.yourdomain.com # Public DNS name pointing to LB
-```
-
-RKE2 defaults to mode `0600` when `write-kubeconfig-mode` is not set, making the file readable only by root.
-Apply the change:
+RKE2 defaults to mode `0600` for the kubeconfig, making it readable only by root.
+Verify this is the case:
 
 ```bash
-$ sudo systemctl restart rke2-server
 $ stat /etc/rancher/rke2/rke2.yaml
   File: /etc/rancher/rke2/rke2.yaml
   Size: 2945            Blocks: 8          IO Block: 4096   regular file
@@ -345,6 +328,7 @@ jwt:
       groups:
         expression: "['github-actions', 'github-actions:' + claims.repository_owner]"
     claimValidationRules:
+      # Replace <your-github-org> with your actual GitHub organization name
       - expression: "claims.repository_owner == '<your-github-org>'"
         message: "token must come from your GitHub organization"
 ```
@@ -475,7 +459,7 @@ steps:
     run: |
       TOKEN=$(curl -sLS "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api://prod-hel1-2.k8s.kula.app" \
         -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}")
-      echo "id_token=$(echo $TOKEN | jq -r '.value')" >> "$GITHUB_OUTPUT"
+      echo "id_token=$(echo "$TOKEN" | jq -r '.value')" >> "$GITHUB_OUTPUT"
 ```
 
 The token is then used as a bearer token in a kubeconfig that points to Cluster B's API server.
