@@ -443,7 +443,7 @@ Check that the node is registered with the cluster:
 ```bash
 $ kubectl get nodes -o wide
 NAME   STATUS   ROLES                AGE   VERSION          INTERNAL-IP   EXTERNAL-IP     OS-IMAGE                        KERNEL-VERSION                  CONTAINER-RUNTIME
-node4   Ready    control-plane,etcd   10m   v1.34.3+rke2r3   10.1.0.14      135.181.1.252   Rocky Linux 10.1 (Red Quartz)   6.12.0-124.27.1.el10_1.x86_64   containerd://2.1.5-k3s1
+node4   Ready    control-plane,etcd   10m   v1.34.3+rke2r3   10.1.0.14      135.181.XX.XX   Rocky Linux 10.1 (Red Quartz)   6.12.0-124.27.1.el10_1.x86_64   containerd://2.1.5-k3s1
 ```
 
 The node may initially show `NotReady` while Canal deploys, then transition to `Ready` when the cluster is fully operational.

@@ -176,10 +176,10 @@ We verify that Canal has deployed a pod on Node 1:
 ```bash
 $ kubectl get pods -n kube-system -l k8s-app=canal -o wide
 NAME               READY   STATUS    RESTARTS   AGE     IP          NODE         NOMINATED NODE   READINESS GATES
-rke2-canal-4gtl2   2/2     Running   0          2m47s   10.1.0.11   kang         <none>           <none>
-rke2-canal-mbg2b   2/2     Running   0          23h     10.1.0.12   juggernaut   <none>           <none>
-rke2-canal-lbvzm   2/2     Running   0          23h     10.1.0.13   mystique     <none>           <none>
-rke2-canal-2p4sf   2/2     Running   0          23h     10.1.0.14   doom         <none>           <none>
+rke2-canal-4gtl2   2/2     Running   0          2m47s   10.1.0.11   node1   <none>           <none>
+rke2-canal-mbg2b   2/2     Running   0          23h     10.1.0.12   node2   <none>           <none>
+rke2-canal-lbvzm   2/2     Running   0          23h     10.1.0.13   node3   <none>           <none>
+rke2-canal-2p4sf   2/2     Running   0          23h     10.1.0.14   node4   <none>           <none>
 ```
 
 Four Canal pods should appear — one per node, all `Running`.
@@ -194,19 +194,19 @@ interface: flannel-wg
   listening port: 51820
 
 peer: zNYaU32ej6Cimr8yyLymTmy+2yaCzY8iCHtqrMdJhzU=
-  endpoint: 37.27.71.235:51820
+  endpoint: 37.27.XX.XX:51820
   allowed ips: 10.42.1.0/24
   latest handshake: 34 seconds ago
   transfer: 22.39 KiB received, 25.20 KiB sent
 
 peer: rgId15u7J94Df1t1LwnYP7H+6Q6nz2erce9V4a0m1Qw=
-  endpoint: 135.181.1.252:51820
+  endpoint: 135.181.XX.XX:51820
   allowed ips: 10.42.0.0/24
   latest handshake: 38 seconds ago
   transfer: 16.60 KiB received, 14.57 KiB sent
 
 peer: GcVgmEwB5ZFmx2VN9DcxqmqY3gFLj0zM9YJU78barSs=
-  endpoint: 135.181.77.45:51820
+  endpoint: 135.181.XX.XX:51820
   allowed ips: 10.42.2.0/24
   latest handshake: 50 seconds ago
   transfer: 159.75 KiB received, 97.62 KiB sent
@@ -242,25 +242,25 @@ INFO[2026-02-21T11:36:54+02:00] Running preflight installer
 INFO[2026-02-21T11:36:54+02:00] Installing dependencies with package manager
 INFO[2026-02-21T11:37:01+02:00] Installed dependencies with package manager
 INFO[2026-02-21T11:37:01+02:00] Retrieved preflight installer result:
-doom:
+node1:
   info:
   - Successfully probed module nfs
   - Successfully probed module iscsi_tcp
   - Successfully probed module dm_crypt
   - Successfully started service iscsid
-juggernaut:
+node2:
   info:
   - Successfully probed module nfs
   - Successfully probed module iscsi_tcp
   - Successfully probed module dm_crypt
   - Successfully started service iscsid
-kang:
+node3:
   info:
   - Successfully probed module nfs
   - Successfully probed module iscsi_tcp
   - Successfully probed module dm_crypt
   - Successfully started service iscsid
-mystique:
+node4:
   info:
   - Successfully probed module nfs
   - Successfully probed module iscsi_tcp

@@ -399,8 +399,8 @@ $ hcloud load-balancer create \
   --location hel1
  ✓ Waiting for create_load_balancer 100% 0s (load_balancer: 5820086)
 Load Balancer 5820086 created
-IPv4: 65.109.40.190
-IPv6: 2a01:4f9:c01d:54e::1
+IPv4: 65.109.XX.XX
+IPv6: 2a01:4f9:XX:XX::1
 ```
 
 Before adding targets, the load balancer must be attached to the Cloud Network that is connected to the vSwitch.
@@ -591,7 +591,7 @@ tls-san:
   - node4.k8s.local
   - 10.1.0.14
   - fd00::14
-  - 65.109.40.190 # Hetzner Cloud LB public IP
+  - 65.109.XX.XX # Hetzner Cloud LB public IP
   - cluster.yourdomain.com # Public DNS name pointing to LB
 ```
 

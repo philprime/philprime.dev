@@ -291,7 +291,7 @@ $ ip addr show
 3: enp195s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
     link/ether d4:5d:64:08:e8:30 brd ff:ff:ff:ff:ff:ff
     altname enxd45d6408e830
-    inet 135.181.1.252/26 brd 135.181.1.255 scope global dynamic noprefixroute enp195s0
+    inet 135.181.XX.XX/26 brd 135.181.XX.255 scope global dynamic noprefixroute enp195s0
        valid_lft 31318sec preferred_lft 31318sec
     inet6 fe80::81d8:8f88:4416:3876/64 scope link noprefixroute
        valid_lft forever preferred_lft forever
