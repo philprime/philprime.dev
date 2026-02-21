@@ -1,6 +1,6 @@
 ---
 layout: guide-lesson.liquid
-title: Migration Complete
+title: Conclusion and Next Steps
 
 guide_component: lesson
 guide_id: migrating-k3s-to-rke2-without-downtime
@@ -82,6 +82,9 @@ This turns our Git repository into the single source of truth for what runs on t
 
 RKE2 releases new versions regularly with security patches and Kubernetes updates.
 The [System Upgrade Controller](https://docs.rke2.io/upgrade/automated_upgrade) automates rolling upgrades across the cluster, draining nodes one at a time and upgrading them in sequence without downtime.
+
+An automated upgrade replaces the RKE2 data directory, which means the runc v1.3.4 workaround from [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5#patching-runc-workaround-for-container-exec-failures) will be overwritten.
+Check whether the upstream runc regression has been fixed in the new RKE2 release before upgrading — if not, reapply the patch on each node after the upgrade completes.
 
 ### Backup Strategy
 
