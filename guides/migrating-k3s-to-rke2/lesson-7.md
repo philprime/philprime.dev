@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Setting Up Storage (Longhorn + local-path)
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 2
 guide_lesson_id: 7
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson configures two storage classes on Cluster B: Longhorn for replicated block storage with data redundancy, and local-path-provisioner for high-performance local volumes that serve caching and ephemeral data.
 guide_lesson_conclusion: >
   Cluster B now has Longhorn and local-path storage classes provisioned, verified, and ready for workload deployment.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-7.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-7.md
 ---
 
 With Canal networking verified and network policies in place from Lesson 6, Cluster B can route traffic between pods and enforce security boundaries.

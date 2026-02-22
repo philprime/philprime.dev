@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Configuring HA Ingress with Traefik and Hetzner Load Balancer
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 2
 guide_lesson_id: 8
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson deploys Traefik as a DaemonSet across all cluster nodes and places a Hetzner Cloud Load Balancer in front of them, providing a single stable IP that automatically routes traffic to healthy backends.
 guide_lesson_conclusion: >
   Our cluster now has highly available ingress with Traefik running on every node and a Hetzner Cloud Load Balancer distributing external traffic across healthy backends.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-8.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-8.md
 ---
 
 A highly available ingress setup ensures that services remain accessible even when individual nodes fail.
@@ -192,7 +192,7 @@ The Helm chart gives us full control over Traefik's deployment configuration whi
 
 ## Installing Traefik
 
-RKE2 includes a Helm controller that automatically installs and manages Helm charts from manifest files — the same mechanism we used for Longhorn in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) and the Canal `HelmChartConfig` in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6).
+RKE2 includes a Helm controller that automatically installs and manages Helm charts from manifest files — the same mechanism we used for Longhorn in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7) and the Canal `HelmChartConfig` in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6).
 For external charts like Traefik, we use a `HelmChart` resource that specifies the repository, chart name, version, and values.
 
 ### Configuration
@@ -668,7 +668,7 @@ EOF
 ```
 
 The Ingress targets the `websecure` entrypoint because HTTPS is the intended access method for all services.
-The `web` entrypoint remains open without an HTTP-to-HTTPS redirect so that cert-manager's HTTP-01 challenge solver can respond to ACME validation requests on port `80` (configured in [Lesson 10](/guides/migrating-k3s-to-rke2-without-downtime/lesson-10)).
+The `web` entrypoint remains open without an HTTP-to-HTTPS redirect so that cert-manager's HTTP-01 challenge solver can respond to ACME validation requests on port `80` (configured in [Lesson 10](/guides/migrating-k3s-to-rke2/lesson-10)).
 
 Store the load balancer's public IP for testing:
 

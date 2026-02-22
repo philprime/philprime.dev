@@ -3,14 +3,14 @@ layout: guide-section.liquid
 title: Preparing Rocky Linux and RKE2 Environment
 
 guide_component: section
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 2
 guide_section_abstract: >
   Bootstrap the initial RKE2 control plane with Canal CNI, configure WireGuard encryption and network policies,
   and set up storage, ingress, access control, and TLS certificates.
 guide_section_cta: >
   learn how to bootstrap RKE2 and configure all cluster services.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/section-2.md
+repo_file_path: guides/migrating-k3s-to-rke2/section-2.md
 ---
 
 This section bootstraps the RKE2 cluster on Node 4 and configures all services needed before migrating workloads.

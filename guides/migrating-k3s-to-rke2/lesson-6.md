@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Configuring Canal and Network Policies
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 2
 guide_lesson_id: 6
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson confirms dual-stack networking is working, enables WireGuard encryption for inter-node traffic, and configures Calico network policies to secure pod communication.
 guide_lesson_conclusion: >
   Canal is providing encrypted dual-stack pod networking with namespace-level network policies, and Node 4 is Ready to accept additional nodes into Cluster B.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-6.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-6.md
 ---
 
 Canal was installed automatically when RKE2 started in Lesson 5.
@@ -492,7 +492,7 @@ spec:
 ```
 
 The DaemonSet uses an init container to apply the iptables rules on the host's network namespace (`hostNetwork: true`), then idles with a minimal pause container.
-The `tolerations` with `operator: Exists` ensures it schedules on every node, including control plane nodes — matching the Traefik DaemonSet configuration from [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
+The `tolerations` with `operator: Exists` ensures it schedules on every node, including control plane nodes — matching the Traefik DaemonSet configuration from [Lesson 8](/guides/migrating-k3s-to-rke2/lesson-8).
 We use the `rancher/hardened-calico` image that Canal already pulls on every node, so no additional image download is required.
 
 The `-C` flag checks whether the rule already exists before `-A` appends it, preventing duplicate entries if the pod restarts.

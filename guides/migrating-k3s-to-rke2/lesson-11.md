@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Migrating Node 3 to Cluster B
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 3
 guide_lesson_id: 11
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This is the first node migration and establishes the repeatable pattern used for every subsequent node.
 guide_lesson_conclusion: >
   Node 3 has been migrated from Cluster A to Cluster B, running RKE2 as the second control plane node with etcd showing 2 members.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-11.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-11.md
 ---
 
 Node 3 is the first node we move from Cluster A to Cluster B.
@@ -311,7 +311,7 @@ The full details for each step are covered in the referenced lessons — this se
 ### Installing Rocky Linux 10
 
 Boot into the Hetzner Rescue System and run the installer.
-We cover the full walkthrough in [Lesson 2](/guides/migrating-k3s-to-rke2-without-downtime/lesson-2).
+We cover the full walkthrough in [Lesson 2](/guides/migrating-k3s-to-rke2/lesson-2).
 
 ```bash
 $ installimage
@@ -403,7 +403,7 @@ $ sudo tailscale up
 ### Configuring Dual-Stack vSwitch Networking
 
 Configure the VLAN interface with both IPv4 and IPv6 addresses.
-We cover the full networking walkthrough in [Lesson 3](/guides/migrating-k3s-to-rke2-without-downtime/lesson-3).
+We cover the full networking walkthrough in [Lesson 3](/guides/migrating-k3s-to-rke2/lesson-3).
 
 ```bash
 # Replace enp35s0 with the actual interface name
@@ -458,7 +458,7 @@ $ sudo sysctl -p /etc/sysctl.d/99-ipv6-forward.conf
 ### Configuring the Firewall
 
 Configure the Hetzner Robot firewall for Node 3 with the same rules as Node 4.
-We cover rule explanations and verification steps in [Lesson 4](/guides/migrating-k3s-to-rke2-without-downtime/lesson-4).
+We cover rule explanations and verification steps in [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4).
 
 | ID | Name               | Version | Protocol | Source IP   | Dest Port   | TCP Flags | Action |
 | -- | ------------------ | ------- | -------- | ----------- | ----------- | --------- | ------ |
@@ -530,7 +530,7 @@ This installs the `rke2-server` service (the default type) and places additional
 
 ### Patch runc
 
-Apply the runc v1.3.4 workaround from [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5#patching-runc-workaround-for-container-exec-failures) before starting RKE2.
+Apply the runc v1.3.4 workaround from [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5#patching-runc-workaround-for-container-exec-failures) before starting RKE2.
 Download the binary to `/etc/rancher/rke2/runc-v1.3.4` and create the containerd config template at `/var/lib/rancher/rke2/agent/etc/containerd/config-v3.toml.tmpl`.
 
 ### Create Configuration
@@ -544,7 +544,7 @@ $ sudo cat /var/lib/rancher/rke2/server/node-token
 K10...::server:xxxx
 ```
 
-Back on Node 3, create the configuration directory using the same multi-file layout from [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5):
+Back on Node 3, create the configuration directory using the same multi-file layout from [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5):
 
 ```bash
 $ sudo mkdir -p /etc/rancher/rke2/config.yaml.d
@@ -582,7 +582,7 @@ kubelet-arg:
   - "resolv-conf=/etc/rancher/rke2/resolv.conf"
 ```
 
-Create the clean resolv.conf for kubelet to isolate pod DNS from Tailscale's MagicDNS on the host, as described in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6#isolating-host-dns-from-pod-dns):
+Create the clean resolv.conf for kubelet to isolate pod DNS from Tailscale's MagicDNS on the host, as described in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6#isolating-host-dns-from-pod-dns):
 
 ```bash
 $ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
@@ -618,7 +618,7 @@ etcd-snapshot-schedule-cron: "0 */6 * * *"
 etcd-snapshot-retention: 5
 ```
 
-Each control plane node runs its own kube-apiserver, so the authentication configuration from [Lesson 9](/guides/migrating-k3s-to-rke2-without-downtime/lesson-9) must also be present.
+Each control plane node runs its own kube-apiserver, so the authentication configuration from [Lesson 9](/guides/migrating-k3s-to-rke2/lesson-9) must also be present.
 Copy `auth-config.yaml` from Node 4 and create the corresponding RKE2 config file:
 
 ```bash
@@ -675,7 +675,7 @@ node4   Ready    control-plane,etcd,master   3h    v1.34.3+rke2r3   10.1.0.14,fd
 
 ### Check etcd Membership
 
-On Node 4, use the `etcdctl` alias configured in [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5#install-etcdctl) to verify that Node 3 has joined the etcd cluster:
+On Node 4, use the `etcdctl` alias configured in [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5#install-etcdctl) to verify that Node 3 has joined the etcd cluster:
 
 ```bash
 $ etcdctl member list
@@ -736,7 +736,7 @@ $ kubectl top nodes
 
 ## Preparing Longhorn Storage
 
-Longhorn is already running on the cluster — the `HelmChart` manifest deployed in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) handles that automatically.
+Longhorn is already running on the cluster — the `HelmChart` manifest deployed in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7) handles that automatically.
 However, each new node needs system-level dependencies (iSCSI for block storage and NFSv4 for RWX volumes) before Longhorn can schedule replicas on it.
 
 Install `longhornctl` and run the preflight installer on Node 3:
@@ -756,7 +756,7 @@ $ /usr/local/bin/longhornctl --kubeconfig /etc/rancher/rke2/rke2.yaml check pref
 ```
 
 The check should report no errors for Node 3.
-We cover a detailed walkthrough of what each dependency does and how to troubleshoot failures in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7).
+We cover a detailed walkthrough of what each dependency does and how to troubleshoot failures in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7).
 
 Once the preflight passes, verify that Longhorn recognizes Node 3 as schedulable:
 
@@ -768,7 +768,7 @@ node4   True    true              True          3h
 ```
 
 With two storage nodes, Longhorn can now replicate volumes across nodes.
-We increase the replica count once a third node joins the cluster in [Lesson 12](/guides/migrating-k3s-to-rke2-without-downtime/lesson-12).
+We increase the replica count once a third node joins the cluster in [Lesson 12](/guides/migrating-k3s-to-rke2/lesson-12).
 Repeat this `longhornctl` preflight process on every node that joins the cluster going forward.
 
 ## Current State
@@ -805,7 +805,7 @@ Proceed with Node 2 migration to achieve HA.
 
 If cross-node pod traffic fails with "no route to host" or "Required key not available", the most likely cause is a Flannel backend mismatch between nodes.
 
-This happens when the existing node is still running the VXLAN backend while the new node picks up the WireGuard configuration from the HelmChartConfig applied in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6).
+This happens when the existing node is still running the VXLAN backend while the new node picks up the WireGuard configuration from the HelmChartConfig applied in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6).
 The new node creates a `flannel-wg` interface, but the existing node still uses `flannel.1` (VXLAN) — so the two nodes cannot exchange pod traffic.
 
 Check which interfaces each node is using:

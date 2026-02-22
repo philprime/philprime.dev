@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Installing the RKE2 Server
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 2
 guide_lesson_id: 5
 guide_lesson_abstract: >
@@ -12,7 +12,7 @@ guide_lesson_abstract: >
   It also covers etcdctl setup and verification of the running cluster.
 guide_lesson_conclusion: >
   Node 4 is running a single-node RKE2 control plane with dual-stack networking, secrets encryption, and verified etcd health.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-5.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-5.md
 ---
 
 With networking and firewall configured, Node 4 is ready to run the first RKE2 control plane with dual-stack networking.
@@ -112,7 +112,7 @@ Our existing Ingress and IngressRoute definitions already target Traefik, so dep
 
 ### Network CIDRs
 
-These CIDR ranges were planned in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6) and cannot be changed after cluster creation:
+These CIDR ranges were planned in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6) and cannot be changed after cluster creation:
 
 | Network         | IPv4 CIDR    | IPv6 CIDR     |
 | --------------- | ------------ | ------------- |
@@ -266,7 +266,7 @@ Splitting settings into numbered files keeps each concern isolated and makes it 
 $ mkdir -p /etc/rancher/rke2/config.yaml.d
 ```
 
-The network configuration sets up dual-stack node addressing, keeps API server traffic on the private vSwitch, and defines the pod and service CIDRs planned in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6):
+The network configuration sets up dual-stack node addressing, keeps API server traffic on the private vSwitch, and defines the pod and service CIDRs planned in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6):
 
 ```yaml
 # /etc/rancher/rke2/config.yaml.d/10-network.yaml
@@ -298,7 +298,7 @@ kubelet-arg:
 Kubelet normally reads the host's `/etc/resolv.conf` to build each pod's DNS configuration.
 When Tailscale is installed on the host, it replaces `/etc/resolv.conf` with its MagicDNS proxy and adds search domains like `tailc7bf.ts.net` that leak into every pod.
 Combined with the Kubernetes default of `ndots:5`, this causes pod DNS lookups for external hostnames to generate unnecessary queries against these search domains, leading to intermittent timeouts under concurrent load.
-The `resolv-conf` kubelet argument points to a static file with only the upstream nameservers — we explain the full mechanism in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6#isolating-host-dns-from-pod-dns).
+The `resolv-conf` kubelet argument points to a static file with only the upstream nameservers — we explain the full mechanism in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6#isolating-host-dns-from-pod-dns).
 
 Create the clean resolv.conf:
 
@@ -671,7 +671,7 @@ $ ip -6 route show default
 ```
 
 If the output is empty, the public interface is missing its IPv6 configuration.
-Follow the "Configuring Public IPv6" section in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6) to add the address and gateway, then delete the failing pod to force a restart:
+Follow the "Configuring Public IPv6" section in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6) to add the address and gateway, then delete the failing pod to force a restart:
 
 ```bash
 $ kubectl -n kube-system delete pod -l k8s-app=canal

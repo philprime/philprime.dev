@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Configuring Hetzner vSwitch Networking
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 1
 guide_lesson_id: 3
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   We plan IPv4 and IPv6 CIDR allocations for all three Kubernetes networks and configure the Hetzner vSwitch private interface on Node 4.
 guide_lesson_conclusion: >
   Node 4 is now connected to the vSwitch with both IPv4 and IPv6 addresses, ready for dual-stack Kubernetes networking.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-3.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-3.md
 ---
 
 Hetzner's vSwitch provides Layer 2 private networking between dedicated servers, allowing cluster nodes to communicate without traversing the public internet.
@@ -219,7 +219,7 @@ Most clusters use only a few hundred services at most, so this is more than suff
 For clarity and easier troubleshooting, we assign each node a consistent address across both address families.
 Using the same final number (node1 gets `.11` and `::11`, node2 gets `.12` and `::12`) makes it obvious which addresses belong to which node when debugging network issues at 2 AM.
 
-We start at `.11` rather than `.1` because the Hetzner Cloud Network gateway claims the first address in the subnet (`.1`) when a Cloud Network is attached to the vSwitch — as we do in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8) for the load balancer.
+We start at `.11` rather than `.1` because the Hetzner Cloud Network gateway claims the first address in the subnet (`.1`) when a Cloud Network is attached to the vSwitch — as we do in [Lesson 8](/guides/migrating-k3s-to-rke2/lesson-8) for the load balancer.
 Starting at `.11` leaves `.1` through `.10` available for infrastructure.
 
 | Node  | IPv4 Address | IPv6 Address |

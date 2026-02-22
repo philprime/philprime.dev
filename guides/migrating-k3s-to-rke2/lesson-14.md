@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Decommissioning Cluster A (k3s)
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 4
 guide_lesson_id: 14
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson walks through the final backup, the k3s removal, and a clean-state verification so Node 1 is ready for OS reinstallation.
 guide_lesson_conclusion: >
   Cluster A has been safely decommissioned and Node 1 is prepared for OS reinstallation.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-14.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-14.md
 ---
 
 This guide covers the infrastructure migration — building Cluster B, moving nodes, and configuring the platform.

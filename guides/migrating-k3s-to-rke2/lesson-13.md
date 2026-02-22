@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: "Verifying High Availability"
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 3
 guide_lesson_id: 13
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson tests API server redundancy, leader election failover, and individual node failure scenarios to confirm that our 3-node RKE2 cluster can survive losing any single node.
 guide_lesson_conclusion: >
   Every node in the cluster can go down individually without breaking the control plane, confirming true high availability.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-13.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-13.md
 ---
 
 Lesson 12 brought the cluster to three control plane nodes and verified that etcd, Canal, and WireGuard are healthy across all of them.

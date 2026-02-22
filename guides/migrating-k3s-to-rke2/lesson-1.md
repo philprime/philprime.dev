@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Migration Strategy and Planning
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 1
 guide_lesson_id: 1
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson maps out the five migration phases, explains the topology changes at each step, and highlights where the risk is highest.
 guide_lesson_conclusion: >
   Our migration plan defines five phases, each with clear entry and exit criteria, and maps the risk profile from bootstrap through final consolidation.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-1.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-1.md
 ---
 
 A successful zero-downtime migration requires careful planning before we touch a single node.

@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Adding Node 1 as a Worker
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 4
 guide_lesson_id: 15
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson walks through installing Rocky Linux, joining Node 1 to Cluster B as a dedicated worker (agent) node, and preparing it for Longhorn storage.
 guide_lesson_conclusion: >
   Node 1 has joined Cluster B as a worker node, giving the cluster dedicated workload capacity alongside three control plane nodes.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-15.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-15.md
 ---
 
 Node 1 follows the same OS preparation as the previous node migrations — install Rocky Linux, configure networking, and set up the firewall.
@@ -38,7 +38,7 @@ flowchart LR
   class B2,B3,B4 cp
 ```
 
-Cluster A was decommissioned in the previous [lesson-14](/guides/migrating-k3s-to-rke2-without-downtime/lesson-14).
+Cluster A was decommissioned in the previous [lesson-14](/guides/migrating-k3s-to-rke2/lesson-14).
 Node 1 is a blank server ready for a fresh OS install.
 
 ## Server vs Agent
@@ -61,7 +61,7 @@ The configuration is simpler — no `tls-san`, no security settings, no authenti
 
 ## Preparing the OS
 
-The OS preparation follows the same process we used for the other nodes in [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11) — install Rocky Linux 10, configure dual-stack networking with `10.1.0.11` and `fd00::11`, and set up the Hetzner firewall.
+The OS preparation follows the same process we used for the other nodes in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) — install Rocky Linux 10, configure dual-stack networking with `10.1.0.11` and `fd00::11`, and set up the Hetzner firewall.
 
 Worker nodes need fewer firewall ports than control plane nodes.
 The etcd ports (`2379`, `2380`) and API server port (`6443`) are not required since the agent does not run those services.
@@ -94,7 +94,7 @@ K10...::server:xxxx
 ```
 
 RKE2 generated this token during the initial cluster bootstrap and stored it at `/var/lib/rancher/rke2/server/node-token`.
-The same token was used when joining Nodes 2 and 3 in [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11).
+The same token was used when joining Nodes 2 and 3 in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11).
 
 Back on Node 1, create the configuration file with the token and the address of a control plane node:
 
@@ -110,7 +110,7 @@ kubelet-arg:
 
 The `server` address points to Node 4's supervisor API on port `9345` — the same endpoint used when joining the other nodes.
 
-Create the clean resolv.conf to isolate pod DNS from Tailscale on the host, as in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6#isolating-host-dns-from-pod-dns):
+Create the clean resolv.conf to isolate pod DNS from Tailscale on the host, as in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6#isolating-host-dns-from-pod-dns):
 
 ```bash
 $ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
@@ -134,7 +134,7 @@ Once the agent is running and the node appears in `kubectl get nodes`, stop it t
 $ sudo systemctl stop rke2-agent.service
 ```
 
-The data directory now exists at `/var/lib/rancher/rke2/data/`, so we can apply the runc v1.3.4 patch from [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5#patching-runc-workaround-for-container-exec-failures).
+The data directory now exists at `/var/lib/rancher/rke2/data/`, so we can apply the runc v1.3.4 patch from [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5#patching-runc-workaround-for-container-exec-failures).
 Download the binary and replace the bundled runc — the same steps used on the control plane nodes.
 
 Start the agent again with the patched runc:

@@ -3,14 +3,14 @@ layout: guide-section.liquid
 title: Introduction and Migration Strategy
 
 guide_component: section
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 1
 guide_section_abstract: >
   Understand the migration objectives, develop a migration strategy, install Rocky Linux 10 on the first new node,
   configure Hetzner vSwitch networking, and set up the firewall for Kubernetes traffic.
 guide_section_cta: >
   learn about the migration strategy, prepare the new node with Rocky Linux, and configure networking and firewall rules.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/section-1.md
+repo_file_path: guides/migrating-k3s-to-rke2/section-1.md
 ---
 
 This section introduces the migration project, walks through building a migration strategy, and prepares the first new node for Kubernetes.

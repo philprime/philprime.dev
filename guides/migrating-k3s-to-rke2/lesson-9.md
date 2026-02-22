@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Configuring Access Control and OIDC Authentication
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 2
 guide_lesson_id: 9
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This establishes identity and permissions before workloads arrive, ensuring CI/CD pipelines can deploy from day one.
 guide_lesson_conclusion: >
   Cluster B accepts GitHub OIDC tokens for CI/CD automation and uses group-based RBAC for authorization, with client certificates reserved for admin break-glass access.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-9.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-9.md
 ---
 
 Before migrating workloads to Cluster B, CI/CD pipelines need the ability to deploy to it and permissions must be in place before any workloads arrive.
@@ -27,7 +27,7 @@ Second, authorization evaluates RBAC rules to determine whether the authenticate
 Third, admission controllers enforce policies like Pod Security Standards and resource quotas.
 
 This lesson focuses on the first two stages.
-Admission control is handled by the Pod Security Standards configured in [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5).
+Admission control is handled by the Pod Security Standards configured in [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5).
 
 ### Authentication Methods
 
@@ -124,7 +124,7 @@ metadata:
 type: kubernetes.io/service-account-token
 ```
 
-Placing this file in `/var/lib/rancher/rke2/server/manifests/` makes RKE2 auto-deploy it — the same pattern used for Longhorn in [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) and Traefik in [Lesson 8](/guides/migrating-k3s-to-rke2-without-downtime/lesson-8).
+Placing this file in `/var/lib/rancher/rke2/server/manifests/` makes RKE2 auto-deploy it — the same pattern used for Longhorn in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7) and Traefik in [Lesson 8](/guides/migrating-k3s-to-rke2/lesson-8).
 
 The manifest creates three resources.
 The `ServiceAccount` is what the RBAC repository's pipeline authenticates as.
@@ -198,7 +198,7 @@ eyJhbGciOiJSUzI1NiIs...
 ### Configuring kubectl Locally
 
 Rather than running multiple `kubectl config` commands on your local machine, generate a complete kubeconfig on the server that embeds the CA certificate and token.
-Run this on the control plane node, replacing `cluster.yourdomain.com` with the public DNS name or IP from the `tls-san` list in [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5):
+Run this on the control plane node, replacing `cluster.yourdomain.com` with the public DNS name or IP from the `tls-san` list in [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5):
 
 ```bash
 $ export SERVER="https://cluster.yourdomain.com:6443"
@@ -363,7 +363,7 @@ kube-apiserver-arg:
 
 The `authentication-config` argument tells the API server to load the Structured Authentication Configuration from that file.
 
-This follows the same numbered-file pattern used for network (`10-network.yaml`), external access (`20-external-access.yaml`), and security (`30-security.yaml`) in [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5).
+This follows the same numbered-file pattern used for network (`10-network.yaml`), external access (`20-external-access.yaml`), and security (`30-security.yaml`) in [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5).
 
 Restart RKE2 to apply the new configuration:
 

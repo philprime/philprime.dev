@@ -1,14 +1,14 @@
 ---
 layout: guide.liquid
-title: Migrating from k3s to RKE2 Without Downtime
-permalink: /guides/migrating-k3s-to-rke2-without-downtime
+title: Migrating from k3s to RKE2
+permalink: /guides/migrating-k3s-to-rke2
 
 guide_component: guide
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_abstract: >
   A comprehensive guide for migrating from a 3-node k3s cluster to a 4-node RKE2 Kubernetes cluster with zero downtime,
   using Rocky Linux 10, Canal CNI, and Hetzner infrastructure.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/index.md
+repo_file_path: guides/migrating-k3s-to-rke2/index.md
 description:
   "Complete guide to migrating from k3s to RKE2 Kubernetes without downtime. Covers node-by-node migration strategy,
   Rocky Linux 10 setup, Canal CNI, Longhorn storage, Traefik ingress with Hetzner Load Balancer, and HA configuration."

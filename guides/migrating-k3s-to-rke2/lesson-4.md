@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Firewall Configuration
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 1
 guide_lesson_id: 4
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson explains the three-layer security model, walks through each firewall rule, and verifies that the configuration works from both the private vSwitch and the public internet.
 guide_lesson_conclusion: >
   Our Hetzner firewall now permits all necessary cluster, service, and return traffic while keeping unused ports blocked.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-4.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-4.md
 ---
 
 With the vSwitch network in place from Lesson 3, our nodes can reach each other over a private Layer 2 link.

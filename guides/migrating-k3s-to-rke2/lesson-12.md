@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Migrating Node 2 to Cluster B
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 3
 guide_lesson_id: 12
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   This lesson focuses on what changes compared to the Node 3 migration and the significance of reaching high availability.
 guide_lesson_conclusion: >
   Node 2 has joined Cluster B as the third control plane node, achieving full high availability with etcd quorum tolerance.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-12.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-12.md
 ---
 
 Node 2 follows the same migration path as Node 3 — backup, drain, reinstall, join.
@@ -93,7 +93,7 @@ $ kubectl delete node node2
 $ ssh root@node2 "sudo systemctl stop k3s-agent && sudo systemctl disable k3s-agent"
 ```
 
-See [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11) for an explanation of each flag and how to handle blocked drains.
+See [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) for an explanation of each flag and how to handle blocked drains.
 
 {% include alert.liquid.html type='warning' title='Single Point of Failure' content='
 Cluster A is now running on Node 1 only.
@@ -105,7 +105,7 @@ Proceed with Node 2 installation promptly.
 
 ### Preparing the OS
 
-The OS preparation follows the same process used for Node 3 in [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11) — install Rocky Linux 10, configure dual-stack networking with `10.1.0.12` and `fd00::12`, and set up the Hetzner firewall.
+The OS preparation follows the same process used for Node 3 in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) — install Rocky Linux 10, configure dual-stack networking with `10.1.0.12` and `fd00::12`, and set up the Hetzner firewall.
 
 ### Installing and Configuring RKE2
 
@@ -118,7 +118,7 @@ $ curl -sfL https://get.rke2.io | sudo sh -
 $ sudo systemctl enable rke2-server.service
 ```
 
-Apply the runc v1.3.4 workaround from [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5#patching-runc-workaround-for-container-exec-failures) before starting RKE2.
+Apply the runc v1.3.4 workaround from [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5#patching-runc-workaround-for-container-exec-failures) before starting RKE2.
 
 Create the configuration directory using the same multi-file layout as Nodes 3 and 4:
 
@@ -147,7 +147,7 @@ kubelet-arg:
   - "resolv-conf=/etc/rancher/rke2/resolv.conf"
 ```
 
-Create the clean resolv.conf as in [Lesson 6](/guides/migrating-k3s-to-rke2-without-downtime/lesson-6#isolating-host-dns-from-pod-dns) and [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11):
+Create the clean resolv.conf as in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6#isolating-host-dns-from-pod-dns) and [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11):
 
 ```bash
 $ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
@@ -168,7 +168,7 @@ tls-san:
   - cluster.yourdomain.com
 ```
 
-The `00-join.yaml`, `30-security.yaml`, `40-authentication.yaml`, and `auth-config.yaml` files are identical to Node 3 — see [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11) for their contents.
+The `00-join.yaml`, `30-security.yaml`, `40-authentication.yaml`, and `auth-config.yaml` files are identical to Node 3 — see [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) for their contents.
 
 ### Starting RKE2
 
@@ -183,7 +183,7 @@ It then joins the etcd cluster as the third member — bringing the cluster to q
 Canal deploys automatically and establishes WireGuard tunnels to both Node 3 and Node 4.
 
 Unlike the Node 3 join in Lesson 11, there should be no WireGuard/VXLAN backend mismatch because all existing nodes are already running the WireGuard backend.
-If we do see "no route to host" errors, restart the Canal DaemonSet as described in [Lesson 11's troubleshooting section](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11#wireguard--vxlan-backend-mismatch).
+If we do see "no route to host" errors, restart the Canal DaemonSet as described in [Lesson 11's troubleshooting section](/guides/migrating-k3s-to-rke2/lesson-11#wireguard--vxlan-backend-mismatch).
 
 ## Verification
 
@@ -201,7 +201,7 @@ node4   Ready    control-plane,etcd   4d23h   v1.34.3+rke2r3   10.1.0.14     135
 
 ### etcd Health
 
-On Node 4, use the `etcdctl` alias configured in [Lesson 5](/guides/migrating-k3s-to-rke2-without-downtime/lesson-5#install-etcdctl) to verify that all three members are present and started:
+On Node 4, use the `etcdctl` alias configured in [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5#install-etcdctl) to verify that all three members are present and started:
 
 ```bash
 $ etcdctl member list
@@ -237,7 +237,7 @@ rke2-canal-sk6np   2/2     Running   0          2m19s   10.1.0.12   node2   <non
 Three pods should appear — one per node, all in `Running` state.
 
 On Node 2, check the WireGuard interface to confirm tunnels to both peers.
-The `wg` tool was installed as part of the `wireguard-tools` package during OS setup in [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11):
+The `wg` tool was installed as part of the `wireguard-tools` package during OS setup in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11):
 
 ```bash
 $ sudo wg show flannel-wg
@@ -261,12 +261,12 @@ peer: <node4-public-key>
 
 The output should list two peers — one for Node 3 and one for Node 4 — each with a recent handshake timestamp.
 With three nodes, the WireGuard mesh forms a full triangle where each node maintains a direct encrypted tunnel to every other node.
-See [Lesson 11](/guides/migrating-k3s-to-rke2-without-downtime/lesson-11) for expected output format and troubleshooting.
+See [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) for expected output format and troubleshooting.
 
 ## Preparing Longhorn Storage
 
 Longhorn is already running on the cluster, but each new node needs system-level dependencies — iSCSI for block storage and NFSv4 for RWX volumes — before Longhorn can schedule replicas on it.
-See [Lesson 7](/guides/migrating-k3s-to-rke2-without-downtime/lesson-7) for a detailed walkthrough of what each dependency does and how to troubleshoot failures.
+See [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7) for a detailed walkthrough of what each dependency does and how to troubleshoot failures.
 
 Install `longhornctl` and run the preflight installer on Node 2:
 

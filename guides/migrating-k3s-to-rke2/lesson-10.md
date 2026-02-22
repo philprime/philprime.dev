@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Setting Up cert-manager for TLS Certificates
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 2
 guide_lesson_id: 10
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   cert-manager handles the full certificate lifecycle — requesting, storing, and renewing — so that every Ingress resource can obtain trusted TLS certificates without manual intervention.
 guide_lesson_conclusion: >
   cert-manager is running as a default cluster service with both staging and production Let's Encrypt issuers ready for use.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-10.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-10.md
 ---
 
 Nearly every service exposed through an ingress controller needs a TLS certificate.

@@ -3,7 +3,7 @@ layout: guide-lesson.liquid
 title: Installing Rocky Linux 10 on Node 4
 
 guide_component: lesson
-guide_id: migrating-k3s-to-rke2-without-downtime
+guide_id: migrating-k3s-to-rke2
 guide_section_id: 1
 guide_lesson_id: 2
 guide_lesson_abstract: >
@@ -11,7 +11,7 @@ guide_lesson_abstract: >
   A freshly provisioned server needs OS installation, user accounts, SSH key authentication, and basic tooling before it can serve as a Kubernetes node.
 guide_lesson_conclusion: >
   Node 4 is now running Rocky Linux 10 with security hardening complete, ready for network configuration.
-repo_file_path: guides/migrating-k3s-to-rke2-without-downtime/lesson-2.md
+repo_file_path: guides/migrating-k3s-to-rke2/lesson-2.md
 ---
 
 Node 4 needs a fresh operating system before it can serve as the first RKE2 control plane.
