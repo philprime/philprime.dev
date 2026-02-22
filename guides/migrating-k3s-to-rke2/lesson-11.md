@@ -462,7 +462,7 @@ We cover rule explanations and verification steps in [Lesson 4](/guides/migratin
 
 | ID | Name               | Version | Protocol | Source IP   | Source Port | Dest Port   | TCP Flags | Action |
 | -- | ------------------ | ------- | -------- | ----------- | ----------- | ----------- | --------- | ------ |
-| #1 | vswitch            | ipv4    | \*       | 10.1.0.0/16 |             |             |           | accept |
+| #1 | vswitch            | ipv4    | \*       | 10.0.0.0/8  |             |             |           | accept |
 | #2 | tcp established    | ipv4    | tcp      |             |             | 1024-65535 | ack       | accept |
 | #3 | tcp established-v6 | ipv6    | tcp      |             |             | 1024-65535 | ack       | accept |
 | #4 | dns responses      | ipv4    | udp      |             | 53          | 1024-65535 |           | accept |

@@ -109,7 +109,7 @@ The firewall has a **10-rule limit**, but our load balancer architecture means w
 
 | ID | Name               | Version | Protocol | Source IP   | Source Port | Dest Port   | TCP Flags | Action |
 | -- | ------------------ | ------- | -------- | ----------- | ----------- | ----------- | --------- | ------ |
-| #1 | vswitch            | ipv4    | \*       | 10.1.0.0/16 |             |             |           | accept |
+| #1 | vswitch            | ipv4    | \*       | 10.0.0.0/8  |             |             |           | accept |
 | #2 | tcp established    | ipv4    | tcp      |             |             | 1024-65535 | ack       | accept |
 | #3 | tcp established-v6 | ipv6    | tcp      |             |             | 1024-65535 | ack       | accept |
 | #4 | dns responses      | ipv4    | udp      |             | 53          | 1024-65535 |           | accept |
@@ -126,7 +126,9 @@ Rules #6 through #10 are available for future use.
 ### Rule Explanations
 
 Rule #1 (vswitch) is the most critical rule for cluster operation.
-It allows all traffic from the private vSwitch network, enabling Kubernetes API communication between nodes, etcd cluster synchronization, Canal's WireGuard-encrypted pod networking, kubelet communication, Longhorn storage replication, and load balancer forwarded traffic.
+It allows all traffic from the `10.0.0.0/8` private range, which covers both the vSwitch node subnet (`10.1.0.x`) and the Hetzner Cloud Network subnet where the load balancer lives (`10.0.0.2`).
+This single rule enables Kubernetes API communication between nodes, etcd cluster synchronization, Canal's WireGuard-encrypted pod networking, kubelet communication, Longhorn storage replication, and load balancer health checks and forwarded traffic.
+Using `10.1.0.0/16` instead would block the load balancer, since its health checks originate from `10.0.0.2` — outside the vSwitch subnet.
 Without this rule, the cluster cannot function.
 
 Rules #2-3 (tcp established) handle return traffic for outbound TCP connections.
@@ -175,7 +177,7 @@ $ ping -c 3 10.1.0.11
 ```
 
 This works because Rule #1 allows all traffic from the vSwitch subnet, including ICMP.
-If pings fail, verify that Rule #1 has the correct source IP (`10.1.0.0/16`) and is set to `accept`.
+If pings fail, verify that Rule #1 has the correct source IP (`10.0.0.0/8`) and is set to `accept`.
 IPv6 connectivity over the vSwitch is not configured on the existing nodes yet, so we only test IPv4 here.
 
 ### Port Scan from vSwitch

@@ -719,6 +719,7 @@ If the Hetzner load balancer reports targets as unhealthy, work through these ch
 The most common cause of unhealthy targets is a missing route for the cloud subnet.
 The load balancer's private IP (`10.0.0.2`) lives on the cloud subnet (`10.0.0.0/24`), which is separate from the vSwitch subnet (`10.1.0.0/16`).
 Without a route via the Cloud Network gateway (`10.1.0.1`), the node sends health check responses to the wrong destination and the handshake never completes.
+The Hetzner firewall must also allow traffic from this subnet — our Rule #1 uses `10.0.0.0/8` to cover both the vSwitch and the cloud subnet in a single rule, as explained in [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4).
 
 Verify the route exists:
 
