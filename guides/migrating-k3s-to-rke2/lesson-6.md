@@ -334,12 +334,24 @@ spec:
   valuesContent: |-
     flannel:
       backend: "wireguard"
+      regexIface: "\\.4000$"
     calico:
       vethuMTU: 1420
 EOF
 ```
 
-The `calico.vethuMTU: 1420` setting aligns the pod veth MTU with the WireGuard tunnel MTU, preventing the mismatch described in the MTU section above.
+Three settings require explanation.
+
+`flannel.regexIface` controls which network interface Flannel uses for inter-node tunnel endpoints.
+When this value is empty, Flannel follows the default route to discover the outbound interface — which on Hetzner dedicated servers is the public network interface.
+WireGuard tunnels would then use public IPs as their endpoints, forcing inter-node pod traffic onto the public internet and requiring an additional firewall rule for UDP port `51820`.
+Setting `regexIface` to `\\.4000$` matches the VLAN-tagged vSwitch interface (e.g., `enp35s0.4000` or `enp195s0.4000`) on every node, regardless of the underlying NIC name.
+Flannel then uses the vSwitch IP (`10.1.0.x`) as the WireGuard endpoint, keeping all tunnel traffic on the private network where the Hetzner firewall's vSwitch rule already permits it.
+The Helm chart maps this value to the `FLANNELD_IFACE_REGEX` environment variable in the flannel container — see the [Flannel configuration documentation](https://github.com/flannel-io/flannel/blob/master/Documentation/configuration.md) for details on interface selection behavior.
+
+`flannel.backend: "wireguard"` switches the overlay from VXLAN to WireGuard, as described in the encryption section above.
+
+`calico.vethuMTU: 1420` aligns the pod veth MTU with the WireGuard tunnel MTU, preventing the mismatch described in the MTU section above.
 Without this, Canal defaults to a veth MTU of 1450 (the `calico.vethuMTU` default in the Helm chart), which exceeds the WireGuard tunnel capacity of 1420 and causes intermittent packet loss for cross-node traffic.
 Note that `flannel.mtu` controls the WireGuard tunnel's own MTU (which already defaults to 1420), while `calico.vethuMTU` controls the pod-facing veth interfaces — both must match for reliable cross-node communication.
 
@@ -406,6 +418,16 @@ The `flannel-wg` and `flannel-wg-v6` interfaces confirm that Canal switched from
 Both interfaces should show `mtu 1420`, matching the value we configured.
 The `wg show` output should list the interface with a public key and listening port, but no peers yet.
 Peers appear automatically as additional nodes join the cluster in Lesson 11.
+
+Confirm that Flannel selected the vSwitch interface by checking the node annotation:
+
+```bash
+$ kubectl get node $(hostname) -o jsonpath='{.metadata.annotations.flannel\.alpha\.coreos\.com/public-ip}'
+10.1.0.14
+```
+
+The `public-ip` annotation should show the vSwitch address, not the server's public IP.
+If it shows a public IP, the `regexIface` pattern did not match the vSwitch interface — verify the interface name with `ip -o addr show | grep '10.1.0'` and adjust the regex accordingly.
 
 Verify that the pod veth MTU also matches the WireGuard tunnel MTU by deploying a test pod:
 

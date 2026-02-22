@@ -8,39 +8,46 @@ guide_section_id: 1
 guide_lesson_id: 4
 guide_lesson_abstract: >
   Before any RKE2 component can communicate across nodes, the Hetzner firewall must permit cluster traffic.
-  This lesson explains the three-layer security model, walks through each firewall rule, and verifies that the configuration works from both the private vSwitch and the public internet.
+  This lesson explains the security model, walks through each firewall rule, and verifies that the configuration works from both the private vSwitch and the public internet.
 guide_lesson_conclusion: >
-  Our Hetzner firewall now permits all necessary cluster, service, and return traffic while keeping unused ports blocked.
+  Our Hetzner firewall permits all necessary cluster and return traffic through just five rules, with the load balancer architecture keeping service ports off the public internet entirely.
 repo_file_path: guides/migrating-k3s-to-rke2/lesson-4.md
 ---
 
 With the vSwitch network in place from Lesson 3, our nodes can reach each other over a private Layer 2 link.
 Traffic on that link still passes through Hetzner's firewall infrastructure, though, so we need explicit rules before RKE2 components can communicate.
-This lesson covers the first layer of our three-layer security model: the Hetzner network firewall.
 
 {% include guide-overview-link.liquid.html %}
 
-## Understanding the Three-Layer Security Model
+## Understanding the Security Model
 
-We use a layered approach to network security, with each layer serving a specific purpose:
+Our architecture routes all service traffic — web, API, NodePorts — through a Hetzner Cloud Load Balancer that connects to nodes over the private vSwitch network.
+This means the public firewall on each dedicated server only needs to allow SSH and return traffic for outbound connections.
+Every other inbound service port stays closed to the public internet.
 
-| Layer | Component                  | Purpose                                                          |
-| ----- | -------------------------- | ---------------------------------------------------------------- |
-| 1     | Hetzner Firewall           | Coarse network-level filtering before traffic reaches the server |
-| 2     | Calico Network Policies    | Fine-grained port control on the host                            |
-| 3     | Kubernetes NetworkPolicies | Pod-to-pod isolation and service-level access control            |
+Security operates at three layers, each with a distinct role:
 
-This architecture provides defense-in-depth.
-If one layer fails or is misconfigured, the others still provide protection.
+| Layer | Component               | Purpose                                                    |
+| ----- | ----------------------- | ---------------------------------------------------------- |
+| 1     | Hetzner Firewall        | Blocks all unsolicited public traffic except SSH           |
+| 2     | Hetzner Cloud LB        | Single entry point for web and API traffic via the vSwitch |
+| 3     | Kubernetes NetworkPolicy | Pod-to-pod isolation and service-level access control      |
 
-### Why Layers?
+The Hetzner firewall acts as the outermost boundary, rejecting everything that is not SSH or return traffic.
+The load balancer receives external web and API connections on its own public IP and forwards them to node backends over the vSwitch — traffic that the firewall already permits through the vSwitch rule.
+Kubernetes NetworkPolicies handle the innermost layer, controlling which pods can communicate with each other inside the cluster.
 
-Hetzner's firewall has a 10-rule limit, which forces us to use broad port ranges.
-Opening ports `22-587`, for example, allows SSH, SMTP, HTTP, and HTTPS but also opens unused ports like `23-24` and `81-442`.
+### Why the Public Firewall Can Be So Tight
 
-We configure Calico Network Policies in Lesson 9 to close this gap by explicitly allowing only the specific ports we need.
-Even though Hetzner permits the range, Calico blocks everything except SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`).
-If Calico fails, the system falls back to Hetzner rules only, which are broader but still reasonably secure.
+In a setup without a load balancer, nodes must expose service ports (`80`, `443`, `6443`, `30000-32767`) directly on their public IPs, which forces the firewall to allow a wide range of inbound traffic.
+Our architecture avoids this entirely.
+
+The Hetzner Cloud Load Balancer sits on the same Cloud Network as the vSwitch and forwards traffic to nodes using their private IPs (`10.1.0.x`).
+From the node's perspective, load balancer traffic is indistinguishable from inter-node cluster traffic — it arrives on the vSwitch interface, not the public interface.
+A single vSwitch rule covers all of it: Kubernetes API access, Traefik ingress, NodePort services, and health checks.
+
+The only service that requires direct public access is SSH, which we need for server administration from outside the private network.
+Tailscale provides an alternative access path using NAT traversal with outbound connections, so it works without any inbound firewall rule.
 
 ## Understanding Hetzner's Firewall
 
@@ -58,46 +65,24 @@ A critical point that is easy to overlook: **vSwitch traffic passes through Hetz
 Even though the vSwitch is a private Layer 2 network between servers, packets still traverse the firewall infrastructure.
 Without a rule explicitly allowing traffic from the vSwitch subnet, pod-to-pod communication across nodes will fail and the cluster will not function.
 
-### Ephemeral Ports and NodePorts
+This single rule carries the bulk of our cluster's networking needs.
+All inter-node communication flows over the vSwitch: etcd replication (`2379`, `2380`), the Kubernetes API (`6443`), the RKE2 supervisor API (`9345`), kubelet communication, WireGuard-encrypted pod traffic (`51820`), Longhorn storage replication via iSCSI (`3260`) and NFS (`2049`), and load balancer health checks and forwarded traffic.
 
-When the server makes an outbound connection — downloading container images, querying APIs — the kernel assigns a temporary source port from the ephemeral port range.
+WireGuard traffic only stays on the vSwitch if Flannel is configured to use the vSwitch interface for its tunnel endpoints.
+We configure this with `flannel.regexIface` in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6) — without that setting, Flannel defaults to the public interface and WireGuard endpoints would use public IPs, bypassing the vSwitch entirely.
+
+### Return Traffic Ports
+
+When the server makes an outbound connection — downloading container images, querying APIs — the kernel assigns a temporary source port from the ephemeral range (`32768-60999` by default on Linux).
 The response packets return to this port, so the firewall must allow them through.
-We can check the system's ephemeral port range:
 
-```bash
-$ cat /proc/sys/net/ipv4/ip_local_port_range
-32768	60999
-```
+Kubernetes adds a complication: pod traffic leaving the node passes through iptables MASQUERADE, which rewrites the source IP to the node's public IP.
+If two pods connect to the same destination, their original source ports may collide after the rewrite.
+When this happens, the kernel's `nf_nat` module picks a replacement port from the full non-privileged range (`1024-65535`), not just the ephemeral range.
+A pod connecting to `sentry.io:443` might get its source port remapped to `25797` — well below `32768`.
 
-Linux defaults to `32768-60999` for ephemeral ports.
-Kubernetes defaults to `30000-32767` for NodePort services.
-These ranges are intentionally non-overlapping:
-
-| Range         | Purpose                  | Used by      |
-| ------------- | ------------------------ | ------------ |
-| `30000-32767` | NodePort services        | Kubernetes   |
-| `32768-60999` | Ephemeral (source) ports | Linux kernel |
-
-The boundary at `32767`/`32768` is `2^15 - 1` / `2^15`, a deliberate design choice to prevent conflicts.
-Our firewall rules respect this boundary: the tcp-established rule covers `32768-65535` for return traffic, while the nodeports rule covers `30000-32767` for inbound service access.
-
-### Port Strategy
-
-Some ports are dictated by protocol standards and must use specific numbers:
-
-| Port   | Service         | Reason                            |
-| ------ | --------------- | --------------------------------- |
-| `22`   | SSH             | Standard remote access            |
-| `25`   | SMTP            | Receiving mail from other servers |
-| `80`   | HTTP            | ACME challenges and redirects     |
-| `443`  | HTTPS           | Web traffic                       |
-| `587`  | SMTP submission | Sending mail                      |
-| `6443` | Kubernetes API  | RKE2 default                      |
-
-Services without protocol-mandated ports must use the Kubernetes NodePort range (`30000-32767`).
-PostgreSQL can run on port `30432` instead of `5432`, and Redis on `30379` instead of `6379`.
-Ports outside this range (like `35432`) will not be accessible through the firewall.
-Calico Network Policies control which specific ports within this range are actually accessible.
+Our firewall rules use `1024-65535` as the destination port range to cover both direct server connections (ephemeral ports) and MASQUERADE-remapped pod traffic (any non-privileged port).
+Using the narrower `1024-65535` would cause intermittent failures whenever the NAT module picks a low port.
 
 ### IPv6 Considerations
 
@@ -120,58 +105,46 @@ Navigate to the [Hetzner Robot](https://robot.hetzner.com/server) interface, sel
 
 ### Rules (incoming)
 
-The firewall has a **10-rule limit**.
-ICMPv6 is always allowed and cannot be blocked, so we do not need a rule for it.
-Most rules are mirrored for IPv4 and IPv6 to provide full dual-stack coverage.
+The firewall has a **10-rule limit**, but our load balancer architecture means we only need five.
 
 | ID | Name               | Version | Protocol | Source IP   | Source Port | Dest Port   | TCP Flags | Action |
 | -- | ------------------ | ------- | -------- | ----------- | ----------- | ----------- | --------- | ------ |
-| #1 | vswitch            | ipv4    | *        | 10.1.0.0/16 |             |             |           | accept |
-| #2 | tcp established    | ipv4    | tcp      |             |             | 32768-65535 | ack       | accept |
-| #3 | tcp established-v6 | ipv6    | tcp      |             |             | 32768-65535 | ack       | accept |
-| #4 | dns responses      | ipv4    | udp      |             | 53          | 32768-65535 |           | accept |
-| #5 | well-known         | ipv4    | tcp      |             |             | 22-587      |           | accept |
-| #6 | well-known-v6      | ipv6    | tcp      |             |             | 22-587      |           | accept |
-| #7 | k8s-api            | ipv4    | tcp      |             |             | 6443        |           | accept |
-| #8 | k8s-api-v6         | ipv6    | tcp      |             |             | 6443        |           | accept |
-| #9 | nodeports          | *       | *        |             |             | 30000-32767 |           | accept |
+| #1 | vswitch            | ipv4    | \*       | 10.1.0.0/16 |             |             |           | accept |
+| #2 | tcp established    | ipv4    | tcp      |             |             | 1024-65535 | ack       | accept |
+| #3 | tcp established-v6 | ipv6    | tcp      |             |             | 1024-65535 | ack       | accept |
+| #4 | dns responses      | ipv4    | udp      |             | 53          | 1024-65535 |           | accept |
+| #5 | ssh                | \*      | tcp      |             |             | 22          |           | accept |
 
-Rule #10 is available for future use.
-Calico Network Policies (Layer 2) handle fine-grained filtering within these ranges.
+Rules #6 through #10 are available for future use.
 
 ### Rules (outgoing)
 
 | ID | Name      | Version | Protocol | Source IP | Dest IP | Source Port | Dest Port | TCP Flags | Action |
 | -- | --------- | ------- | -------- | --------- | ------- | ----------- | --------- | --------- | ------ |
-| #1 | allow all | *       | *        |           |         |             |           |           | accept |
+| #1 | allow all | \*      | \*       |           |         |             |           |           | accept |
 
 ### Rule Explanations
 
 Rule #1 (vswitch) is the most critical rule for cluster operation.
-It allows all traffic from the private vSwitch network, enabling Kubernetes API communication between nodes, etcd cluster synchronization, Calico's pod networking, and kubelet communication.
+It allows all traffic from the private vSwitch network, enabling Kubernetes API communication between nodes, etcd cluster synchronization, Canal's WireGuard-encrypted pod networking, kubelet communication, Longhorn storage replication, and load balancer forwarded traffic.
 Without this rule, the cluster cannot function.
 
 Rules #2-3 (tcp established) handle return traffic for outbound TCP connections.
-When the server connects to external services — container registries, package repositories, APIs — the responses arrive as packets with the `ACK` flag set.
-These rules allow those responses on ephemeral ports (`32768-65535`) for both IPv4 and IPv6.
+When the server or a pod connects to external services — container registries, package repositories, APIs — the responses arrive as packets with the `ACK` flag set.
+These rules allow those responses on ports `1024-65535` for both IPv4 and IPv6, covering the full range of ports that MASQUERADE may assign.
 
 Rule #4 (dns responses) permits DNS reply packets.
-DNS queries go out on a random high port, and responses come back from port `53`.
-This rule ensures those responses reach the server.
+DNS queries go out on a random high port, and responses come back from source port `53`.
+This rule ensures those UDP responses reach the server.
 
-Rules #5-6 (well-known) cover SSH (`22`), SMTP (`25`), HTTP (`80`), HTTPS (`443`), and SMTP-submission (`587`) for both IPv4 and IPv6.
-This opens some unused ports (`23-24`, `26-79`, `81-442`, `444-586`), but Calico Network Policies block those at Layer 2.
-
-Rules #7-8 (k8s-api) open port `6443` for Kubernetes API access over both IPv4 and IPv6.
-This allows `kubectl` commands and other API clients to reach the cluster from outside the vSwitch network.
-
-Rule #9 (nodeports) opens the standard Kubernetes NodePort range (`30000-32767`) for both IPv4 and IPv6.
-It uses wildcard version (`*`) and protocol (`*`) to cover both address families in a single rule.
-PostgreSQL (`30432`), Redis (`30379`), and other services can use ports in this range, with Calico Network Policies controlling which specific ports are accessible.
+Rule #5 (ssh) opens port `22` for remote administration.
+The `*` version field covers both IPv4 and IPv6 in a single rule.
+SSH is the only service that requires direct public access — all other inbound traffic arrives via the load balancer over the vSwitch.
 
 Tailscale is not listed because it uses NAT traversal with outbound connections.
 Since we allow all outbound traffic, Tailscale works without an inbound rule.
-ICMP is omitted to stay within the limit; we can still ping via the vSwitch since Rule #1 allows all traffic from that subnet.
+ICMP is not listed either — we can still ping between nodes via the vSwitch since Rule #1 allows all traffic from that subnet.
+Public ICMP is intentionally blocked to reduce the server's visibility to casual scanning.
 
 ### Applying the Rules
 
@@ -238,52 +211,34 @@ From a machine outside the vSwitch, scan node4's public IP to verify the firewal
 
 ```bash
 # From an external machine, scan node4's public IP for relevant ports
-$ nmap -Pn -sT -v -T4 --min-rate 5000 <node4-public-ip> -p 21,22,443,587,588,6443,6444,29999,30000,32767,32768
+$ nmap -Pn -sT -v -T4 --min-rate 5000 <node4-public-ip> -p 21,22,23,80,443,1024,6443,30080,30443
 
 PORT      STATE    SERVICE
 21/tcp    filtered ftp
 22/tcp    open     ssh
-443/tcp   closed   https
-587/tcp   closed   submission
-588/tcp   filtered cal
-6443/tcp  closed   sun-sr-https
-6444/tcp  filtered sge_qmaster
-29999/tcp filtered bingbang
-30000/tcp closed   ndmps
-32767/tcp closed   filenet-powsrm
-32768/tcp filtered filenet-tms
+23/tcp    filtered telnet
+80/tcp    filtered http
+443/tcp   filtered https
+1024/tcp  filtered kdm
+6443/tcp  filtered sun-sr-https
+30080/tcp filtered unknown
+30443/tcp filtered unknown
 ```
 
-The results confirm each firewall zone:
+The results confirm our tight firewall configuration:
 
-| Port  | State    | Reason                                            |
-| ----- | -------- | ------------------------------------------------- |
-| 21    | filtered | Below well-known range, blocked by firewall       |
-| 22    | open     | In well-known range (`22-587`), SSH is listening  |
-| 443   | closed   | In well-known range, allowed but no service yet   |
-| 587   | closed   | End of well-known range, allowed but no service   |
-| 588   | filtered | Above well-known range, blocked                   |
-| 6443  | closed   | k8s-api rule, allowed but RKE2 not installed yet  |
-| 6444  | filtered | Not in any allowed range, blocked                 |
-| 29999 | filtered | Below nodeport range, blocked                     |
-| 30000 | closed   | Start of nodeport range, allowed but no service   |
-| 32767 | closed   | End of nodeport range, allowed but no service     |
-| 32768 | filtered | Ephemeral range requires ACK flag, SYN is blocked |
+| Port  | State    | Reason                                                    |
+| ----- | -------- | --------------------------------------------------------- |
+| 21    | filtered | Not in any allowed range, blocked                         |
+| 22    | open     | SSH rule (#5), the only publicly accessible service       |
+| 23    | filtered | Not in any allowed range, blocked                         |
+| 80    | filtered | No public rule — web traffic arrives via LB over vSwitch  |
+| 443   | filtered | No public rule — web traffic arrives via LB over vSwitch  |
+| 1024  | filtered | Return traffic rules require ACK flag, SYN is blocked     |
+| 6443  | filtered | No public rule — API traffic arrives via LB over vSwitch  |
+| 30080 | filtered | No public rule — NodePorts are reached via LB over vSwitch |
+| 30443 | filtered | No public rule — NodePorts are reached via LB over vSwitch |
 
 The `-Pn` flag skips host discovery since there is no public ICMP rule.
-Ports showing `closed` are reachable through the firewall but have no service listening.
-Ports showing `filtered` are blocked by the firewall and never reach the server.
-
-### Full Port Scan
-
-To scan all 65535 ports from the public internet, use `--min-rate` to prevent nmap from slowing down on filtered ports:
-
-```bash
-$ nmap -Pn -sT -v --min-rate 1000 <node4-public-ip> -p-
-```
-
-{% include alert.liquid.html type='warning' title='Long Running Scan' content='
-A full port scan against a firewalled host can take 30 minutes or more, even with --min-rate.
-Filtered ports cause timeouts that slow the scan significantly.
-The targeted scan above covers all firewall zone boundaries and is sufficient for verification.
-' %}
+Every port except SSH shows as `filtered`, meaning the firewall silently drops the packets before they reach the server.
+This is the tightest configuration possible while still allowing the cluster to function — the load balancer handles all service ingress over the private network.

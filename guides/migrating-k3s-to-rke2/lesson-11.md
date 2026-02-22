@@ -460,17 +460,13 @@ $ sudo sysctl -p /etc/sysctl.d/99-ipv6-forward.conf
 Configure the Hetzner Robot firewall for Node 3 with the same rules as Node 4.
 We cover rule explanations and verification steps in [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4).
 
-| ID | Name               | Version | Protocol | Source IP   | Dest Port   | TCP Flags | Action |
-| -- | ------------------ | ------- | -------- | ----------- | ----------- | --------- | ------ |
-| #1 | vswitch            | ipv4    | \*       | 10.1.0.0/16 |             |           | accept |
-| #2 | tcp established    | ipv4    | tcp      |             | 32768-65535 | ack       | accept |
-| #3 | tcp established-v6 | ipv6    | tcp      |             | 32768-65535 | ack       | accept |
-| #4 | dns responses      | ipv4    | udp      |             | 32768-65535 |           | accept |
-| #5 | well-known         | ipv4    | tcp      |             | 22-587      |           | accept |
-| #6 | well-known-v6      | ipv6    | tcp      |             | 22-587      |           | accept |
-| #7 | k8s-api            | ipv4    | tcp      |             | 6443        |           | accept |
-| #8 | k8s-api-v6         | ipv6    | tcp      |             | 6443        |           | accept |
-| #9 | nodeports          | \*      | \*       |             | 30000-32767 |           | accept |
+| ID | Name               | Version | Protocol | Source IP   | Source Port | Dest Port   | TCP Flags | Action |
+| -- | ------------------ | ------- | -------- | ----------- | ----------- | ----------- | --------- | ------ |
+| #1 | vswitch            | ipv4    | \*       | 10.1.0.0/16 |             |             |           | accept |
+| #2 | tcp established    | ipv4    | tcp      |             |             | 1024-65535 | ack       | accept |
+| #3 | tcp established-v6 | ipv6    | tcp      |             |             | 1024-65535 | ack       | accept |
+| #4 | dns responses      | ipv4    | udp      |             | 53          | 1024-65535 |           | accept |
+| #5 | ssh                | \*      | tcp      |             |             | 22          |           | accept |
 
 ### Verifying Connectivity
 
@@ -707,12 +703,14 @@ interface: flannel-wg
   listening port: 51820
 
 peer: <node4-public-key>
-  endpoint: 135.181.XX.XX:51820
+  endpoint: 10.1.0.14:51820
   allowed ips: 10.42.0.0/24
   latest handshake: 1 minute, 47 seconds ago
   transfer: 727.82 KiB received, 615.54 KiB sent
 ```
 
+The `endpoint` should show a vSwitch IP (`10.1.0.x`), confirming that WireGuard traffic stays on the private network.
+If the endpoint shows a public IP instead, the `flannel.regexIface` setting from [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6) is not applied — verify the Canal HelmChartConfig and restart the Canal DaemonSet.
 The `allowed ips` entry shows Node 4's pod subnet, and the handshake confirms the encrypted tunnel is active.
 Test cross-node pod connectivity through the tunnel:
 

@@ -63,8 +63,7 @@ The configuration is simpler — no `tls-san`, no security settings, no authenti
 
 The OS preparation follows the same process we used for the other nodes in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) — install Rocky Linux 10, configure dual-stack networking with `10.1.0.11` and `fd00::11`, and set up the Hetzner firewall.
 
-Worker nodes need fewer firewall ports than control plane nodes.
-The etcd ports (`2379`, `2380`) and API server port (`6443`) are not required since the agent does not run those services.
+The firewall rules are identical to the other nodes — the same five rules from [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4) apply to both control plane and worker nodes, since all service traffic arrives via the load balancer over the vSwitch.
 
 ## Installing RKE2 Agent
 
