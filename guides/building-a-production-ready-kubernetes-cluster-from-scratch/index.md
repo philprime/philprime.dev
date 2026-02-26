@@ -42,7 +42,7 @@ I truly hope this guide is helpful for you and can provide valuable insights for
 {% include alert.liquid.html type='note' title='Please read this!' content='
 
 <p>I originally planned to offer this guide as a paid online course, but as a strong believer in free open source resources, I made it available for free instead.</p>
-  <p>Please, if my guides helped you, I would be very grateful if you could support my work by becoming a <a href="https://github.com/sponsors/philprime" style="color: #000;">GitHub Sponsor</a> and by sharing the guides in your network. 🙏</p>
+  <p>Please, if my guides helped you, I would be very grateful if you could support my work by becoming a <a href="https://github.com/sponsors/philprime">GitHub Sponsor</a> and by sharing the guides in your network. 🙏</p>
   <p>Eventually I might offer additional guides as paid online courses, but for now, I want to focus on providing free guides.</p>
   <p>Thank you! ❤️</p>
 ' %}
