@@ -80,6 +80,7 @@ Staying within a single provider also avoids external dependencies like Cloudfla
 The following diagram shows the traffic path from the internet to a backend pod:
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart LR
   Client["Client"]
   LB["Hetzner Cloud LB<br/>Public IP"]
@@ -124,6 +125,7 @@ This happens in three layers.
 ### Traffic Flow
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart LR
   Client["Client<br/>:443"]
 
@@ -283,14 +285,14 @@ spec:
 
 The key settings control scheduling and network exposure:
 
-| Setting         | Value       | Purpose                           |
-| --------------- | ----------- | --------------------------------- |
-| deployment.kind | DaemonSet   | Run on every node                 |
-| service.type    | NodePort    | Fixed ports for load balancer     |
-| nodePort        | 30080/30443 | Predictable ports for LB targets  |
-| tolerations     | Exists      | Run on control plane nodes too    |
+| Setting         | Value       | Purpose                             |
+| --------------- | ----------- | ----------------------------------- |
+| deployment.kind | DaemonSet   | Run on every node                   |
+| service.type    | NodePort    | Fixed ports for load balancer       |
+| nodePort        | 30080/30443 | Predictable ports for LB targets    |
+| tolerations     | Exists      | Run on control plane nodes too      |
 | HTTP redirect   | Disabled    | Commented out for HTTP-01 challenge |
-| proxyProtocol   | 10.0.0.0/8  | Trust proxy protocol from vSwitch |
+| proxyProtocol   | 10.0.0.0/8  | Trust proxy protocol from vSwitch   |
 
 The `tolerations` setting with `operator: Exists` allows Traefik to schedule on control plane nodes as well, maximizing the number of nodes available for ingress.
 

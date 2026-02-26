@@ -13,17 +13,7 @@ guide_section_cta: >
 repo_file_path: guides/migrating-k3s-to-rke2/section-1.md
 ---
 
-This section introduces the migration project, walks through building a migration strategy, and prepares the first new node for Kubernetes.
-You will understand the current and target cluster states, plan the phased approach, install Rocky Linux 10 on Node 4, configure Hetzner vSwitch networking, and set up the firewall.
+Every migration starts with a plan and a blank server.
+This section develops the phased strategy that guides the rest of the guide, then turns Node 4 into a production-ready base for the first RKE2 control plane: Rocky Linux installed, vSwitch networking configured with dual-stack addressing, and firewall rules locked down for Kubernetes traffic.
 
-## Topics Covered
-
-- Understanding the migration challenge and objectives
-- Current k3s cluster limitations vs target RKE2 capabilities
-- Detailed breakdown of all 5 migration phases
-- Risk levels and considerations for each phase
-- Installing and configuring Rocky Linux 10 on Node 4
-- Setting up Hetzner vSwitch private networking with dual-stack IPv4/IPv6
-- Configuring the Hetzner Robot firewall for RKE2 and Canal traffic
-
-The section concludes with Node 4 running Rocky Linux 10, connected to the vSwitch, and with firewall rules configured for Kubernetes traffic.
+By the end, Node 4 is ready to bootstrap RKE2 without the existing k3s cluster being touched.

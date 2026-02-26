@@ -22,6 +22,7 @@ What started as a single k3s cluster has become a highly available control plane
 ## Final Architecture
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart TB
   subgraph LB["Hetzner Cloud Load Balancer"]
     LBInfo["Static IP"]

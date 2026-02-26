@@ -29,7 +29,7 @@ Follow along as I walk through the complete process of transitioning a 3-node k3
 {% include alert.liquid.html type='note' title='Please read this' content='
 
 <p>I originally planned to offer this guide as a paid online course, but as a strong believer in free open source resources, I made it available for free instead.</p>
-  <p>Please, if my guides helped you, I would be very grateful if you could support my work by becoming a <a href="https://github.com/sponsors/philprime" style="color: #000;">GitHub Sponsor</a> and by sharing the guides in your network. 🙏</p>
+  <p>Please, if my guides helped you, I would be very grateful if you could support my work by becoming a <a href="https://github.com/sponsors/philprime">GitHub Sponsor</a> and by sharing the guides in your network. 🙏</p>
   <p>Eventually I might offer additional guides as paid online courses, but for now, I want to focus on providing free guides.</p>
   <p>Thank you ❤️</p>
 ' %}
@@ -37,17 +37,17 @@ Follow along as I walk through the complete process of transitioning a 3-node k3
 ## Why Migrate from k3s to RKE2?
 
 I started our original cluster using k3s due to the ease of setup and lightweight nature for our CI/CD workloads, which were not considered mission-critical at the time.
-As our migration from bare-metal GitHub Action runners to Kubernetes GitHub Action Runner Controller (ARC) continued, we noticed a significant increase in our resource demand.
-I decided to add two additional Hetzner dedicated servers as worker nodes to our cluster and looked into getting them production-ready, using inter-node communication via vSwitch (see my existing blog post [New K3s agent node for our cluster](/2025-11-23-new-k3s-agent-node) if you want to learn more).
+As our migration from bare-metal GitHub Action runners to [Kubernetes GitHub Action Runner Controller (ARC)](https://github.com/actions-runner-controller/actions-runner-controller) continued, we noticed a significant increase in our resource demand.
+I decided to add two additional [Hetzner dedicated servers](https://www.hetzner.com/dedicated-rootserver) as worker nodes to our cluster and looked into getting them production-ready, using inter-node communication via vSwitch (see my existing blog post [New K3s agent node for our cluster](/2025-11-23-new-k3s-agent-node) if you want to learn more).
 
 This enabled us to move additional development and proof-of-concept workloads from a comparably expensive Elastic Kubernetes Service (EKS) in Amazon Web Services (AWS) to our self-managed infrastructure, saving us a fortune.
-However, as we continued to grow, we started to feel the limitations of k3s — it was not designed for larger, complex clusters with high availability requirements, but instead focused on simplicity and ease of use for edge and IoT environments.
+However, as we continued to grow, we started to feel the limitations of k3s: it was not designed for larger, complex clusters with high availability requirements, but instead focused on simplicity and ease of use for edge and IoT environments.
 
 This made me look into alternatives, and RKE2 stood out as a robust and enterprise-grade Kubernetes distribution also maintained by SUSE/Rancher, the same company behind k3s.
 While k3s offers a lot of built-in features and convenience tools, I wanted to be closer to enterprise-level Kubernetes behavior and have greater control over the components as our environment grows — exactly what RKE2 provides.
 
-On top of that, the etcd component in k3s was showing stability issues, especially since I had not yet migrated to high availability.
-With RKE2, I can set up a proper HA control plane with multiple etcd nodes, significantly improving reliability.
+On top of that, the etcd component in k3s was showing stability issues, especially since I had not yet migrated to high availability (HA), spreading the control plane across multiple nodes.
+With the migration to RKE2, I can set up a proper HA control plane with multiple etcd nodes, significantly improving reliability.
 RKE2's focus on security and compliance also gives me a stronger foundation — crucial as we continue adding production workloads.
 
 The final push to migrate came when we decided to add another bare-metal dedicated server.

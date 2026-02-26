@@ -23,6 +23,7 @@ Refer to Lesson 11 for full explanations of each stage.
 ## Current State
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart LR
   subgraph A["Cluster A · k3s"]
     A1["🧠 Node 1"]
@@ -410,6 +411,7 @@ Existing single-replica volumes are not affected; increase their replica count i
 ## Resulting Cluster State
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart LR
   subgraph A["Cluster A · k3s"]
     A1["🧠 Node 1<br/><small>all workloads</small>"]

@@ -155,6 +155,32 @@ figure,
   margin-bottom: $spacing-unit * 0.5;
 }
 
+.autolink-heading {
+  color: inherit;
+  text-decoration: none;
+
+  &:visited {
+    color: inherit;
+  }
+
+  .anchorlink {
+    opacity: 0;
+    margin-left: 0.35rem;
+    font-size: 0.85em;
+    transition: opacity 120ms ease-in-out;
+  }
+}
+
+h1:hover > .autolink-heading .anchorlink,
+h2:hover > .autolink-heading .anchorlink,
+h3:hover > .autolink-heading .anchorlink,
+h4:hover > .autolink-heading .anchorlink,
+h5:hover > .autolink-heading .anchorlink,
+h6:hover > .autolink-heading .anchorlink,
+.autolink-heading:focus-visible .anchorlink {
+  opacity: 1;
+}
+
 hr {
   margin-top: $spacing-unit;
   margin-bottom: $spacing-unit;
@@ -793,6 +819,17 @@ table {
       }
     }
   }
+}
+
+/**
+ * Mermaid diagrams
+ */
+img.mermaid {
+  display: block;
+  margin: $spacing-unit * 0.5 auto;
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid $border-color-01;
 }
 
 /**

@@ -111,6 +111,7 @@ Canal uses VXLAN as its default overlay for inter-node traffic.
 When a pod on Node A sends a packet to a pod on Node B, Flannel wraps the packet in a VXLAN header addressed to Node B's IP, sends it across the vSwitch, and Flannel on Node B unwraps it and delivers the original packet to the destination pod.
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart LR
     subgraph NodeA["Node A · 10.1.0.12"]
         PodA["Pod A<br/><small>10.42.0.5</small>"]
@@ -255,6 +256,7 @@ On a shared physical network like Hetzner's vSwitch — where VLAN tagging provi
 WireGuard adds an encryption layer around the VXLAN tunnel, so the packet on the wire is fully encrypted:
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart LR
     subgraph NodeA["Node A · 10.1.0.12"]
         PodA["Pod A<br/><small>10.42.0.5</small>"]
@@ -493,10 +495,10 @@ spec:
             - /bin/sh
             - -c
             - |
-              iptables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null \
-                || iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
-              ip6tables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null \
-                || ip6tables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+                iptables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null \
+                  || iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+                ip6tables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null \
+                  || ip6tables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
           securityContext:
             privileged: true
             capabilities:
@@ -778,11 +780,11 @@ When reassembly fails — due to missing fragments, reordering, or timeout — t
 
 Three independent sets of rules then drop these INVALID packets:
 
-| Rule source | Chain | Effect |
-| --- | --- | --- |
-| kube-proxy | `KUBE-FORWARD` | Drops all INVALID packets in the FORWARD chain |
-| Calico (Felix) | `cali-fw-*` per pod | Drops INVALID packets leaving each pod |
-| Calico (Felix) | `cali-tw-*` per pod | Drops INVALID packets entering each pod |
+| Rule source    | Chain               | Effect                                         |
+| -------------- | ------------------- | ---------------------------------------------- |
+| kube-proxy     | `KUBE-FORWARD`      | Drops all INVALID packets in the FORWARD chain |
+| Calico (Felix) | `cali-fw-*` per pod | Drops INVALID packets leaving each pod         |
+| Calico (Felix) | `cali-tw-*` per pod | Drops INVALID packets entering each pod        |
 
 This affects any protocol that produces fragments — most commonly DNS responses over UDP with EDNS0, which can exceed the tunnel MTU when returning large record sets.
 TCP traffic is not affected when MSS clamping is in place, because the clamped MSS prevents segments from exceeding the tunnel capacity in the first place.

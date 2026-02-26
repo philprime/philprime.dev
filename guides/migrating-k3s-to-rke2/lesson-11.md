@@ -23,6 +23,7 @@ Every subsequent node migration follows this same pattern, so this lesson covers
 ## Current State
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart LR
   subgraph A["Cluster A · k3s"]
     A1["🧠 Node 1"]
@@ -56,6 +57,7 @@ The drain happens in three stages:
 3. Reschedule — controllers recreate evicted pods on remaining nodes
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart LR
   subgraph before["Before Drain"]
     direction TB
@@ -460,13 +462,13 @@ $ sudo sysctl -p /etc/sysctl.d/99-ipv6-forward.conf
 Configure the Hetzner Robot firewall for Node 3 with the same rules as Node 4.
 We cover rule explanations and verification steps in [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4).
 
-| ID | Name               | Version | Protocol | Source IP   | Source Port | Dest Port   | TCP Flags | Action |
-| -- | ------------------ | ------- | -------- | ----------- | ----------- | ----------- | --------- | ------ |
-| #1 | vswitch            | ipv4    | \*       | 10.0.0.0/8  |             |             |           | accept |
-| #2 | tcp established    | ipv4    | tcp      |             |             | 1024-65535 | ack       | accept |
-| #3 | tcp established-v6 | ipv6    | tcp      |             |             | 1024-65535 | ack       | accept |
-| #4 | dns responses      | ipv4    | udp      |             | 53          | 1024-65535 |           | accept |
-| #5 | ssh                | \*      | tcp      |             |             | 22          |           | accept |
+| ID | Name               | Version | Protocol | Source IP  | Source Port | Dest Port  | TCP Flags | Action |
+| -- | ------------------ | ------- | -------- | ---------- | ----------- | ---------- | --------- | ------ |
+| #1 | vswitch            | ipv4    | \*       | 10.0.0.0/8 |             |            |           | accept |
+| #2 | tcp established    | ipv4    | tcp      |            |             | 1024-65535 | ack       | accept |
+| #3 | tcp established-v6 | ipv6    | tcp      |            |             | 1024-65535 | ack       | accept |
+| #4 | dns responses      | ipv4    | udp      |            | 53          | 1024-65535 |           | accept |
+| #5 | ssh                | \*      | tcp      |            |             | 22         |           | accept |
 
 ### Verifying Connectivity
 
@@ -772,6 +774,7 @@ Repeat this `longhornctl` preflight process on every node that joins the cluster
 ## Current State
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart LR
   subgraph A["Cluster A · k3s"]
     A1["🧠 Node 1"]

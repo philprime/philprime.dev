@@ -15,12 +15,12 @@ repo_file_path: guides/migrating-k3s-to-rke2/lesson-2.md
 ---
 
 Node 4 needs a fresh operating system before it can serve as the first RKE2 control plane.
-Rocky Linux is a community-driven, enterprise-grade Linux distribution that is fully compatible with Red Hat Enterprise Linux.
+[Rocky Linux](https://rockylinux.org/) is a community-driven, enterprise-grade Linux distribution that is fully compatible with Red Hat Enterprise Linux.
 We chose it for its open source nature, stability, and first-class support by Hetzner.
 
 {% include guide-overview-link.liquid.html %}
 
-{% include alert.liquid.html type='note' title='Detailed Node Setup Guide' content='
+{% include alert.liquid.html type='tip' content='
 For a comprehensive walkthrough of adding nodes to a Hetzner bare-metal cluster, see the blog post <a href="/2025-11-23-new-k3s-agent-node">New K3s agent node for our cluster</a>.
 This lesson covers the essential steps specific to our RKE2 migration.
 ' %}
@@ -46,15 +46,12 @@ $ installimage
 ```
 
 In the configuration editor, select Rocky Linux 10 and set the hostname to match our naming convention.
-We use a simple partition layout without swap, dedicating the entire disk to the root partition with a small separate `/boot`:
+We use a simple partition layout without swap, because Kubernetes requires swap to be disabled, dedicating the entire disk to the root partition with a small separate `/boot`:
 
 ```text
 PART  /boot  ext3   1024M
 PART  /      ext4   all
 ```
-
-Kubernetes requires swap to be disabled, and RKE2 verifies this during installation.
-Rather than creating swap space we would immediately disable, we allocate all available disk space to the root partition where container images and volumes will live.
 
 After installation completes, reboot the server to boot into the new operating system:
 
@@ -63,7 +60,7 @@ $ reboot
 ```
 
 When reconnecting via SSH, we see a host key warning because the server's SSH keys changed with the new OS installation.
-This is expected — remove the old entries from `~/.ssh/known_hosts` on the local machine and accept the new key when prompted.
+This is expected! Remove the old entries from `~/.ssh/known_hosts` on the local machine and accept the new key when prompted.
 
 ## Essential Security Configuration
 
@@ -78,6 +75,7 @@ Change it immediately:
 ```bash
 $ whoami
 root
+
 $ passwd
 Changing password for root.
 New password: ********
@@ -104,10 +102,12 @@ We use `k8sadmin` throughout this guide for Kubernetes administration:
 
 ```bash
 $ useradd k8sadmin
+
 $ passwd k8sadmin
 New password:
 Retype new password:
 passwd: password updated successfully
+
 $ usermod -aG wheel k8sadmin
 ```
 
@@ -166,11 +166,11 @@ Using `sudo` also logs all privileged commands to the system journal, providing 
 ## Optional: Set Up Tailscale
 
 Managing bare-metal servers often means dealing with changing IP addresses, firewall rules, and VPN configurations.
-Tailscale simplifies this by creating a secure mesh network that works regardless of network topology.
+[Tailscale](https://tailscale.com/) simplifies this by creating a secure mesh network that works regardless of network topology.
 With Tailscale, we can access cluster nodes using consistent hostnames (like `node4.tailnet-name.ts.net`) from anywhere, even behind NAT or firewalls.
 
 ```bash
-$ sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/fedora//tailscale.repo
+$ sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/10/tailscale.repo
 $ sudo dnf install -y tailscale
 $ sudo systemctl enable --now tailscaled
 $ sudo tailscale up
@@ -184,7 +184,7 @@ $ tailscale ip -4
 ```
 
 For servers that should remain permanently accessible, consider disabling key expiry in the Tailscale admin console.
-This removes the need for periodic re-authentication, but it also means a compromised server could maintain access indefinitely — use this option with caution.
+This removes the need for periodic re-authentication, but it also means a compromised server could maintain access indefinitely, so use this option with caution.
 
 ## Configure Timezone and Hostname
 
@@ -226,11 +226,14 @@ $ sudo dnf install -y \
 
 | Tool                         | Purpose                                              |
 | ---------------------------- | ---------------------------------------------------- |
+| `vim`                        | Text editor for configuration files and scripts      |
 | `git`                        | Manages configuration as code and deployment scripts |
 | `bash-completion`            | Enables tab completion for faster command-line work  |
 | `tar` and `unzip`            | Extract downloaded archives                          |
 | `net-tools` and `bind-utils` | Networking diagnostics like `netstat` and `nslookup` |
 | `jq`                         | Parses JSON output from `kubectl` and APIs           |
+
+You can find additional information on the setup of each tool in their respective documentation.
 
 ## Verify System Readiness
 
@@ -242,13 +245,13 @@ These checks catch common issues like DNS misconfiguration or firewall problems 
 $ uname -r
 6.12.0-124.27.1.el10_1.x86_64
 
-# Check available memory (RKE2 needs at least 4GB, 8GB+ recommended)
+# Check available memory
 $ free -h
                total        used        free      shared  buff/cache   available
 Mem:           125Gi       5.0Gi       119Gi       4.3Mi       1.2Gi       120Gi
 Swap:             0B          0B          0B
 
-# Check disk space (need at least 20GB free for container images)
+# Check disk space
 $ df -h /
 Filesystem      Size  Used Avail Use% Mounted on
 /dev/md1        1.8T  1.5G  1.7T   1% /

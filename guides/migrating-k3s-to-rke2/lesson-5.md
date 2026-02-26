@@ -33,6 +33,7 @@ RKE2 (also known as RKE Government) is a fully conformant Kubernetes distributio
 Unlike k3s which prioritizes minimal resource usage, RKE2 prioritizes security hardening and FIPS compliance.
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart TB
     subgraph RKE2["RKE2 Server · Control Plane"]
         subgraph CP["Control Plane Components"]
@@ -320,7 +321,6 @@ tls-san:
   - 10.1.0.14
   - fd00::14
   - cluster.yourdomain.com # Optional: a public DNS name for external kubectl access
-
 ```
 
 The security configuration enables secrets encryption from the start, disables bundled components we replace ourselves, and schedules automatic etcd backups:

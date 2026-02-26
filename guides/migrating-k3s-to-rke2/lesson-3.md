@@ -47,6 +47,7 @@ These three networks must never overlap, and in a dual-stack cluster each one ne
 | Service Network | Virtual IPs for Kubernetes Services (ClusterIP/LB) |
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart TB
     %% =========================
     %% Service Network Layer
@@ -136,6 +137,7 @@ Unlike traffic over the public internet, communication through the vSwitch flows
 This makes it ideal for Kubernetes cluster traffic where nodes need to exchange large volumes of data with minimal latency.
 
 ```mermaid!
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
 flowchart TB
     subgraph DC["Hetzner Datacenter"]
         subgraph VS["vSwitch · VLAN 4000"]

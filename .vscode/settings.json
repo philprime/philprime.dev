@@ -1,4 +1,10 @@
 {
+  "chat.tools.terminal.autoApprove": {
+    "/^bundle exec jekyll build$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  },
   "editor.defaultFormatter": "dprint.dprint",
   "files.associations": {
     "*.liquid.html": "liquid"
