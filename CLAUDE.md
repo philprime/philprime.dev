@@ -15,6 +15,7 @@ The reader should walk away knowing _why_ something works, not just _how_ to typ
 Write in prose paragraphs — not bullet-point checklists — so that ideas develop naturally across sentences.
 Each paragraph should focus on one idea, with sentences building on each other.
 Keep paragraphs to 3–5 sentences so they remain approachable on a screen.
+Merge short 1–2 sentence paragraphs into fuller ones by connecting related ideas under a shared theme.
 
 Bullet lists are acceptable inside table cells, for short enumerations of 3–5 items where prose would be awkward, and nowhere else as the primary content of a section.
 
@@ -71,8 +72,7 @@ Use bold sparingly for genuinely critical points the reader must not miss.
 
 Use descriptive link text that reads naturally in the sentence — never "click here."
 
-Em-dashes ( — ) have a space on each side.
-Use em-dashes or "and" instead of semicolons.
+Do not use em-dashes. Use commas, parentheses, or "and" instead.
 
 ### Code Blocks
 
@@ -110,6 +110,7 @@ Use a table to summarize per-node differences when there are more than two nodes
 Reference other lessons naturally within prose: "We configure Calico Network Policies in Lesson 9 to close this gap."
 Do not use parenthetical references like "(see Lesson 9)."
 Cross-link between documents instead of duplicating content.
+Always verify that lesson numbers and section anchors in cross-references are correct.
 
 ### Transitions
 
@@ -140,10 +141,28 @@ If three consecutive sentences start the same way, rewrite one of them.
 - Unnecessary warnings or disclaimers
 - Convenience scripts that duplicate inline commands
 - Verbose expected output — show only what the reader needs to verify success
-- Duplicate explanations across lessons — reference the earlier lesson instead
+- Duplicate explanations across lessons, reference the earlier lesson instead
+- Reference tables (config options, file locations, CIDRs) that duplicate what appears in implementation sections below
+- Generic Kubernetes knowledge in Understanding sections, focus on migration-specific context and comparisons with k3s
 
 ## Technical Guidelines
 
 - Check the Makefile for existing commands before creating new ones
 - Follow existing patterns in the codebase
 - Test changes locally before committing
+
+## Build Commands
+
+| Command         | Description                                     |
+| --------------- | ----------------------------------------------- |
+| `make install`  | Install Ruby gem dependencies                   |
+| `make build`    | Build the Jekyll site                           |
+| `make serve`    | Start local dev server at http://localhost:4000 |
+| `make optimize` | Optimize images in `assets/images/`             |
+
+## Guide-Specific Patterns
+
+- `HelmChartConfig` resources go in `/var/lib/rancher/rke2/server/manifests/` as `yaml` code blocks with a comment showing the file path
+- Lesson 5/6 are the reference for `HelmChartConfig` resources
+- Lesson 7 (Longhorn) is the reference for `HelmChart` resources
+- Understanding sections should ground concepts in the Hetzner/migration context, comparing with k3s where relevant
