@@ -66,6 +66,10 @@ exclude:
   - Gemfile
   - Gemfile.lock
   - vendor/
+  - node_modules/
+  - package.json
+  - pnpm-lock.yaml
+  - .mermaid-cache/
 
 facebook:
   app_id: # Add if you have a Facebook app
@@ -94,7 +98,6 @@ plugins:
   - jekyll-feed
   - jekyll-sitemap
   - jekyll-favicon
-  - jekyll-spaceship
 
 show_excerpts: true
 future: true
@@ -107,15 +110,3 @@ title: philprime.dev
 twitter:
   username: philprimes
   card: summary_large_image
-
-# Where things are
-jekyll-spaceship:
-  processors:
-    - mermaid-processor
-  mermaid-processor:
-    mode: default # pre-fetch
-    css:
-      class: mermaid
-    config:
-      theme: default
-    src: https://mermaid.ink/svg/
