@@ -30,7 +30,7 @@ build: install
 # After starting you can access the site at http://localhost:4000
 .PHONY: serve
 serve: install
-	bundle exec jekyll serve
+	bundle exec jekyll serve --incremental
 
 ## Optimize assets
 #

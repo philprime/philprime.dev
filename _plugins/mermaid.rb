@@ -46,13 +46,14 @@ module Jekyll
             Jekyll.logger.info "Mermaid:", "Cached #{svg_filename}"
           end
         end
-      else
-        Jekyll.logger.info "Mermaid:", "Using cached #{svg_filename}"
       end
 
-      # Copy from cache to source so Jekyll picks it up
-      FileUtils.mkdir_p(File.dirname(source_path))
-      FileUtils.cp(cache_path, source_path)
+      # Copy from cache to source only if missing or changed,
+      # to avoid triggering Jekyll's file watcher in serve mode
+      unless File.exist?(source_path) && FileUtils.identical?(cache_path, source_path)
+        FileUtils.mkdir_p(File.dirname(source_path))
+        FileUtils.cp(cache_path, source_path)
+      end
 
       # Register as a static file so Jekyll copies it to _site
       unless site.static_files.any? { |f| f.path == source_path }
