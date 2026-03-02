@@ -203,7 +203,7 @@ Splitting settings into numbered files keeps each concern isolated and makes it 
 $ mkdir -p /etc/rancher/rke2/config.yaml.d
 ```
 
-The network configuration sets up node addressing, keeps API server traffic on the private vSwitch, and defines the pod and service CIDRs planned in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6):
+The network configuration sets up node addressing, keeps API server traffic on the private vSwitch, and defines the dual-stack pod and service CIDRs:
 
 ```yaml
 # /etc/rancher/rke2/config.yaml.d/10-network.yaml
@@ -514,6 +514,10 @@ spec:
       # Cache TTL in seconds for resolved records
       - name: cache
         parameters: 300
+      # Limit EDNS0 UDP buffer size to prevent IP fragmentation over the WireGuard tunnel
+      # See https://coredns.io/plugins/bufsize/
+      - name: bufsize
+        parameters: 1232
       - name: loop
       - name: reload
       - name: loadbalance
@@ -590,7 +594,7 @@ This gives us a restore point in case anything goes wrong during subsequent conf
 
 ## Troubleshooting
 
-Here's a list of common issues I encountered during this setup and how to resolve them.
+These are common issues that can occur during this setup and how to resolve them.
 
 ### RKE2 Fails to Start
 
