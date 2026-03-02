@@ -160,6 +160,13 @@ If three consecutive sentences start the same way, rewrite one of them.
 | `make serve`    | Start local dev server at http://localhost:4000 |
 | `make optimize` | Optimize images in `assets/images/`             |
 
+## Deployment
+
+- Site is deployed via **Netlify** (project: `philprime`, site ID: `3e01d389-76b3-4faf-982e-f0cfb4e2f810`)
+- Build configuration lives in `netlify.toml` (repo-managed, not the UI)
+- Use the **Netlify MCP** tools to check deploys, projects, and environment variables
+- Fall back to the `netlify` CLI if MCP is unavailable
+
 ## Guide-Specific Patterns
 
 - `HelmChartConfig` resources go in `/var/lib/rancher/rke2/server/manifests/` as `yaml` code blocks with a comment showing the file path
