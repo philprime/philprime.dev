@@ -22,7 +22,7 @@ We configure two storage classes in this lesson: Longhorn for replicated volumes
 
 ## Why Longhorn
 
-Several storage provisioners exist for Kubernetes, with [Rook-Ceph](https://rook.io/), [OpenEBS](https://openebs.io/), and [Longhorn](https://longhorn.io/) being the most common self-hosted options.
+Several storage provisioners exist for Kubernetes, with [Rook-Ceph](https://rook.io/), [OpenEBS](https://openebs.io/), and [Longhorn](https://longhorn.io/) being the most common self-hosted options. Based on our research these seem to be the key differences:
 
 Rook-Ceph is a powerful distributed storage system that provides block, file, and S3-compatible object storage.
 It is designed for large clusters with dozens of nodes and dedicated storage disks, and carries significant operational complexity.
@@ -34,7 +34,7 @@ The project has gone through several engine generations (Jiva, cStor, Mayastor),
 Longhorn is a lightweight distributed block storage system built by SUSE/Rancher alongside RKE2, making it a natural fit for our cluster size and tooling.
 It works well on small-to-medium clusters (1 to 10 nodes), has minimal resource overhead, and is straightforward to deploy and manage via Helm.
 
-We use Longhorn for this guide because it matches our 4-node cluster, integrates tightly with the Rancher ecosystem, and keeps operational complexity low.
+We use Longhorn for this guide because it matches our 4-node cluster size, integrates tightly with the Rancher ecosystem, and keeps operational complexity low.
 If our storage requirements grow to need object storage or multi-petabyte capacity, we may revisit this decision and migrate to Rook-Ceph in a future guide.
 
 ## Understanding Longhorn
@@ -43,7 +43,7 @@ If our storage requirements grow to need object storage or multi-petabyte capaci
 When a pod requests storage through a PersistentVolumeClaim (PVC), Longhorn's CSI driver provisions a PersistentVolume (PV) and synchronizes its data across replicas on different nodes.
 If a node fails, the remaining replicas continue serving data while Longhorn rebuilds a new replica on a healthy node.
 
-For a deeper introduction to Longhorn — including its architecture, component breakdown, and storage class configuration — see [Installing Longhorn](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-17) and [Configuring Longhorn Storage Classes](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-18) in the guide [Building a Production-Ready Kubernetes Cluster from Scratch](/guides/building-a-production-ready-kubernetes-cluster-from-scratch).
+For a deeper introduction to Longhorn (including its architecture, component breakdown, and storage class configuration), see [Installing Longhorn](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-17) and [Configuring Longhorn Storage Classes](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-18) in the guide [Building a Production-Ready Kubernetes Cluster from Scratch](/guides/building-a-production-ready-kubernetes-cluster-from-scratch).
 
 ## Choosing Storage Classes
 
@@ -71,7 +71,7 @@ Consider a dedicated partition or disk for `/var/lib/longhorn` if large storage 
 
 ## Preparing the Node for Longhorn
 
-Longhorn requires several system-level dependencies — most importantly iSCSI for block storage and NFSv4 for RWX volume support.
+Longhorn requires several system-level dependencies, most importantly iSCSI for block storage and NFSv4 for RWX volume support.
 The `longhornctl` CLI can check and install these automatically.
 Repeat these steps on every node that joins the cluster.
 
@@ -82,10 +82,13 @@ Download the CLI matching the Longhorn version we install:
 ```bash
 $ curl -fL -o /usr/local/bin/longhornctl \
     https://github.com/longhorn/cli/releases/download/v1.11.0/longhornctl-linux-amd64
+
 $ curl -fL -o /tmp/longhornctl-linux-amd64.sha256 \
     https://github.com/longhorn/cli/releases/download/v1.11.0/longhornctl-linux-amd64.sha256
+
 $ echo "$(cat /tmp/longhornctl-linux-amd64.sha256 | awk '{print $1}')  /usr/local/bin/longhornctl" | sha256sum --check
 /usr/local/bin/longhornctl: OK
+
 $ chmod +x /usr/local/bin/longhornctl
 $ /usr/local/bin/longhornctl version
 v1.11.0
@@ -180,10 +183,10 @@ The CoreDNS replica warning is expected on a single-node cluster and resolves on
 
 ## Installing Longhorn
 
-RKE2 includes a Helm controller that automatically installs and manages Helm charts from manifest files — the same mechanism we used for the Canal `HelmChartConfig` in Lesson 6.
+RKE2 includes a Helm controller that automatically installs and manages Helm charts from manifest files, the same mechanism we used for the Canal `HelmChartConfig` in Lesson 6.
 For external charts like Longhorn, we use a `HelmChart` resource instead of `HelmChartConfig`.
 
-We start with a single node, so `defaultReplicaCount` is set to `1` — replicas require separate nodes to be useful.
+We start with a single node, so `defaultReplicaCount` is set to `1` because replicas require separate nodes to be useful.
 We increase this to `2` once additional nodes join the cluster.
 
 Create the manifest at `/var/lib/rancher/rke2/server/manifests/longhorn.yaml`:
@@ -226,7 +229,6 @@ The most important settings control replica behavior and disk reservation:
 | `nodeDrainPolicy`                   | `block-if-contains-last-replica` | Prevent data loss during node maintenance                |
 
 RKE2 detects the new manifest and installs the chart automatically within a few seconds.
-All pods should reach Running state within a few minutes:
 
 ```bash
 $ kubectl get pods -n longhorn-system -w
@@ -257,11 +259,12 @@ Every pod in the `longhorn-system` namespace should show `Running` with all cont
 ## Understanding local-path-provisioner
 
 [local-path-provisioner](https://github.com/rancher/local-path-provisioner) is a lightweight storage provisioner developed by Rancher that creates PersistentVolumes backed by directories on the node's local filesystem.
-Unlike Longhorn, it provides no replication, snapshots, or cross-node data availability — when a node goes down, volumes on that node become inaccessible until the node recovers.
+Unlike Longhorn, it provides no replication, snapshots, or cross-node data availability. When a node goes down, volumes on that node become inaccessible until the node recovers.
 
 This simplicity is its strength.
+
 local-path uses the node's native filesystem directly, avoiding the overhead of network-attached block storage and iSCSI.
-For workloads that manage their own replication (like distributed databases) or store ephemeral data (build artifacts, caches, temporary files), local-path delivers better I/O performance with lower resource consumption.
+For workloads that manage their own replication (like distributed databases with a write-ahead log) or store ephemeral data (build artifacts, caches, temporary files), local-path delivers better I/O performance with lower resource consumption.
 
 | Feature              | Longhorn                      | local-path                          |
 | -------------------- | ----------------------------- | ----------------------------------- |
@@ -273,11 +276,11 @@ For workloads that manage their own replication (like distributed databases) or 
 | Use cases            | Databases, stateful workloads | Caches, build artifacts, temp data  |
 
 The `WaitForFirstConsumer` volume binding mode ensures that a local-path volume is only created on the node where the pod is actually scheduled.
-This prevents Kubernetes from provisioning a volume on one node and then scheduling the pod on a different node where the data does not exist.
+This prevents Kubernetes from provisioning a volume on one node and then scheduling the pod on a different node where the data does not exist, effectively breaking the workload until the pod is rescheduled back to the correct node.
 
 ## Installing local-path-provisioner
 
-We place the local-path-provisioner manifest in RKE2's auto-deploy directory so it is applied automatically on cluster startup — consistent with our Longhorn and Canal deployments.
+We place the local-path-provisioner manifest in RKE2's auto-deploy directory so it is applied automatically on cluster startup, consistent with our Longhorn and Canal deployments.
 
 Download the manifest and save it to the manifests directory:
 
@@ -314,7 +317,8 @@ longhorn-static   driver.longhorn.io      Delete          Immediate             
 Longhorn creates two classes: `longhorn` for dynamically provisioned volumes and `longhorn-static` for pre-provisioned volumes that reference existing Longhorn volumes by name.
 For most workloads, `longhorn` is the correct choice.
 
-No default storage class is set, so every PVC must specify a `storageClassName` explicitly.
+**For our cluster, no default storage class is set, so every PVC must specify a `storageClassName` explicitly.**
+
 This forces workload authors to make a deliberate choice between replicated and local storage.
 A database that accidentally used local-path would restart with an empty disk if its node went down, while a CI/CD pipeline might prefer the performance of local storage and manage its own replication.
 Requiring explicit selection prevents these mismatches.
@@ -390,20 +394,22 @@ $ kubectl delete pvc storage-test
 
 ## Accessing the Longhorn UI
 
-Longhorn ships with a web UI for managing volumes, viewing replica status, and troubleshooting.
-Port-forward to access it locally:
+Longhorn ships with a web UI for managing volumes, viewing replica status, and troubleshooting storage issues.
+The UI is not exposed publicly because our firewall configuration from Lesson 4 blocks all inbound traffic except SSH.
+Instead, we use SSH port forwarding to tunnel the UI to our local machine.
+
+The approach requires two forwarding hops: one SSH tunnel from your workstation to the node, and one `kubectl port-forward` inside the SSH session to reach the Longhorn service.
 
 ```bash
-# Connect to the node and forward port 8080 to the Longhorn UI service
+# From your local machine, open an SSH tunnel that forwards local port 8080 to the node
 $ ssh -L 8080:localhost:8080 node4.example.com
 
-# In the SSH session, run:
+# Inside the SSH session on the node, forward port 8080 to the Longhorn UI service
 $ kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
 Forwarding from 127.0.0.1:8080 -> 8000
 Forwarding from [::1]:8080 -> 8000
-Handling connection for 8080
-Handling connection for 8080
-Handling connection for 8080
 ```
 
-The UI is then available at `http://localhost:8080` on your local machine.
+Open `http://localhost:8080` in your browser to access the Longhorn dashboard.
+From there you can inspect volume health, monitor replica distribution across nodes, and trigger manual snapshots or backups.
+The port-forward session stays active until you close the SSH connection or press `Ctrl+C`.
