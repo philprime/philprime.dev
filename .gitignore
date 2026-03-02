@@ -237,3 +237,6 @@ vite.config.ts.timestamp-*
 # Mermaid build cache and generated SVGs
 .mermaid-cache/
 assets/images/mermaid/
+
+# Local Netlify folder
+.netlify

@@ -1,0 +1,7 @@
+[build]
+  command = "pnpm install && bundle install && bundle exec jekyll build"
+  publish = "_site"
+
+[build.environment]
+  JEKYLL_ENV = "production"
+  RUBY_VERSION = "4.0.1"
