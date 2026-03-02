@@ -1,0 +1,187 @@
+{% comment %}
+  Guide Navigation Component
+  Displays navigation for guide sections and lessons,
+  styled to match the series-navigation component.
+
+  Parameters:
+    scope - 'guide' for guide overview (sections + lessons)
+            'section' for section page (lessons only)
+{% endcomment %}
+
+{% if include.scope == 'guide' %}
+  {% assign nav_sections = site.pages
+    | where: 'guide_component', 'section'
+    | where: 'guide_id', page.guide_id
+    | sort: 'guide_section_id'
+  %}
+
+  <nav class="guide-navigation" aria-labelledby="guide-nav-title">
+    <div class="guide-nav-header">
+      <span class="guide-nav-label">Guide</span>
+      <h3 class="guide-nav-title" id="guide-nav-title">Table of Contents</h3>
+    </div>
+    {% for section in nav_sections %}
+      <div class="guide-nav-section">
+        <div class="guide-nav-section-header">
+          <span class="guide-nav-badge">Section {{ section.guide_section_id }}</span>
+          <a href="{{ section.url | relative_url }}">{{ section.title }}</a>
+        </div>
+        {% assign nav_lessons = site.pages
+          | where: 'guide_component', 'lesson'
+          | where: 'guide_id', page.guide_id
+          | where: 'guide_section_id', section.guide_section_id
+          | sort: 'guide_lesson_id'
+        %}
+        <ul class="guide-nav-items">
+          {% for lesson in nav_lessons %}
+            <li class="guide-nav-item">
+              <span class="guide-nav-badge">Lesson {{ lesson.guide_lesson_id }}</span>
+              <a href="{{ lesson.url | relative_url }}">{{ lesson.title }}</a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  </nav>
+
+{% elsif include.scope == 'section' %}
+  {% assign nav_lessons = site.pages
+    | where: 'guide_component', 'lesson'
+    | where: 'guide_id', page.guide_id
+    | where: 'guide_section_id', page.guide_section_id
+    | sort: 'guide_lesson_id'
+  %}
+
+  <nav class="guide-navigation" aria-label="Lessons in this section">
+    <div class="guide-nav-header">
+      <span class="guide-nav-label">Lessons</span>
+    </div>
+    <ul class="guide-nav-items">
+      {% for lesson in nav_lessons %}
+        <li class="guide-nav-item">
+          <span class="guide-nav-badge">Lesson {{ lesson.guide_lesson_id }}</span>
+          <a href="{{ lesson.url | relative_url }}">{{ lesson.title | escape }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+{% endif %}
+
+<style>
+  .guide-navigation {
+    margin: 1.5rem 0;
+    padding: 1.25rem;
+    background-color: rgba(30, 30, 30, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-left: 3px solid var(--brand-color, #888);
+    border-radius: 4px;
+  }
+
+  .guide-nav-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .guide-nav-label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.375rem;
+  }
+
+  .guide-navigation h3.guide-nav-title {
+    margin: 0;
+    font-size: 1.25em;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
+    line-height: 1.3;
+  }
+
+  .guide-nav-section {
+    margin-bottom: 0.5rem;
+  }
+
+  .guide-nav-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .guide-nav-section-header {
+    display: flex;
+    align-items: baseline;
+    padding: 0.5rem 0;
+    transition: padding-left 0.2s ease;
+  }
+
+  .guide-nav-section-header:hover {
+    padding-left: 0.375rem;
+  }
+
+  .guide-nav-section-header a {
+    color: rgba(255, 255, 255, 0.95);
+    text-decoration: none;
+    font-weight: 600;
+    flex: 1;
+    line-height: 1.5;
+  }
+
+  .guide-nav-section-header a:hover {
+    color: rgba(255, 255, 255, 1);
+    text-decoration: underline;
+  }
+
+  .guide-nav-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .guide-nav-item {
+    display: flex;
+    align-items: baseline;
+    margin-bottom: 0.25rem;
+    padding: 0.5rem 0;
+    transition: padding-left 0.2s ease;
+  }
+
+  .guide-nav-section .guide-nav-item {
+    padding-left: 1rem;
+  }
+
+  .guide-nav-item:hover {
+    padding-left: 0.375rem;
+  }
+
+  .guide-nav-section .guide-nav-item:hover {
+    padding-left: 1.375rem;
+  }
+
+  .guide-nav-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .guide-nav-badge {
+    display: inline-block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    margin-right: 0.875rem;
+    min-width: 90px;
+    flex-shrink: 0;
+  }
+
+  .guide-nav-item a {
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    flex: 1;
+    line-height: 1.5;
+  }
+
+  .guide-nav-item a:hover {
+    color: rgba(255, 255, 255, 1);
+    text-decoration: underline;
+  }
+</style>
