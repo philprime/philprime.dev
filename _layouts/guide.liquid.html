@@ -9,8 +9,6 @@ layout: default.liquid
 
 {{ content }}
 
-<h2 id='overview'>Overview</h2>
-
 {%
   include alert.liquid.html type='note' content='
   As this series was written as an online course, the guide is structured as a curriculum with sections and lessons.
@@ -18,46 +16,13 @@ layout: default.liquid
   '
 %}
 
-<p>
-  This series is divided into multiple sections, each focusing on a specific area of the guide. Here&apos;s an overview
-  of what you can expect in each section, with links to individual lessons:
-</p>
+{% include guide-navigation.liquid.html scope='guide' %}
 
 {% assign sections = site.pages
   | where: 'guide_component', 'section'
   | where: 'guide_id', page.guide_id
   | sort: 'guide_section_id'
 %}
-<ul>
-  {% for section in sections %}
-    <li>
-      <p>
-        <a href='{{ section.url }}'>Section {{ section.guide_section_id }}: {{ section.title }}</a>
-      </p>
-      <blockquote>
-        <p>{{ section.guide_section_abstract }}</p>
-      </blockquote>
-      <ul>
-        {% assign lessons = site.pages
-          | where: 'guide_component', 'lesson'
-          | where: 'guide_id', page.guide_id
-          | where: 'guide_section_id', section.guide_section_id
-          | sort: 'guide_lesson_id'
-        %}
-        {% for lesson in lessons %}
-          <li>
-            <p>
-              <a href='{{ lesson.url }}'>Lesson {{ lesson.guide_lesson_id }}: {{ lesson.title }}</a>
-            </p>
-            <blockquote>
-              <p>{{ lesson.guide_lesson_abstract }}</p>
-            </blockquote>
-          </li>
-        {% endfor %}
-      </ul>
-    </li>
-  {% endfor %}
-</ul>
 
 <h2>Getting Started</h2>
 

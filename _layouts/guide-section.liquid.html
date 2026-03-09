@@ -17,29 +17,14 @@ layout: default.liquid
 
   {% include guide-overview-link.liquid.html %}
 
+  {% include guide-navigation.liquid.html scope='section' %}
+
   {% assign lessons = site.pages
+    | where: 'guide_component', 'lesson'
     | where: 'guide_id', page.guide_id
     | where: 'guide_section_id', page.guide_section_id
-    | where_exp: 'item', 'item.url != page.url'
     | sort: 'guide_lesson_id'
   %}
-
-  <h2>Lessons</h2>
-
-  <ul>
-    {% for other_page in lessons %}
-      <li>
-        <p>
-          <a href='{{ other_page.url | relative_url }}'>
-            Lesson {{ other_page.guide_lesson_id }}: {{ other_page.title | escape }}
-          </a>
-        </p>
-        <blockquote>
-          <p>{{ other_page.guide_lesson_abstract }}</p>
-        </blockquote>
-      </li>
-    {% endfor %}
-  </ul>
 
   <h2>Getting Started</h2>
 
