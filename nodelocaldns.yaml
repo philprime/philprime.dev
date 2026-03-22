@@ -1,0 +1,221 @@
+# NodeLocal DNS Cache — runs a DNS caching agent on every node.
+# Pods query the CoreDNS ClusterIP (10.43.0.10) as normal, but iptables
+# rules intercept the traffic and redirect it to the local cache.
+# This keeps DNS traffic node-local, avoiding WireGuard tunnel traversal.
+#
+# Deploy to: /var/lib/rancher/rke2/server/manifests/nodelocaldns.yaml on doom
+#
+# Based on upstream: https://github.com/kubernetes/kubernetes/blob/master/cluster/addons/dns/nodelocaldns/nodelocaldns.yaml
+# Differences from upstream:
+# - Internal zones forward via UDP (not force_tcp) — TCP times out under WireGuard congestion
+# - External zone forwards directly to Cloudflare via force_tcp — bypasses CoreDNS for external lookups
+# - Security hardened: drop ALL + explicit NET_ADMIN, NET_BIND_SERVICE
+# - Added readiness probe (upstream only has liveness)
+# - skipteardown=true to prevent DNS downtime on OOM
+#
+# CoreDNS ClusterIP: 10.43.0.10
+# Cluster domain: cluster.local
+# Upstream: Cloudflare 1.1.1.1 / 1.0.0.1
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+---
+# Headless service for upstream CoreDNS forwarding.
+# node-local-dns uses -upstreamsvc to resolve this for health checks.
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-dns-upstream
+  namespace: kube-system
+  labels:
+    k8s-app: kube-dns
+spec:
+  ports:
+    - name: dns
+      port: 53
+      protocol: UDP
+      targetPort: 53
+    - name: dns-tcp
+      port: 53
+      protocol: TCP
+      targetPort: 53
+  selector:
+    k8s-app: kube-dns
+---
+# Headless service to expose node-local-dns metrics for Prometheus.
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+  annotations:
+    prometheus.io/port: "9253"
+    prometheus.io/scrape: "true"
+spec:
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9253
+      targetPort: 9253
+  selector:
+    k8s-app: node-local-dns
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+data:
+  Corefile: |
+    cluster.local:53 {
+        errors
+        cache {
+                success 9984 30
+                denial 9984 5
+        }
+        reload
+        loop
+        bind 169.254.20.10 10.43.0.10
+        forward . __PILLAR__CLUSTER__DNS__
+        prometheus :9253
+        health 169.254.20.10:8080
+    }
+    in-addr.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind 169.254.20.10 10.43.0.10
+        forward . __PILLAR__CLUSTER__DNS__
+        prometheus :9253
+    }
+    ip6.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind 169.254.20.10 10.43.0.10
+        forward . __PILLAR__CLUSTER__DNS__
+        prometheus :9253
+    }
+    .:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind 169.254.20.10 10.43.0.10
+        forward . 1.1.1.1 1.0.0.1 {
+            force_tcp
+        }
+        prometheus :9253
+    }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+spec:
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      k8s-app: node-local-dns
+  template:
+    metadata:
+      labels:
+        k8s-app: node-local-dns
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9253"
+    spec:
+      serviceAccountName: node-local-dns
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      dnsPolicy: Default
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+        - effect: "NoExecute"
+          operator: "Exists"
+        - effect: "NoSchedule"
+          operator: "Exists"
+      containers:
+        - name: node-cache
+          image: registry.k8s.io/dns/k8s-dns-node-cache:1.26.0
+          resources:
+            requests:
+              cpu: 25m
+              memory: 25Mi
+            limits:
+              memory: 50Mi
+          args:
+            - "-localip"
+            - "169.254.20.10,10.43.0.10"
+            - "-conf"
+            - "/etc/Corefile"
+            - "-upstreamsvc"
+            - "kube-dns-upstream"
+            - "-skipteardown=true"
+            - "-setupinterface=true"
+            - "-setupiptables=true"
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_BIND_SERVICE
+              drop:
+                - ALL
+            allowPrivilegeEscalation: false
+          ports:
+            - containerPort: 53
+              name: dns
+              protocol: UDP
+            - containerPort: 53
+              name: dns-tcp
+              protocol: TCP
+            - containerPort: 9253
+              name: metrics
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              host: 169.254.20.10
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              host: 169.254.20.10
+              path: /health
+              port: 8080
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: xtables-lock
+              mountPath: /run/xtables.lock
+              readOnly: false
+            - name: config-volume
+              mountPath: /etc/coredns
+      volumes:
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
+        - name: config-volume
+          configMap:
+            name: node-local-dns
+            items:
+              - key: Corefile
+                path: Corefile.base
