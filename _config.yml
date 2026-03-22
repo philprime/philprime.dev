@@ -66,6 +66,10 @@ exclude:
   - Gemfile
   - Gemfile.lock
   - vendor/
+  - node_modules/
+  - package.json
+  - pnpm-lock.yaml
+  - .mermaid-cache/
 
 facebook:
   app_id: # Add if you have a Facebook app
