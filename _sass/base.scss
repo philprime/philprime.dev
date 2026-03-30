@@ -629,6 +629,17 @@ table {
   color: $brand-color;
 }
 
+.footer-bottom {
+  text-align: center;
+  margin-top: $spacing-unit * 0.5;
+
+  .copyright {
+    @include relative-font-size(0.75);
+    color: $brand-color;
+    margin-top: $spacing-unit * 0.25;
+  }
+}
+
 .footer-col {
   margin-bottom: $spacing-unit * 0.5;
 }
