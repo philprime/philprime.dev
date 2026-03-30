@@ -14,6 +14,7 @@ keywords:
   "Kubernetes cluster, Raspberry Pi, DevOps, home lab, container orchestration, cluster setup, high availability,
   tutorial"
 image: /assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/hardware-overview.webp
+featured: true
 author: Philip Niedertscheider
 ---
 

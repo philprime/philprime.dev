@@ -704,6 +704,47 @@ table {
   @include relative-font-size(1.75);
 }
 
+.featured-posts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: $spacing-unit * 0.75;
+  margin-bottom: $spacing-unit;
+
+  .featured-post {
+    display: block;
+    border: 1px solid $border-color-01;
+    border-radius: 8px;
+    overflow: hidden;
+    text-decoration: none;
+    color: $text-color;
+    transition: box-shadow 0.2s ease;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+
+    .featured-post-content {
+      padding: $spacing-unit * 0.5;
+
+      h3 {
+        @include relative-font-size(1.15);
+        margin: 0 0 $spacing-unit * 0.15;
+      }
+
+      .post-tags {
+        margin-top: $spacing-unit * 0.2;
+        margin-bottom: 0;
+      }
+    }
+  }
+}
+
 .post-list {
   margin-left: 0;
   list-style: none;

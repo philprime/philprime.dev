@@ -8,6 +8,7 @@ description: "Explore protocol extensions, enums with associated values, and Exp
 excerpt: "Learn how to design type-safe Swift APIs using protocol extensions, enums with associated values, and ExpressibleByStringLiteral. Part I of a two-part series on building the Sentry Metrics API."
 keywords: "Swift API design, type-safe APIs, protocol extensions, Swift enums, ExpressibleByStringLiteral, iOS SDK development, Swift metrics API"
 image: /assets/blog/2026-02-09-building-type-safe-metrics-api-in-swift/hero.webp
+featured: true
 author: Philip Niedertscheider
 series: building-type-safe-metrics-api-in-swift
 series_title: "Building Type-Safe Metrics API in Swift"
