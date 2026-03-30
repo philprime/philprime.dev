@@ -3,7 +3,7 @@ layout: post.liquid
 title: "Building SwiftUI apps in Markdown"
 date: 2021-05-17 17:00:00 +0200
 categories: blog
-tags: SwiftUI iOS Swift Markdown parser AST UIKit development tutorial
+tags: [SwiftUI, Markdown, Parser]
 description:
   "Learn how to transform Markdown documents into native SwiftUI views using custom parsing and the Resolver/Strategy
   pattern. Build dynamic iOS apps with Markdown content."

@@ -3,7 +3,7 @@ layout: post.liquid
 title: "iOS Push Notifications without user authentication"
 date: 2021-03-29 17:00:00 +0200
 categories: blog
-tags: iOS push-notifications APNs webhooks API Node.js CI-CD mobile-development
+tags: [iOS, Push Notifications, APNs]
 description:
   "Learn how to implement iOS push notifications without user authentication using webhooks and Apple Push Service. This
   tutorial covers mapping webhook URLs to device IDs for CI/CD notifications."

@@ -3,7 +3,7 @@ layout: post.liquid
 title: "Building Type-Safe Metrics API in Swift: Part II"
 date: 2026-02-09 10:00:00 +0100
 categories: blog
-tags: Swift SDK Apple Cocoa iOS macOS metrics type-safety API design protocols
+tags: [Swift, Metrics, API Design, Type Safety]
 description: "Replace Any with type-safe protocols, handle array conformance limitations, and future-proof your Swift enums."
 excerpt: "Learn how to replace Any with type-safe protocols, handle Swift compiler limitations with array conformance, and future-proof enums. Part II of a two-part series on building the Sentry Metrics API."
 keywords: "Swift API design, type-safe protocols, Swift enums, @unknown default, @frozen, protocol conformance, iOS SDK development, Swift metrics API"

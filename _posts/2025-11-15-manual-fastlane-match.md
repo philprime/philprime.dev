@@ -3,7 +3,7 @@ layout: post.liquid
 title: "Accessing fastlane match certificates manually"
 date: 2025-11-15 14:30:00 +0200
 categories: blog
-tags: iOS fastlane match CI/CD code-signing automation
+tags: [iOS, Fastlane, Code Signing]
 description: "A practical guide to manually accessing and managing iOS code-signing certificates stored in fastlane match repositories using Ruby and the fastlane APIs."
 excerpt: "Learn how to manually access fastlane match certificates and provisioning profiles outside of automated workflows, useful for debugging and integrating with other tools."
 keywords: "iOS, fastlane, match, code signing, certificates, provisioning profiles, CI/CD, automation, Ruby, pry"

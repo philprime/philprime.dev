@@ -3,7 +3,7 @@ layout: post.liquid
 title: "Modularize Xcode Projects using local Swift Packages"
 date: 2021-04-12 17:00:00 +0200
 categories: blog
-tags: iOS Swift SPM Xcode modularization Swift-Package-Manager architecture
+tags: [Swift, Xcode, Swift Package Manager, Architecture]
 description:
   "Learn how to modularize your Xcode projects using local Swift Package Manager (SPM) packages. Improve code
   organization, compilation times, and team collaboration with practical examples."

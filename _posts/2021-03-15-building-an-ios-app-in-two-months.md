@@ -3,7 +3,7 @@ layout: post.liquid
 title: "Building an iOS game in 2 months"
 date: 2021-03-15 17:00:00 +0200
 categories: blog
-tags: iOS game development puzzle Swift UIKit game-design TipTapColor
+tags: [iOS, Swift, Game Design]
 description:
   "Learn how we built TipTapColor 2, an iOS puzzle game, in just 2 months. This case study covers game design, Swift
   development, UIKit implementation, and App Store launch strategies."

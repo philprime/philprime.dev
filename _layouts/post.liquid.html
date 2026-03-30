@@ -24,6 +24,14 @@ layout: base.liquid
       {%- if forloop.last == false %}, {% endif -%} {% endfor %} {%- endif -%}
     </p>
 
+    {%- if page.tags.size > 0 -%}
+    <div class="post-tags">
+      {%- for tag in page.tags -%}
+        <span class="post-tag">{{ tag }}</span>
+      {%- endfor -%}
+    </div>
+    {%- endif -%}
+
     {%- if page.image -%}
     <div class="post-header-image">
       <img src="{{ page.image | relative_url }}" alt="{{ page.title | escape }}" itemprop="image" />

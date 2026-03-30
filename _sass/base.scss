@@ -718,6 +718,35 @@ table {
   color: $brand-color;
 }
 
+.post-tags {
+  margin-top: $spacing-unit * 0.25;
+  margin-bottom: $spacing-unit * 0.5;
+
+  $tag-colors: (
+    1: #2a7ae2,
+    2: #e25d2a,
+    3: #a855f7,
+    4: #2ab8e2,
+    5: #e22a6f,
+    6: #2ae27e,
+  );
+
+  .post-tag {
+    display: inline-block;
+    @include relative-font-size(0.75);
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin: 2px 4px 2px 0;
+
+    @each $i, $color in $tag-colors {
+      &:nth-child(6n + #{$i}) {
+        color: $color;
+        border: 1px solid $color;
+      }
+    }
+  }
+}
+
 .post-link {
   display: block;
   @include relative-font-size(1.5);

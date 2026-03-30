@@ -3,7 +3,7 @@ layout: post.liquid
 title: "3 ways of styling SwiftUI views"
 date: 2021-05-24 17:00:00 +0200
 categories: blog
-tags: SwiftUI iOS styling UI-design Swift development tutorial clean-code
+tags: [SwiftUI, Styling, Swift]
 description:
   "Master SwiftUI view styling with 3 powerful techniques. Learn reusable, customizable approaches for building
   beautiful user interfaces with clean, maintainable code."

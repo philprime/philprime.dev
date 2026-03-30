@@ -3,7 +3,7 @@ layout: post.liquid
 title: 'Upgrading Swift HTTP APIs to the Next Level using Postie'
 date: 2021-07-05 17:00:00 +0200
 categories: blog
-tags: Swift HTTP API networking Postie iOS development OpenAPI URLSession
+tags: [Swift, Networking, Postie, API]
 description:
   'Learn how to elevate your Swift HTTP API development with Postie, a next-level networking framework that provides
   type-safe, structured API definitions and automatic request/response handling.'
