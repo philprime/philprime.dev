@@ -27,8 +27,8 @@ build: install
 # This target starts a local development server for the Jekyll site,
 # allowing you to preview changes in real-time as you edit the source files.
 # After starting you can access the site at http://localhost:4000
-.PHONY: serve
-serve: install
+.PHONY: dev
+dev: install
 	bundle exec jekyll serve
 
 ## Optimize assets
