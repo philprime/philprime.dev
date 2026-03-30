@@ -13,4 +13,7 @@ image: /assets/images/default-og-image.png
 Hi, I’m Phil, a software engineer at [Sentry.io](https://sentry.io), open-source advocate, and technical startup
 founder.
 I write about iOS, Swift, Kubernetes, and software engineering in general.
-[Learn more about me](/about/).
+[Learn more about me](/about/) or follow along on
+[X](https://x.com/philprimes),
+[BlueSky](https://bsky.app/profile/philprime.dev), and
+[GitHub](https://github.com/philprime).
