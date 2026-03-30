@@ -277,7 +277,7 @@ blockquote {
   border-left: 4px solid $border-color-01;
   padding: $spacing-unit * 0.5;
   background-color: rgba(128, 128, 128, 0.05);
-  border-radius: 0 4px 4px 0;
+  border-radius: 0 8px 8px 0;
   @include relative-font-size(1.125);
   font-style: italic;
   margin: $spacing-unit * 0.75 0;
@@ -300,19 +300,19 @@ code {
   font-family: $code-font-family;
   font-size: 0.9em;
   border: 1px solid $border-color-01;
-  border-radius: 3px;
+  border-radius: 4px;
   background-color: $code-background-color;
 }
 
 code {
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 pre {
   padding: 16px 20px;
   overflow-x: auto;
-  border-radius: 6px;
+  border-radius: 8px;
 
   > code {
     border: 0;
@@ -322,7 +322,7 @@ pre {
 }
 
 .highlight {
-  border-radius: 6px;
+  border-radius: 8px;
   background: $code-background-color;
   @extend %vertical-rhythm;
   margin-bottom: $spacing-unit * 0.75;
@@ -409,12 +409,12 @@ pre {
 
   &::-webkit-scrollbar-track {
     background-color: rgba(0, 0, 0, 0.1);
-    border-radius: 6px;
+    border-radius: 8px;
   }
 
   &::-webkit-scrollbar-thumb {
     background-color: rgba(0, 0, 0, 0.3);
-    border-radius: 6px;
+    border-radius: 8px;
 
     &:hover {
       background-color: rgba(0, 0, 0, 0.5);
@@ -518,7 +518,7 @@ table {
   right: $spacing-unit * 0.5;
   background-color: $background-color;
   border: 1px solid $border-color-01;
-  border-radius: 5px;
+  border-radius: 8px;
   text-align: right;
 
   .nav-trigger {
