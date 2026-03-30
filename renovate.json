@@ -1,14 +1,20 @@
 {
-	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
-	"extends": ["config:recommended"],
-	"keepUpdatedLabel": "renovate:keep-updated",
-	"packageRules": [
-		{
-			"automerge": true,
-			"matchUpdateTypes": ["minor", "patch","digest"]
-		}
-	],
-	"rebaseLabel": "renovate:rebase",
-	"stopUpdatingLabel": "renovate:disabled",
-	"timezone": "Europe/Vienna"
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "keepUpdatedLabel": "renovate:keep-updated",
+  "packageRules": [
+    {
+      "automerge": true,
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ]
+    }
+  ],
+  "rebaseLabel": "renovate:rebase",
+  "stopUpdatingLabel": "renovate:disabled",
+  "timezone": "Europe/Vienna"
 }

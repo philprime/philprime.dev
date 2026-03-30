@@ -17,10 +17,10 @@ Here you'll find multi-part blog post series that dive deep into technical topic
 
 {% assign series_posts = site.posts | where_exp: "post", "post.series != nil" | group_by: "series" %}
 {% for series_group in series_posts %}
-  {% if series_group.name != "" and series_group.name != nil %}
-    {% assign sorted_posts = series_group.items | sort: "series_part" %}
-    {% assign first_post = sorted_posts.first %}
+{% if series_group.name != "" and series_group.name != nil %}
+{% assign sorted_posts = series_group.items | sort: "series_part" %}
+{% assign first_post = sorted_posts.first %}
 
 - [{{ first_post.series_title }}]({{ first_post.url | relative_url }})
   {% endif %}
-{% endfor %}
+  {% endfor %}
