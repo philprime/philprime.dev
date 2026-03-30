@@ -15,24 +15,30 @@ keywords:
 image: /assets/images/guides-overview.png
 ---
 
-Welcome to my guides section! 👋
+In addition to my usual blog posts, here you will find detailed, step-by-step tutorials structured like free online courses.
+Each guide walks you through real-world scenarios with clear explanations and hands-on examples.
 
-In addition to my usual blog posts, here you'll find detailed, step-by-step tutorials that are structured like free
-online courses. Each guide is written to be comprehensive and practical, walking you through real-world scenarios and
-implementations.
+Whether you are just getting started with a topic or looking to go deeper, these guides are designed to help you learn at your own pace while building practical skills.
+I regularly add new guides based on my experiences in software engineering, DevOps, and cloud technologies.
 
-These guides are designed to help you learn complex technical topics in a structured way, with clear explanations and
-hands-on examples. Whether you're a beginner looking to understand fundamental concepts or an experienced practitioner
-wanting to dive deep into specific technologies, these guides aim to provide valuable insights and practical knowledge.
+If you have ideas for a guide or want to know more about a specific topic, feel free to reach out on [X](https://x.com/philprimes), [BlueSky](https://bsky.app/profile/philprime.dev), or [LinkedIn](https://www.linkedin.com/in/philipniedertscheider)!
 
-I regularly update and add new guides based on my experiences and learnings in software engineering, DevOps, and cloud
-technologies. Each guide is carefully crafted to ensure you can follow along at your own pace while building practical
-skills.
-
-If you have ideas for guides or want to know more about a specific topic, feel free to reach out to me!
-
-### List of Guides
-
-{% for page in site.pages %} {% if page.guide_component == 'guide' %}
-
-- [{{ page.title }}]({{ page.url }}) {% endif %} {% endfor %}
+<div class='card-grid'>
+{% for page in site.pages %}
+{% if page.guide_component == 'guide' %}
+<a class='card' href='{{ page.url | relative_url }}'>
+  {% if page.image %}
+  <img src='{{ page.image | relative_url }}' alt='{{ page.title | escape }}' loading='lazy' />
+  {% endif %}
+  <div class='card-content'>
+    <h3>{{ page.title | escape }}</h3>
+    {% assign lessons = site.pages | where: "guide_component", "lesson" | where: "guide_id", page.guide_id %}
+    <p class='card-meta'>{{ lessons.size }} lessons</p>
+    {% if page.guide_abstract %}
+    <p class='card-description'>{{ page.guide_abstract | truncatewords: 25 }}</p>
+    {% endif %}
+  </div>
+</a>
+{% endif %}
+{% endfor %}
+</div>
