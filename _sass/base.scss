@@ -608,84 +608,42 @@ table {
   padding: $spacing-unit 0;
 }
 
-.footer-heading {
-  @include relative-font-size(1.125);
-  margin-bottom: $spacing-unit * 0.5;
-}
-
-.feed-subscribe .svg-icon {
-  padding: 5px 5px 2px 0;
-}
-
-.contact-list,
 .social-media-list {
   list-style: none;
   margin-left: 0;
 }
 
-.footer-col-wrapper,
+.footer-minimal {
+  text-align: center;
+}
+
 .social-links {
   @include relative-font-size(0.9375);
   color: $brand-color;
 }
 
-.footer-bottom {
-  text-align: center;
-  margin-top: $spacing-unit * 0.5;
+.footer-links {
+  @include relative-font-size(0.9375);
+  margin: $spacing-unit * 0.5 0;
+  color: $brand-color;
 
-  .copyright {
-    @include relative-font-size(0.75);
+  a {
     color: $brand-color;
-    margin-top: $spacing-unit * 0.25;
-  }
-}
 
-.footer-col {
-  margin-bottom: $spacing-unit * 0.5;
-}
-
-.footer-col-1,
-.footer-col-2 {
-  width: calc(50% - #{$spacing-unit} / 2);
-}
-
-.footer-col-3 {
-  width: calc(100% - #{$spacing-unit} / 2);
-}
-
-@media screen and (min-width: $on-large) {
-  .footer-col-1 {
-    width: calc(35% - #{$spacing-unit} / 2);
-  }
-
-  .footer-col-2 {
-    width: calc(20% - #{$spacing-unit} / 2);
-  }
-
-  .footer-col-3 {
-    width: calc(45% - #{$spacing-unit} / 2);
-  }
-}
-
-@media screen and (min-width: $on-medium) {
-  .footer-col-wrapper {
-    display: flex;
-  }
-
-  .footer-col {
-    width: calc(100% - #{$spacing-unit} / 2);
-    padding: 0 ($spacing-unit * 0.5);
-
-    &:first-child {
-      padding-right: $spacing-unit * 0.5;
-      padding-left: 0;
-    }
-
-    &:last-child {
-      padding-right: 0;
-      padding-left: $spacing-unit * 0.5;
+    &:hover {
+      color: $text-color;
     }
   }
+
+  .separator {
+    margin: 0 $spacing-unit * 0.25;
+  }
+}
+
+.copyright {
+  @include relative-font-size(0.75);
+  color: $brand-color;
+  margin: 0;
 }
 
 /**
@@ -869,8 +827,15 @@ table {
       display: block;
       padding: 10px 12px;
       border: 1px solid $border-color-01;
+      transition: border-color 0.2s ease, color 0.2s ease;
+
       &:hover {
         border-color: $border-color-02;
+
+        .fa-github { color: #f0f0f0; }
+        .fa-x-twitter { color: #f0f0f0; }
+        .fa-linkedin { color: #0a66c2; }
+        .fa-bluesky { color: #0085ff; }
       }
     }
   }
