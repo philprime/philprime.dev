@@ -20,7 +20,7 @@ install: setup-ruby
 # output to the `_site` directory.
 .PHONY: build
 build: install
-	bundle exec jekyll build
+	JEKYLL_ENV=production bundle exec jekyll build
 
 ## Serve the Jekyll site locally with live reloading
 #

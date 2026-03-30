@@ -13,6 +13,7 @@
 
     {%- include footer.liquid.html -%}
 
+    {%- if jekyll.environment == 'production' -%}
     <script
       defer
       src='https://analytics.lab.philprime.dev/umami'
@@ -23,5 +24,6 @@
       src="https://cloud.umami.is/script.js"
       data-website-id="3505151c-36fd-4d04-ac37-af41fa16a849"
     ></script>
+    {%- endif -%}
   </body>
 </html>
