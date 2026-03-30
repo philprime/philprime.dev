@@ -22,7 +22,10 @@ layout: base.liquid
       {%- assign date_format = site.date_format | default: '%b %-d, %Y' -%}
       {%- for post in posts -%}
         <li>
-          <span class='post-meta'>{{ post.date | date: date_format }}</span>
+          {%- assign words = post.content | number_of_words -%}
+          {%- assign minutes = words | divided_by: 200 -%}
+          {%- if minutes < 1 %}{% assign minutes = 1 %}{% endif -%}
+          <span class='post-meta'>{{ post.date | date: date_format }} • {{ minutes }} min read</span>
           <h3>
             <a class='post-link' href='{{ post.url | relative_url }}'>
               {{ post.title | escape }}
