@@ -9,10 +9,11 @@ setup-ruby:
 ## Install project dependencies
 #
 # This target installs all required Ruby gems specified in the
-# `Gemfile` using Bundler.
+# `Gemfile` using Bundler, and Node.js dev tools via pnpm.
 .PHONY: install
 install: setup-ruby
 	bundle install
+	pnpm install
 
 ## Build the Jekyll site
 #
@@ -29,7 +30,7 @@ build: install
 # After starting you can access the site at http://localhost:4000
 .PHONY: dev
 dev: install
-	bundle exec jekyll serve
+	bundle exec jekyll serve --incremental
 
 ## Optimize assets
 #
