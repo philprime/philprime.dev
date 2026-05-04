@@ -572,10 +572,14 @@ With three retries at 15-second intervals, a failing node is removed from the ro
 
 ### Retrieving the Load Balancer IP
 
+{% raw %}
+
 ```bash
 $ LB_IP=$(hcloud load-balancer describe k8s-ingress -o format='{{.PublicNet.IPv4.IP}}')
 $ echo "Load Balancer IP: $LB_IP"
 ```
+
+{% endraw %}
 
 Save this IP for DNS configuration.
 
@@ -674,9 +678,13 @@ The `web` entrypoint remains open without an HTTP-to-HTTPS redirect so that cert
 
 Store the load balancer's public IP for testing:
 
+{% raw %}
+
 ```bash
 $ LB_IP=$(hcloud load-balancer describe k8s-ingress -o format='{{.PublicNet.IPv4.IP}}')
 ```
+
+{% endraw %}
 
 First, verify that the HTTPS path returns a response from the backend pod:
 
