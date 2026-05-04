@@ -29,9 +29,6 @@ social_links:
   - title: BlueSky
     url: "https://bsky.app/profile/philprime.dev"
     icon: bluesky
-  - title: Stack Overflow
-    url: "https://stackoverflow.com/users/3515302/philip-niedertscheider"
-    icon: stack-overflow
 
 # Configure defaults for specific files
 defaults:

@@ -9,18 +9,31 @@ keywords: "blog series, technical series, multi-part articles, Swift series, iOS
 image: /assets/images/default-og-image.png
 ---
 
-Welcome to the Series section! 📚
+Some topics are too big for a single post.
+Each series here dives deep into a technical subject, broken down into focused parts that build on each other.
 
-Here you'll find multi-part blog post series that dive deep into technical topics. These series are designed to provide comprehensive coverage of complex subjects, broken down into digestible parts.
-
-### List of Series
+You can start with Part I and work your way through at your own pace.
+I will keep adding new series as I explore topics worth covering in depth.
 
 {% assign series_posts = site.posts | where_exp: "post", "post.series != nil" | group_by: "series" %}
-{% for series_group in series_posts %}
-  {% if series_group.name != "" and series_group.name != nil %}
-    {% assign sorted_posts = series_group.items | sort: "series_part" %}
-    {% assign first_post = sorted_posts.first %}
 
-- [{{ first_post.series_title }}]({{ first_post.url | relative_url }})
+<div class='card-grid'>
+{% for series_group in series_posts %}
+{% if series_group.name != "" and series_group.name != nil %}
+{% assign sorted_posts = series_group.items | sort: "series_part" %}
+{% assign first_post = sorted_posts.first %}
+<a class='card' href='{{ first_post.url | relative_url }}'>
+  {% if first_post.image %}
+  <img src='{{ first_post.image | relative_url }}' alt='{{ first_post.series_title | escape }}' loading='lazy' />
   {% endif %}
+  <div class='card-content'>
+    <h3>{{ first_post.series_title | escape }}</h3>
+    <p class='card-meta'>{{ sorted_posts.size }} parts</p>
+    {% if first_post.description %}
+    <p class='card-description'>{{ first_post.description | truncatewords: 25 }}</p>
+    {% endif %}
+  </div>
+</a>
+{% endif %}
 {% endfor %}
+</div>

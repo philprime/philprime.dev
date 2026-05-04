@@ -3,7 +3,7 @@ layout: post.liquid
 title: "Why You Should Strongly-Type Your Localizations with Swiftgen"
 date: 2021-05-31 17:00:00 +0200
 categories: blog
-tags: Swift iOS localization Swiftgen i18n internationalization code-generation development
+tags: [Swift, Localization, SwiftGen]
 description:
   "Learn how to strongly-type your iOS app localizations using Swiftgen. Eliminate string-based localization errors and
   improve code safety with automated code generation."

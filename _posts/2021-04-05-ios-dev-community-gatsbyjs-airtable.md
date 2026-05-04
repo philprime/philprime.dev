@@ -3,7 +3,7 @@ layout: post.liquid
 title: "Mobile App Developer Community built with GatsbyJS & Airtable"
 date: 2021-04-05 17:00:00 +0200
 categories: blog
-tags: web GatsbyJS Airtable React community Vienna mobile-development static-site-generator
+tags: [GatsbyJS, Airtable, Web]
 description:
   "Learn how to build a mobile app developer community website using GatsbyJS and Airtable. This tutorial covers
   creating a static site generator with dynamic data sources and no-code database solutions."

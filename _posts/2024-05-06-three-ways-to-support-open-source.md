@@ -3,7 +3,7 @@ layout: post.liquid
 title: "Three simple ways to support Open Source Software"
 date: 2024-05-06 11:00:00 +0200
 categories: blog
-tags: iOS Open Source FOSS community contribution sponsorship
+tags: [Open Source, Community]
 description:
   "Discover practical ways to support Open Source Software including creating projects, contributing to existing ones,
   and encouraging team participation. Learn why FOSS matters for developers."

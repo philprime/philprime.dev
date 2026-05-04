@@ -54,7 +54,7 @@
   color: inherit;
   font-weight: 600;
   padding: 2px 4px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .alert pre {
@@ -62,7 +62,17 @@
   color: inherit;
   border: none;
   padding: 12px;
-  border-radius: 4px;
+  border-radius: 8px;
+}
+
+.post-header-image img {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.post-content img {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .contribute-cta {

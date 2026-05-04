@@ -277,7 +277,7 @@ blockquote {
   border-left: 4px solid $border-color-01;
   padding: $spacing-unit * 0.5;
   background-color: rgba(128, 128, 128, 0.05);
-  border-radius: 0 4px 4px 0;
+  border-radius: 0 8px 8px 0;
   @include relative-font-size(1.125);
   font-style: italic;
   margin: $spacing-unit * 0.75 0;
@@ -300,19 +300,19 @@ code {
   font-family: $code-font-family;
   font-size: 0.9em;
   border: 1px solid $border-color-01;
-  border-radius: 3px;
+  border-radius: 4px;
   background-color: $code-background-color;
 }
 
 code {
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 pre {
   padding: 16px 20px;
   overflow-x: auto;
-  border-radius: 6px;
+  border-radius: 8px;
 
   > code {
     border: 0;
@@ -322,7 +322,7 @@ pre {
 }
 
 .highlight {
-  border-radius: 6px;
+  border-radius: 8px;
   background: $code-background-color;
   @extend %vertical-rhythm;
   margin-bottom: $spacing-unit * 0.75;
@@ -409,12 +409,12 @@ pre {
 
   &::-webkit-scrollbar-track {
     background-color: rgba(0, 0, 0, 0.1);
-    border-radius: 6px;
+    border-radius: 8px;
   }
 
   &::-webkit-scrollbar-thumb {
     background-color: rgba(0, 0, 0, 0.3);
-    border-radius: 6px;
+    border-radius: 8px;
 
     &:hover {
       background-color: rgba(0, 0, 0, 0.5);
@@ -518,7 +518,7 @@ table {
   right: $spacing-unit * 0.5;
   background-color: $background-color;
   border: 1px solid $border-color-01;
-  border-radius: 5px;
+  border-radius: 8px;
   text-align: right;
 
   .nav-trigger {
@@ -608,73 +608,42 @@ table {
   padding: $spacing-unit 0;
 }
 
-.footer-heading {
-  @include relative-font-size(1.125);
-  margin-bottom: $spacing-unit * 0.5;
-}
-
-.feed-subscribe .svg-icon {
-  padding: 5px 5px 2px 0;
-}
-
-.contact-list,
 .social-media-list {
   list-style: none;
   margin-left: 0;
 }
 
-.footer-col-wrapper,
+.footer-minimal {
+  text-align: center;
+}
+
 .social-links {
   @include relative-font-size(0.9375);
   color: $brand-color;
 }
 
-.footer-col {
-  margin-bottom: $spacing-unit * 0.5;
-}
+.footer-links {
+  @include relative-font-size(0.9375);
+  margin: $spacing-unit * 0.5 0;
+  color: $brand-color;
 
-.footer-col-1,
-.footer-col-2 {
-  width: calc(50% - #{$spacing-unit} / 2);
-}
+  a {
+    color: $brand-color;
 
-.footer-col-3 {
-  width: calc(100% - #{$spacing-unit} / 2);
-}
-
-@media screen and (min-width: $on-large) {
-  .footer-col-1 {
-    width: calc(35% - #{$spacing-unit} / 2);
-  }
-
-  .footer-col-2 {
-    width: calc(20% - #{$spacing-unit} / 2);
-  }
-
-  .footer-col-3 {
-    width: calc(45% - #{$spacing-unit} / 2);
-  }
-}
-
-@media screen and (min-width: $on-medium) {
-  .footer-col-wrapper {
-    display: flex;
-  }
-
-  .footer-col {
-    width: calc(100% - #{$spacing-unit} / 2);
-    padding: 0 ($spacing-unit * 0.5);
-
-    &:first-child {
-      padding-right: $spacing-unit * 0.5;
-      padding-left: 0;
-    }
-
-    &:last-child {
-      padding-right: 0;
-      padding-left: $spacing-unit * 0.5;
+    &:hover {
+      color: $text-color;
     }
   }
+
+  .separator {
+    margin: 0 $spacing-unit * 0.25;
+  }
+}
+
+.copyright {
+  @include relative-font-size(0.75);
+  color: $brand-color;
+  margin: 0;
 }
 
 /**
@@ -693,6 +662,99 @@ table {
   @include relative-font-size(1.75);
 }
 
+.card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-unit * 0.75;
+  margin-bottom: $spacing-unit;
+}
+
+.featured-posts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: $spacing-unit * 0.75;
+  margin-bottom: $spacing-unit;
+}
+
+.card,
+.featured-post {
+  display: block;
+  border: 1px solid $border-color-01;
+  border-radius: 8px;
+  overflow: hidden;
+  text-decoration: none;
+  color: $text-color;
+  transition: box-shadow 0.2s ease;
+
+  &:visited {
+    color: $text-color;
+  }
+
+  &:hover {
+    box-shadow: 0 6px 20px rgba(200, 200, 200, 0.15);
+    border-color: $border-color-02;
+    text-decoration: none;
+  }
+
+  &:hover h3,
+  &:hover .card-meta,
+  &:hover .card-description,
+  &:hover .post-meta {
+    text-decoration: none;
+  }
+
+  img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+  }
+
+  .card-content,
+  .featured-post-content {
+    padding: $spacing-unit * 0.5;
+
+    h3 {
+      @include relative-font-size(1.15);
+      margin: 0 0 $spacing-unit * 0.15;
+    }
+
+    .post-tags {
+      margin-top: $spacing-unit * 0.2;
+      margin-bottom: 0;
+    }
+  }
+
+  .card-meta {
+    @include relative-font-size(0.8);
+    color: $brand-color;
+    margin: $spacing-unit * 0.15 0;
+  }
+
+  .card-description {
+    @include relative-font-size(0.9);
+    color: $brand-color;
+    margin: $spacing-unit * 0.25 0 0;
+    line-height: 1.4;
+  }
+}
+
+.card-grid .card {
+  img {
+    aspect-ratio: 16 / 9;
+  }
+
+  @media screen and (min-width: $on-medium) {
+    display: flex;
+    flex-direction: row;
+
+    img {
+      width: 280px;
+      height: auto;
+      flex-shrink: 0;
+    }
+  }
+}
+
 .post-list {
   margin-left: 0;
   list-style: none;
@@ -705,6 +767,35 @@ table {
 .post-meta {
   font-size: $small-font-size;
   color: $brand-color;
+}
+
+.post-tags {
+  margin-top: $spacing-unit * 0.25;
+  margin-bottom: $spacing-unit * 0.5;
+
+  $tag-colors: (
+    1: #2a7ae2,
+    2: #e25d2a,
+    3: #a855f7,
+    4: #2ab8e2,
+    5: #e22a6f,
+    6: #2ae27e,
+  );
+
+  .post-tag {
+    display: inline-block;
+    @include relative-font-size(0.75);
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin: 2px 4px 2px 0;
+
+    @each $i, $color in $tag-colors {
+      &:nth-child(6n + #{$i}) {
+        color: $color;
+        border: 1px solid $color;
+      }
+    }
+  }
 }
 
 .post-link {
@@ -788,8 +879,15 @@ table {
       display: block;
       padding: 10px 12px;
       border: 1px solid $border-color-01;
+      transition: border-color 0.2s ease, color 0.2s ease;
+
       &:hover {
         border-color: $border-color-02;
+
+        .fa-github { color: #f0f0f0; }
+        .fa-x-twitter { color: #f0f0f0; }
+        .fa-linkedin { color: #0a66c2; }
+        .fa-bluesky { color: #0085ff; }
       }
     }
   }

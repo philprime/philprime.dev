@@ -3,7 +3,7 @@ layout: post.liquid
 title: "New K3s agent node for our cluster"
 date: 2025-11-23 19:50:00 +0200
 categories: blog
-tags: Kubernetes K3s Hetzner bare-metal vSwitch networking infrastructure
+tags: [Kubernetes, K3s, Networking]
 description: "A comprehensive guide to adding a new K3s agent node to an existing bare-metal Kubernetes cluster on Hetzner, covering OS installation, vSwitch configuration, firewall setup, and network verification."
 excerpt: "Learn how to expand your K3s cluster with a new bare-metal server on Hetzner, including complete networking setup, security hardening, and connectivity testing."
 keywords: "Kubernetes, K3s, bare-metal, Hetzner, vSwitch, VLAN, networking, firewall, cluster, Rocky Linux, infrastructure"

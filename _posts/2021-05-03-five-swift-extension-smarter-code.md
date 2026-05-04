@@ -3,7 +3,7 @@ layout: post.liquid
 title: "5 Swift Extensions to write Smarter Code"
 date: 2021-05-03 17:00:00 +0200
 categories: blog
-tags: Swift iOS programming extensions code-quality best-practices development
+tags: [Swift, Extensions, Code Quality]
 description:
   "Discover 5 powerful Swift extensions that improve code maintainability and readability. Learn practical techniques to
   extend Swift with smart functionality for cleaner iOS development."

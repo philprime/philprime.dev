@@ -3,7 +3,7 @@ layout: post.liquid
 title: "Creating your own Markdown Parser from Scratch in Swift"
 date: 2021-05-11 17:00:00 +0200
 categories: blog
-tags: Swift Markdown parser iOS programming tutorial AST compiler
+tags: [Swift, Markdown, Parser]
 description:
   "Build a complete Markdown parser from scratch in Swift. Learn AST concepts, parsing techniques, and how to convert
   Markdown text into structured data for iOS apps."

@@ -3,11 +3,12 @@ layout: post.liquid
 title: "Building Type-Safe Metrics API in Swift: Part I"
 date: 2026-02-09 09:00:00 +0100
 categories: blog
-tags: Swift SDK Apple Cocoa iOS macOS metrics type-safety API design
+tags: [Swift, Metrics, API Design, Type Safety]
 description: "Explore protocol extensions, enums with associated values, and ExpressibleByStringLiteral to build type-safe Swift APIs."
 excerpt: "Learn how to design type-safe Swift APIs using protocol extensions, enums with associated values, and ExpressibleByStringLiteral. Part I of a two-part series on building the Sentry Metrics API."
 keywords: "Swift API design, type-safe APIs, protocol extensions, Swift enums, ExpressibleByStringLiteral, iOS SDK development, Swift metrics API"
 image: /assets/blog/2026-02-09-building-type-safe-metrics-api-in-swift/hero.webp
+featured: true
 author: Philip Niedertscheider
 series: building-type-safe-metrics-api-in-swift
 series_title: "Building Type-Safe Metrics API in Swift"

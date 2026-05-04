@@ -3,7 +3,7 @@ layout: post.liquid
 title: "Advanced cross-platform apps using local Swift packages and UIKit/AppKit"
 date: 2021-04-19 17:00:00 +0200
 categories: blog
-tags: Swift UIKit AppKit cross-platform SPM Swift-Package-Manager iOS macOS XIB architecture
+tags: [Swift, Cross Platform, UIKit, AppKit]
 description:
   "Learn to build advanced cross-platform iOS/macOS apps using local Swift Package Manager packages with UIKit and
   AppKit. Master modular architecture with shared UI logic and platform-specific interfaces."

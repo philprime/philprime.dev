@@ -3,7 +3,7 @@ layout: post.liquid
 title: "Using App Clips in iOS Games"
 date: 2021-03-22 17:00:00 +0200
 categories: blog
-tags: iOS game App-Clips deep-links NFC QR-codes mobile-games instant-apps
+tags: [iOS, App Clips, Game Design]
 description:
   "Learn how to implement App Clips in iOS games to provide instant access to gameplay without full app downloads. This
   tutorial covers deep links, QR codes, and marketing strategies for mobile games."
