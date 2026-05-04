@@ -606,7 +606,7 @@ $ journalctl -xeu rke2-server
 ```
 
 The most common cause is port `6443` already being in use by an existing k3s or Kubernetes installation.
-Firewall rules blocking required ports can also prevent startup, so check that the vSwitch rule from Lesson 4 is in place.
+Firewall rules blocking required ports can also prevent startup, so check that the vSwitch rule from [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4) is in place.
 Another frequent issue is invalid CIDR format in the dual-stack configuration: IPv4 and IPv6 ranges must be comma-separated without spaces.
 
 ### Dual-Stack Issues

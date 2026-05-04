@@ -51,7 +51,7 @@ flowchart LR
 
 Cluster B is serving all production traffic with three control plane nodes while Cluster A still has Node 1 running k3s.
 The goal of this lesson is to shut down k3s cleanly and remove every trace of it from Node 1.
-Once that is done, Node 1 is ready for a fresh OS install and can join Cluster B as a worker in Lesson 15.
+Once that is done, Node 1 is ready for a fresh OS install and can join Cluster B as a worker in [Lesson 15](/guides/migrating-k3s-to-rke2/lesson-15).
 
 ## Final Backup
 
@@ -123,7 +123,7 @@ $ ls /etc/rancher/ 2>/dev/null
 ```
 
 All four commands should produce no output.
-If any k3s process is still running or a port is still listening, investigate before proceeding — a leftover process could conflict with the RKE2 agent we install in Lesson 15.
+If any k3s process is still running or a port is still listening, investigate before proceeding — a leftover process could conflict with the RKE2 agent we install in [Lesson 15](/guides/migrating-k3s-to-rke2/lesson-15).
 
 {% include alert.liquid.html type='warning' title='Point of No Return' content='
 With k3s uninstalled, there is no rollback to Cluster A.

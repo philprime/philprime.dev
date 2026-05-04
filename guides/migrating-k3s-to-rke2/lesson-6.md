@@ -14,7 +14,7 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2/lesson-6.md
 ---
 
-Canal was installed automatically when RKE2 started in Lesson 5, but it needs verification and hardening before we build on top of it in later lessons.
+Canal was installed automatically when RKE2 started in [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5), but it needs verification and hardening before we build on top of it in later lessons.
 This lesson verifies that dual-stack networking is working, enables WireGuard encryption for inter-node traffic, and configures Calico network policies to secure pod communication.
 
 {% include guide-overview-link.liquid.html %}
@@ -94,7 +94,7 @@ On a private vSwitch this is generally secure enough, but for defense in depth w
 
 ## Verification
 
-Lesson 5 confirmed the node is `Ready` and the cluster CIDRs are configured, but those checks only prove that RKE2 started successfully.
+[Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5) confirmed the node is `Ready` and the cluster CIDRs are configured, but those checks only prove that RKE2 started successfully.
 Canal is responsible for actually assigning pod IPs and routing traffic, so we need to verify that the CNI is functioning before we change its backend to WireGuard.
 
 ### Canal Pod Status
@@ -158,7 +158,7 @@ round-trip min/avg/max = 0.108/0.128/0.148 ms
 ```
 
 These pings traverse Calico's veth and iptables rules on the local node, confirming that intra-node pod routing works for both address families.
-Cross-node traffic through the VXLAN overlay cannot be tested until additional nodes join the cluster in Lesson 11.
+Cross-node traffic through the VXLAN overlay cannot be tested until additional nodes join the cluster in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11).
 
 Clean up the test pod:
 
@@ -504,7 +504,7 @@ Canal enforces these policies through Calico's policy engine, which supports sta
 | Pod-to-pod traffic | `NetworkPolicy`  | Calico (in Canal) |
 | Host-level traffic | Hetzner firewall | Hetzner network   |
 
-Unlike Cilium, Canal does not provide host-level network policies; the Hetzner firewall configured in Lesson 4 serves that role.
+Unlike Cilium, Canal does not provide host-level network policies; the Hetzner firewall configured in [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4) serves that role.
 
 ### Default Deny per Namespace
 
@@ -604,7 +604,7 @@ pod "policy-test" deleted from default namespace
 
 ## Troubleshooting
 
-For Canal pod startup failures and dual-stack IPv6 issues, refer to the troubleshooting section in Lesson 5.
+For Canal pod startup failures and dual-stack IPv6 issues, refer to the troubleshooting section in [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5).
 The sections below cover issues we encountered specific to this lesson's configuration.
 
 ### Network Policy Not Blocking Traffic

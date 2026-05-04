@@ -237,7 +237,7 @@ You can find additional information on the setup of each tool in their respectiv
 
 ## Verify System Readiness
 
-Before proceeding to network configuration in Lesson 3, we verify that the system is properly configured and can communicate with the outside world.
+Before proceeding to network configuration in [Lesson 3](/guides/migrating-k3s-to-rke2/lesson-3), we verify that the system is properly configured and can communicate with the outside world.
 These checks catch common issues like DNS misconfiguration or firewall problems early:
 
 ```bash

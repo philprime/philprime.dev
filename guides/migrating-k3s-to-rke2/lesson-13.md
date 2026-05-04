@@ -14,7 +14,7 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2/lesson-13.md
 ---
 
-Lesson 12 brought the cluster to three control plane nodes and verified that etcd, Canal, and WireGuard are healthy across all of them.
+[Lesson 12](/guides/migrating-k3s-to-rke2/lesson-12) brought the cluster to three control plane nodes and verified that etcd, Canal, and WireGuard are healthy across all of them.
 That confirms the components are running — but running is not the same as highly available.
 This lesson tests the cluster's ability to survive individual node failures, which is the actual definition of HA.
 
@@ -31,11 +31,11 @@ A Kubernetes control plane has four critical components, each with its own HA me
 | Controller Manager | Leader election    | Standby takes over     |
 | Scheduler          | Leader election    | Standby takes over     |
 
-etcd requires a strict majority — with three members, two must be alive to maintain quorum.
+etcd requires a strict majority, meaning with three members, two must be alive to maintain quorum.
 The API server runs independently on each node, so clients can connect to any of the three.
-The controller manager and scheduler use lease-based leader election — only one instance is active at a time, with the others on standby ready to acquire the lease if the leader disappears.
+The controller manager and scheduler use lease-based leader election and only one instance is active at a time, with the others on standby ready to acquire the lease if the leader disappears.
 
-The verification in Lesson 12 confirmed these components are present and started.
+The verification in [Lesson 12](/guides/migrating-k3s-to-rke2/lesson-12) confirmed these components are present and started.
 The tests in this lesson confirm they actually fail over correctly.
 
 ## Verifying API Server Redundancy

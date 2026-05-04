@@ -14,7 +14,7 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2/lesson-7.md
 ---
 
-With Canal networking verified and network policies in place from Lesson 6, Cluster B can route traffic between pods and enforce security boundaries.
+With Canal networking verified and network policies in place from [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6), Cluster B can route traffic between pods and enforce security boundaries.
 The next layer our cluster needs before accepting workloads is persistent storage.
 We configure two storage classes in this lesson: Longhorn for replicated volumes and local-path-provisioner for fast local storage.
 
@@ -183,7 +183,7 @@ The CoreDNS replica warning is expected on a single-node cluster and resolves on
 
 ## Installing Longhorn
 
-RKE2 includes a Helm controller that automatically installs and manages Helm charts from manifest files, the same mechanism we used for the Canal `HelmChartConfig` in Lesson 6.
+RKE2 includes a Helm controller that automatically installs and manages Helm charts from manifest files, the same mechanism we used for the Canal `HelmChartConfig` in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6).
 For external charts like Longhorn, we use a `HelmChart` resource instead of `HelmChartConfig`.
 
 We start with a single node, so `defaultReplicaCount` is set to `1` because replicas require separate nodes to be useful.
@@ -395,7 +395,7 @@ $ kubectl delete pvc storage-test
 ## Accessing the Longhorn UI
 
 Longhorn ships with a web UI for managing volumes, viewing replica status, and troubleshooting storage issues.
-The UI is not exposed publicly because our firewall configuration from Lesson 4 blocks all inbound traffic except SSH.
+The UI is not exposed publicly because our firewall configuration from [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4) blocks all inbound traffic except SSH.
 Instead, we use SSH port forwarding to tunnel the UI to our local machine.
 
 The approach requires two forwarding hops: one SSH tunnel from your workstation to the node, and one `kubectl port-forward` inside the SSH session to reach the Longhorn service.

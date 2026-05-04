@@ -16,7 +16,7 @@ repo_file_path: guides/migrating-k3s-to-rke2/lesson-12.md
 
 Node 2 follows the same migration path as Node 3 — backup, drain, reinstall, join.
 Rather than repeating every step in detail, this lesson focuses on what changes: the impact on Cluster A's remaining capacity, the configuration values specific to Node 2, and the significance of reaching three control plane nodes for etcd quorum.
-Refer to Lesson 11 for full explanations of each stage.
+Refer to [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) for full explanations of each stage.
 
 {% include guide-overview-link.liquid.html %}
 
@@ -183,7 +183,7 @@ The node contacts Node 4's supervisor API on port `9345` and retrieves cluster c
 It then joins the etcd cluster as the third member — bringing the cluster to quorum tolerance for the first time.
 Canal deploys automatically and establishes WireGuard tunnels to both Node 3 and Node 4.
 
-Unlike the Node 3 join in Lesson 11, there should be no WireGuard/VXLAN backend mismatch because all existing nodes are already running the WireGuard backend.
+Unlike the Node 3 join in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11), there should be no WireGuard/VXLAN backend mismatch because all existing nodes are already running the WireGuard backend.
 If we do see "no route to host" errors, restart the Canal DaemonSet as described in [Lesson 11's troubleshooting section](/guides/migrating-k3s-to-rke2/lesson-11#wireguard--vxlan-backend-mismatch).
 
 ## Verification
@@ -373,7 +373,7 @@ node4   True    true              True          4h
 ```
 
 With three storage nodes available, Longhorn can now replicate volumes across different nodes for redundancy.
-We set `defaultReplicaCount` to `1` in Lesson 7 because only a single node existed at the time.
+We set `defaultReplicaCount` to `1` in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7) because only a single node existed at the time.
 Now we update the Longhorn `HelmChart` manifest to increase the replica count to `2`:
 
 ```yaml

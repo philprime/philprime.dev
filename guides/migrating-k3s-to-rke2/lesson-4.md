@@ -14,7 +14,7 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2/lesson-4.md
 ---
 
-With the vSwitch network in place from Lesson 3, our nodes can reach each other over a private Layer 2 link.
+With the vSwitch network in place from [Lesson 3](/guides/migrating-k3s-to-rke2/lesson-3), our nodes can reach each other over a private Layer 2 link.
 Traffic on that link still passes through Hetzner's firewall infrastructure, so we need explicit rules before RKE2 components can communicate reliably.
 
 {% include guide-overview-link.liquid.html %}

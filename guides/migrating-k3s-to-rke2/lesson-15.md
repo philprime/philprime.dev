@@ -16,7 +16,7 @@ repo_file_path: guides/migrating-k3s-to-rke2/lesson-15.md
 
 Node 1 follows the same OS preparation as the previous node migrations — install Rocky Linux, configure networking, and set up the firewall.
 The key difference is that Node 1 joins as a worker (agent) rather than a control plane node (server), so it does not run etcd, the API server, or the scheduler.
-We covered the full OS setup process in Lesson 11.
+We covered the full OS setup process in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11).
 
 {% include guide-overview-link.liquid.html %}
 
@@ -217,7 +217,7 @@ The output should list three peers — one for each control plane node — each 
 ## Preparing Longhorn Storage
 
 Longhorn needs system-level dependencies on every node before it can schedule replicas.
-The process is identical to the other nodes — we covered what each dependency does in Lesson 7.
+The process is identical to the other nodes — we covered what each dependency does in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7).
 
 Agent nodes do not have a kubeconfig file — only control plane nodes store one at `/etc/rancher/rke2/rke2.yaml`.
 Run the `longhornctl` commands from any control plane node, where they will install dependencies across all nodes in the cluster including Node 1.

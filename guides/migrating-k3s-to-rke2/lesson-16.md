@@ -59,7 +59,7 @@ flowchart TB
 | Ingress      | Traefik + Hetzner Load Balancer |
 | Certificates | cert-manager with Let's Encrypt |
 
-The three control plane nodes provide etcd quorum tolerance — any single node can go down without affecting cluster operations.
+The three control plane nodes provide etcd quorum tolerance, allowing any single node to go down without affecting cluster operations.
 Node 1 serves as a dedicated worker, keeping workload scheduling separate from control plane responsibilities.
 All four nodes participate in the WireGuard mesh and Longhorn storage pool.
 
@@ -89,7 +89,7 @@ Check whether the upstream runc regression has been fixed in the new RKE2 releas
 
 ### Backup Strategy
 
-We configured etcd snapshots to run every 6 hours in Lesson 5, but a complete backup strategy should also cover Longhorn volumes and application data.
+We configured etcd snapshots to run every 6 hours in [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5), but a complete backup strategy should also cover Longhorn volumes and application data.
 Velero can snapshot both Kubernetes resources and persistent volumes to an external object store like S3, providing disaster recovery across the entire cluster state.
 
 ## More Guides

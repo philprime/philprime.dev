@@ -27,12 +27,12 @@ This makes TLS certificate management fully declarative, matching the way we man
 
 cert-manager supports multiple issuers, but the most common setup for public-facing services uses the ACME protocol with [Let's Encrypt](https://letsencrypt.org/).
 ACME proves domain ownership through a challenge — in our case, the HTTP-01 challenge, where cert-manager temporarily creates an ingress route that responds to a validation request from Let's Encrypt.
-Once validation succeeds, Let's Encrypt issues a certificate and cert-manager stores it in a Secret that Traefik (configured in Lesson 8) can use to terminate TLS.
+Once validation succeeds, Let's Encrypt issues a certificate and cert-manager stores it in a Secret that Traefik (configured in [Lesson 8](/guides/migrating-k3s-to-rke2/lesson-8)) can use to terminate TLS.
 
 ### Why Install It as a Default Manifest
 
 cert-manager sits at the infrastructure layer — it must be running before any workload that needs TLS can be deployed.
-Placing it in `/var/lib/rancher/rke2/server/manifests/` ensures it is installed automatically when the cluster starts, following the same pattern used for Longhorn in Lesson 7 and Traefik in Lesson 8.
+Placing it in `/var/lib/rancher/rke2/server/manifests/` ensures it is installed automatically when the cluster starts, following the same pattern used for Longhorn in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7) and Traefik in [Lesson 8](/guides/migrating-k3s-to-rke2/lesson-8).
 This eliminates ordering problems where a deployment arrives before its certificate issuer is available.
 
 ### Staging vs. Production Issuers
@@ -220,7 +220,7 @@ If registration failed, the events will contain the error message from the ACME 
 ### Test Certificate Issuance
 
 To verify the full chain works — from certificate request through ACME challenge to signed certificate — we create a test `Certificate` resource.
-This requires a domain name that resolves to the cluster's ingress IP (the Hetzner Load Balancer configured in Lesson 8):
+This requires a domain name that resolves to the cluster's ingress IP (the Hetzner Load Balancer configured in [Lesson 8](/guides/migrating-k3s-to-rke2/lesson-8)):
 
 ```bash
 $ cat <<EOF | kubectl apply -f -
