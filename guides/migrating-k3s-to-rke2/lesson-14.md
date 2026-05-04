@@ -14,15 +14,15 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2/lesson-14.md
 ---
 
-This guide covers the infrastructure migration — building Cluster B, moving nodes, and configuring the platform.
-The actual workload migration — deploying applications, secrets, and persistent data to Cluster B — depends entirely on your setup and must be completed before this lesson.
+This guide covers the infrastructure migration: building Cluster B, moving nodes, and configuring the platform.
+The actual workload migration (deploying applications, secrets, and persistent data to Cluster B) depends entirely on your setup and must be completed before this lesson.
 
 {% include guide-overview-link.liquid.html %}
 
 {% include alert.liquid.html type='warning' title='All Workloads Must Be Migrated' content='
 Do not proceed until all applications, persistent data, and DNS records have been moved to Cluster B.
 How you accomplish this depends on your deployment method (Helm, GitOps, manual manifests) and data migration strategy (database replication, backup/restore, volume copy).
-Give Cluster B at least 24-48 hours of serving production traffic before decommissioning — this allows time for issues to surface that only appear under real load.
+Give Cluster B at least 24-48 hours of serving production traffic before decommissioning. This allows time for issues to surface that only appear under real load.
 ' %}
 
 ## Current State
@@ -91,7 +91,7 @@ $ sudo systemctl stop k3s
 $ sudo systemctl disable k3s
 ```
 
-The k3s uninstall script removes all components — binaries, systemd services, configuration under `/etc/rancher/k3s/`, data under `/var/lib/rancher/k3s/`, CNI configurations, iptables rules, and container images.
+The k3s uninstall script removes all components: binaries, systemd services, configuration under `/etc/rancher/k3s/`, data under `/var/lib/rancher/k3s/`, CNI configurations, iptables rules, and container images.
 
 ```bash
 $ sudo /usr/local/bin/k3s-uninstall.sh
@@ -123,7 +123,7 @@ $ ls /etc/rancher/ 2>/dev/null
 ```
 
 All four commands should produce no output.
-If any k3s process is still running or a port is still listening, investigate before proceeding — a leftover process could conflict with the RKE2 agent we install in [Lesson 15](/guides/migrating-k3s-to-rke2/lesson-15).
+If any k3s process is still running or a port is still listening, investigate before proceeding. A leftover process could conflict with the RKE2 agent we install in [Lesson 15](/guides/migrating-k3s-to-rke2/lesson-15).
 
 {% include alert.liquid.html type='warning' title='Point of No Return' content='
 With k3s uninstalled, there is no rollback to Cluster A.

@@ -15,7 +15,7 @@ repo_file_path: guides/migrating-k3s-to-rke2/lesson-16.md
 ---
 
 With Node 1 added as a worker in the previous lesson, the full 4-node RKE2 cluster is operational.
-What started as a single k3s cluster has become a highly available control plane with encrypted pod networking and replicated storage — all without taking the old cluster offline until the new one was ready to serve traffic.
+What started as a single k3s cluster has become a highly available control plane with encrypted pod networking and replicated storage, all without taking the old cluster offline until the new one was ready to serve traffic.
 
 {% include guide-overview-link.liquid.html %}
 
@@ -70,7 +70,7 @@ With the cluster running, there are several directions to take it further.
 ### Monitoring and Observability
 
 The cluster currently has no visibility into resource usage, pod health trends, or alerting.
-Setting up Prometheus and Grafana — either through the Rancher Monitoring stack or a standalone kube-prometheus-stack Helm chart — provides dashboards for cluster health, resource consumption, and application metrics.
+Setting up Prometheus and Grafana (either through the Rancher Monitoring stack or a standalone kube-prometheus-stack Helm chart) provides dashboards for cluster health, resource consumption, and application metrics.
 Pairing this with Alertmanager means we get notified before problems become outages.
 
 ### GitOps
@@ -85,7 +85,7 @@ RKE2 releases new versions regularly with security patches and Kubernetes update
 The [System Upgrade Controller](https://docs.rke2.io/upgrade/automated_upgrade) automates rolling upgrades across the cluster, draining nodes one at a time and upgrading them in sequence without downtime.
 
 An automated upgrade replaces the RKE2 data directory, which means the runc v1.3.4 workaround from [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5#patching-runc-workaround-for-container-exec-failures) will be overwritten.
-Check whether the upstream runc regression has been fixed in the new RKE2 release before upgrading — if not, reapply the patch on each node after the upgrade completes.
+Check whether the upstream runc regression has been fixed in the new RKE2 release before upgrading. If not, reapply the patch on each node after the upgrade completes.
 
 ### Backup Strategy
 

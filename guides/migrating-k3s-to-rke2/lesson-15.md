@@ -14,7 +14,7 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2/lesson-15.md
 ---
 
-Node 1 follows the same OS preparation as the previous node migrations — install Rocky Linux, configure networking, and set up the firewall.
+Node 1 follows the same OS preparation as the previous node migrations: install Rocky Linux, configure networking, and set up the firewall.
 The key difference is that Node 1 joins as a worker (agent) rather than a control plane node (server), so it does not run etcd, the API server, or the scheduler.
 We covered the full OS setup process in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11).
 
@@ -44,7 +44,7 @@ Node 1 is a blank server ready for a fresh OS install.
 
 ## Server vs Agent
 
-The previous nodes all joined as `rke2-server` — running the full control plane stack alongside workloads.
+The previous nodes all joined as `rke2-server`, running the full control plane stack alongside workloads.
 Node 1 joins as `rke2-agent`, which is a lighter process that only runs the components needed to schedule and execute pods.
 
 | Component          | Server (Nodes 2-4) | Agent (Node 1) |
@@ -58,13 +58,13 @@ Node 1 joins as `rke2-agent`, which is a lighter process that only runs the comp
 | Scheduler          | Yes                | No             |
 
 A worker node only needs the cluster token and the address of a control plane node to join.
-The configuration is simpler — no `tls-san`, no security settings, no authentication config.
+The configuration is simpler: no `tls-san`, no security settings, no authentication config.
 
 ## Preparing the OS
 
-The OS preparation follows the same process we used for the other nodes in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) — install Rocky Linux 10, configure dual-stack networking with `10.1.0.11` and `fd00::11`, and set up the Hetzner firewall.
+The OS preparation follows the same process we used for the other nodes in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11): install Rocky Linux 10, configure dual-stack networking with `10.1.0.11` and `fd00::11`, and set up the Hetzner firewall.
 
-The firewall rules are identical to the other nodes — the same five rules from [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4) apply to both control plane and worker nodes, since all service traffic arrives via the load balancer over the vSwitch.
+The firewall rules are identical to the other nodes. The same five rules from [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4) apply to both control plane and worker nodes, since all service traffic arrives via the load balancer over the vSwitch.
 
 ## Installing RKE2 Agent
 
@@ -84,7 +84,7 @@ We create the configuration directory next:
 $ sudo mkdir -p /etc/rancher/rke2
 ```
 
-The agent needs only two things — where to connect and how to authenticate.
+The agent needs only two things: where to connect and how to authenticate.
 Retrieve the cluster token from any control plane node:
 
 ```bash
@@ -108,7 +108,7 @@ kubelet-arg:
   - "resolv-conf=/etc/rancher/rke2/resolv.conf"
 ```
 
-The `server` address points to Node 4's supervisor API on port `9345` — the same endpoint used when joining the other nodes.
+The `server` address points to Node 4's supervisor API on port `9345`, the same endpoint used when joining the other nodes.
 
 Create the clean resolv.conf to isolate pod DNS from Tailscale on the host, as in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6#isolating-host-dns-from-pod-dns):
 
@@ -135,7 +135,7 @@ $ sudo systemctl stop rke2-agent.service
 ```
 
 The data directory now exists at `/var/lib/rancher/rke2/data/`, so we can apply the runc v1.3.4 patch from [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5#patching-runc-workaround-for-container-exec-failures).
-Download the binary and replace the bundled runc — the same steps used on the control plane nodes.
+Download the binary and replace the bundled runc, following the same steps used on the control plane nodes.
 
 Start the agent again with the patched runc:
 
@@ -182,7 +182,7 @@ rke2-canal-lbvzm   2/2     Running   0          23h     10.1.0.13   node3   <non
 rke2-canal-2p4sf   2/2     Running   0          23h     10.1.0.14   node4   <none>           <none>
 ```
 
-Four Canal pods should appear — one per node, all `Running`.
+Four Canal pods should appear, one per node, all `Running`.
 
 On Node 1, we check the WireGuard interface to confirm tunnels to all three control plane nodes:
 
@@ -212,14 +212,14 @@ peer: GcVgmEwB5ZFmx2VN9DcxqmqY3gFLj0zM9YJU78barSs=
   transfer: 159.75 KiB received, 97.62 KiB sent
 ```
 
-The output should list three peers — one for each control plane node — each with a recent handshake timestamp.
+The output should list three peers (one for each control plane node), each with a recent handshake timestamp.
 
 ## Preparing Longhorn Storage
 
 Longhorn needs system-level dependencies on every node before it can schedule replicas.
-The process is identical to the other nodes — we covered what each dependency does in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7).
+The process is identical to the other nodes. We covered what each dependency does in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7).
 
-Agent nodes do not have a kubeconfig file — only control plane nodes store one at `/etc/rancher/rke2/rke2.yaml`.
+Agent nodes do not have a kubeconfig file. Only control plane nodes store one at `/etc/rancher/rke2/rke2.yaml`.
 Run the `longhornctl` commands from any control plane node, where they will install dependencies across all nodes in the cluster including Node 1.
 
 On a control plane node (Node 2, 3, or 4), install `longhornctl` if it is not already present and run the preflight installer:

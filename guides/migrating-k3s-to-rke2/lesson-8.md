@@ -23,7 +23,7 @@ This lesson deploys Traefik as a DaemonSet across all nodes and places a Hetzner
 
 Our cluster runs on dedicated servers at Hetzner, each with its own public IP address.
 In the simplest ingress setup, a DNS record points at one node's IP and the ingress controller runs there.
-If that node goes down, every service behind it becomes unreachable until the DNS record is updated and propagation completes — which can take minutes to hours depending on TTL settings and resolver caching.
+If that node goes down, every service behind it becomes unreachable until the DNS record is updated and propagation completes, which can take minutes to hours depending on TTL settings and resolver caching.
 
 Running the ingress controller on every node helps, but does not solve the problem on its own.
 DNS still points to a specific set of IPs, and clients cache those records.
@@ -32,11 +32,11 @@ That is the role of a load balancer.
 
 ### Virtual IPs and Why They Do Not Work Here
 
-The classic on-premise approach to high availability is a virtual IP (VIP) that floats between nodes using VRRP — typically implemented with Keepalived and HAProxy.
+The classic on-premise approach to high availability is a virtual IP (VIP) that floats between nodes using VRRP, typically implemented with Keepalived and HAProxy.
 One node holds the VIP and serves traffic.
 If it fails, another node claims the VIP via a gratuitous ARP announcement, and traffic continues within seconds.
 
-This approach requires all participating nodes to share a Layer 2 broadcast domain — the same switch or VLAN — so the ARP announcement reaches the network's switches and updates their MAC tables.
+This approach requires all participating nodes to share a Layer 2 broadcast domain (the same switch or VLAN), so the ARP announcement reaches the network's switches and updates their MAC tables.
 Our Hetzner dedicated servers sit on the public internet, where gratuitous ARP packets cannot be sent between hosts.
 The vSwitch connecting our servers does operate at Layer 2, but it assigns private IPs (`10.x.x.x`) that are not routable from the internet.
 A VIP on the vSwitch would be reachable between nodes but invisible to external clients.
@@ -46,7 +46,7 @@ Due to our hosting environment, this approach is not viable for us.
 
 ### Hetzner Failover IPs
 
-Hetzner offers failover IPs — public addresses that can be reassigned between servers via an API call.
+Hetzner offers failover IPs, which are public addresses that can be reassigned between servers via an API call.
 This sounds like a managed VIP, but the switchover is not instant.
 The API call triggers a network reconfiguration on Hetzner's side that takes several seconds to minutes, during which traffic to that IP is dropped entirely.
 For a zero-downtime migration, even a brief gap in availability is unacceptable, so this approach is also not suitable.
@@ -57,7 +57,7 @@ Two broad strategies exist for routing around failed nodes.
 
 #### DNS Failover
 
-Multiple A records are published — one per node — and an external health checker removes records for unhealthy nodes.
+Multiple A records are published (one per node) and an external health checker removes records for unhealthy nodes.
 The weakness is propagation time.
 Even with a low TTL, recursive resolvers and client-side caches may hold stale records for minutes.
 During that window, some clients continue sending traffic to the failed node and receive errors, with no way to force an immediate refresh.
@@ -66,7 +66,7 @@ During that window, some clients continue sending traffic to the failed node and
 
 Traffic is sent through a load balancer, which operates at a different layer.
 The load balancer owns a single public IP, accepts all incoming connections, and forwards them to healthy backends.
-When a health check fails, the load balancer stops sending traffic to that backend within seconds — completely transparent to clients, who never see the individual node IPs.
+When a health check fails, the load balancer stops sending traffic to that backend within seconds, completely transparent to clients, who never see the individual node IPs.
 
 A load balancer can also become a single point of failure if it goes down.
 That is why we need a highly available, managed load balancer that can withstand failures without impacting traffic.
@@ -129,16 +129,16 @@ This happens in three layers.
 flowchart LR
   Client["Client<br/>:443"]
 
-  subgraph LB["Layer 1 — Load Balancer"]
+  subgraph LB["Layer 1: Load Balancer"]
     LBSvc["Hetzner Cloud LB<br/>:443 → :30443"]
   end
 
-  subgraph Node["Layer 2 — Kubernetes Node"]
+  subgraph Node["Layer 2: Kubernetes Node"]
     NP["NodePort Service<br/>:30443"]
     Traefik["Traefik Pod<br/>:8443"]
   end
 
-  subgraph Backends["Layer 3 — Backend Pods"]
+  subgraph Backends["Layer 3: Backend Pods"]
     direction TB
     SvcA["Service A"]
     SvcB["Service B"]
@@ -180,7 +180,7 @@ A DaemonSet guarantees exactly one Traefik pod per node, which makes every node 
 | Resource predictability | Variable                       | Consistent              |
 
 With a Deployment, the scheduler might place multiple ingress pods on the same node, leaving other nodes unable to serve traffic.
-A DaemonSet avoids this entirely — when a new node joins the cluster, it automatically receives its own Traefik instance.
+A DaemonSet avoids this entirely. When a new node joins the cluster, it automatically receives its own Traefik instance.
 
 ### Helm Chart vs Operator
 
@@ -189,12 +189,12 @@ The operator adds custom resource definitions like `IngressRoute` and `Middlewar
 
 For our use case, standard `Ingress` resources are sufficient.
 We do not need dynamic middleware management or Traefik-specific routing CRDs.
-The operator would add complexity — extra CRDs to maintain, another controller to monitor — without providing any benefit we actually need.
+The operator would add complexity (extra CRDs to maintain, another controller to monitor) without providing any benefit we actually need.
 The Helm chart gives us full control over Traefik's deployment configuration while keeping the stack simple.
 
 ## Installing Traefik
 
-RKE2 includes a Helm controller that automatically installs and manages Helm charts from manifest files — the same mechanism we used for Longhorn in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7) and the Canal `HelmChartConfig` in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6).
+RKE2 includes a Helm controller that automatically installs and manages Helm charts from manifest files, the same mechanism we used for Longhorn in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7) and the Canal `HelmChartConfig` in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6).
 For external charts like Traefik, we use a `HelmChart` resource that specifies the repository, chart name, version, and values.
 
 ### Configuration
@@ -245,7 +245,7 @@ spec:
     tolerations:
       - operator: Exists
 
-    # Conservative limits — Traefik is lightweight for simple routing
+    # Conservative limits, since Traefik is lightweight for simple routing
     resources:
       requests:
         cpu: "100m"
@@ -263,7 +263,7 @@ spec:
         publishedService:
           enabled: true
 
-    # Disable the Traefik dashboard — not needed in production
+    # Disable the Traefik dashboard since it is not needed in production
     ingressRoute:
       dashboard:
         enabled: false
@@ -323,7 +323,7 @@ The `PORT(S)` column confirms that external ports `80` and `443` map to NodePort
 The load balancer sits in front of the cluster and provides a single static IP address for all ingress traffic.
 It distributes requests across the cluster nodes and removes unhealthy nodes from the rotation automatically.
 
-The Hetzner Cloud Load Balancer is a managed service that lives in the Hetzner Cloud platform — separate from the dedicated servers that run our cluster.
+The Hetzner Cloud Load Balancer is a managed service that lives in the Hetzner Cloud platform, separate from the dedicated servers that run our cluster.
 We manage it through the `hcloud` CLI, though the Hetzner Cloud Console web interface works as well.
 
 ### Installing the Hetzner Cloud CLI
@@ -356,7 +356,7 @@ For other platforms and methods, see the [official setup guide](https://github.c
 
 Hetzner Cloud organizes resources into projects.
 Each project has its own set of servers, load balancers, networks, and API tokens.
-A clear naming convention helps when managing multiple clusters — for example, `k8s-prod-hel1-2` identifies the second production cluster in the Helsinki region.
+A clear naming convention helps when managing multiple clusters. For example, `k8s-prod-hel1-2` identifies the second production cluster in the Helsinki region.
 
 We create projects in the [Hetzner Cloud Console](https://console.hetzner.cloud):
 
@@ -365,7 +365,7 @@ We create projects in the [Hetzner Cloud Console](https://console.hetzner.cloud)
 3. Open the new project, navigate to **Security** then **API Tokens**
 4. Click **Generate API Token**, select **Read & Write** permissions, and copy the token
 
-The token is shown only once — store it securely.
+The token is shown only once, so store it securely.
 
 ### Setting Up a CLI Context
 
@@ -417,7 +417,7 @@ ID   NAME   IP RANGE   SERVERS   AGE
 
 In our case no Cloud Network exists yet, so we need to create one and connect it to the vSwitch.
 A Cloud Network is Hetzner's virtual network for Cloud resources.
-On its own it cannot reach dedicated servers — we bridge the two by adding a vSwitch subnet.
+On its own it cannot reach dedicated servers, so we bridge the two by adding a vSwitch subnet.
 
 Create the Cloud Network with an IP range that covers the vSwitch addresses.
 The network range must be broad enough to contain the vSwitch subnet.
@@ -446,7 +446,7 @@ Subnet added to Network 11937387
 
 The `--network-zone` must match the region where the dedicated servers are located.
 
-The load balancer also needs a cloud type subnet to receive an IP from — it cannot use the vSwitch subnet.
+The load balancer also needs a cloud type subnet to receive an IP from, since it cannot use the vSwitch subnet.
 Add one to the same network:
 
 ```bash
@@ -524,12 +524,12 @@ The third service forwards port `6443` directly to the Kubernetes API server, wh
 Worker nodes do not run the API server, so the health check on port `6443` naturally excludes them from the rotation.
 
 Health checks ensure the load balancer only sends traffic to nodes where Traefik is responding.
-Both web services enable proxy protocol so the load balancer prepends a header with the real client IP — without it, Traefik would only see the load balancer's private address as the source.
+Both web services enable proxy protocol so the load balancer prepends a header with the real client IP. Without it, Traefik would only see the load balancer's private address as the source.
 
 The health checks use TCP rather than HTTP.
 Since proxy protocol is enabled, Traefik expects a PROXY header as the first bytes of every connection from the load balancer's IP.
 The load balancer's health check probes do not include this header, so an HTTP health check would fail to parse.
-A TCP health check only verifies that the port is open — the TCP handshake completes at the kernel level before Traefik's proxy protocol parsing, so it works correctly:
+A TCP health check only verifies that the port is open. The TCP handshake completes at the kernel level before Traefik's proxy protocol parsing, so it works correctly:
 
 ```bash
 $ hcloud load-balancer update-service k8s-ingress \
@@ -565,7 +565,7 @@ $ hcloud load-balancer update-service k8s-ingress \
 Service 6443 on Load Balancer 5820086 was updated
 ```
 
-The API server service does not use proxy protocol — the Kubernetes API server does not understand it and does not need real client IPs from the load balancer.
+The API server service does not use proxy protocol. The Kubernetes API server does not understand it and does not need real client IPs from the load balancer.
 Authentication is handled via bearer tokens and certificates, not source IP addresses.
 
 With three retries at 15-second intervals, a failing node is removed from the rotation within 45 seconds.
@@ -625,7 +625,7 @@ $ curl -sk https://${LB_IP}:6443/readyz
 ok
 ```
 
-The `-s` flag silences progress output and `-k` skips TLS verification — this is acceptable here because we are testing connectivity, not establishing a trusted connection.
+The `-s` flag silences progress output and `-k` skips TLS verification. This is acceptable here because we are testing connectivity, not establishing a trusted connection.
 All subsequent `kubectl` access uses proper certificate validation.
 
 A response of `ok` confirms that the load balancer is forwarding port `6443` to a healthy control plane node and the API server certificate includes the LB IP in its SANs.
@@ -638,7 +638,7 @@ Unauthenticated requests are rejected by the API server, but reducing exposure l
 
 ### Testing End-to-End
 
-To confirm the full traffic path works — from the internet through the load balancer, into the NodePort, and to a backend pod via Traefik — we deploy a temporary test service behind an Ingress resource.
+To confirm the full traffic path works (from the internet through the load balancer, into the NodePort, and to a backend pod via Traefik), we deploy a temporary test service behind an Ingress resource.
 The [nginxdemos/hello](https://github.com/nginxinc/NGINX-Demos/tree/master/nginx-hello) image returns the server name and pod IP in plain text, which makes it easy to verify routing without parsing HTML:
 
 ```bash
@@ -710,7 +710,7 @@ $ kubectl describe pod -n kube-system -l app.kubernetes.io/name=traefik
 $ kubectl logs -n kube-system -l app.kubernetes.io/name=traefik
 ```
 
-Common causes include port conflicts — another service already bound to `30080` or `30443` — and missing tolerations preventing scheduling on control plane nodes.
+Common causes include port conflicts (another service already bound to `30080` or `30443`) and missing tolerations preventing scheduling on control plane nodes.
 
 ### Load Balancer Shows Unhealthy Targets
 
@@ -721,7 +721,7 @@ If the Hetzner load balancer reports targets as unhealthy, work through these ch
 The most common cause of unhealthy targets is a missing route for the cloud subnet.
 The load balancer's private IP (`10.0.0.2`) lives on the cloud subnet (`10.0.0.0/24`), which is separate from the vSwitch subnet (`10.1.0.0/16`).
 Without a route via the Cloud Network gateway (`10.1.0.1`), the node sends health check responses to the wrong destination and the handshake never completes.
-The Hetzner firewall must also allow traffic from this subnet — our Rule #1 uses `10.0.0.0/8` to cover both the vSwitch and the cloud subnet in a single rule, as explained in [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4).
+The Hetzner firewall must also allow traffic from this subnet. Our Rule #1 uses `10.0.0.0/8` to cover both the vSwitch and the cloud subnet in a single rule, as explained in [Lesson 4](/guides/migrating-k3s-to-rke2/lesson-4).
 
 Verify the route exists:
 
@@ -759,7 +759,7 @@ Testing 10.1.0.14...
 404
 ```
 
-A `404` response confirms Traefik is responding on that node — the "not found" status is expected because no Ingress routes are defined on the `web` entrypoint.
+A `404` response confirms Traefik is responding on that node. The "not found" status is expected because no Ingress routes are defined on the `web` entrypoint.
 If the response is a connection refused, check that the Traefik pod is running on that node and the firewall allows traffic on the NodePort range.
 Some nodes are expected to fail as they have not been migrated yet.
 

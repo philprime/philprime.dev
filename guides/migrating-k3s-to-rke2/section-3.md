@@ -14,7 +14,7 @@ repo_file_path: guides/migrating-k3s-to-rke2/section-3.md
 ---
 
 This section covers the most critical phase of the migration: moving nodes from the k3s cluster to RKE2.
-Each node follows the same pattern — analyze workloads, create backups, drain, reinstall the OS, and join RKE2.
+Each node follows the same pattern: analyze workloads, create backups, drain, reinstall the OS, and join RKE2.
 
 ## Topics Covered
 

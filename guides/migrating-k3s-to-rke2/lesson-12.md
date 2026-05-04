@@ -14,7 +14,7 @@ guide_lesson_conclusion: >
 repo_file_path: guides/migrating-k3s-to-rke2/lesson-12.md
 ---
 
-Node 2 follows the same migration path as Node 3 — backup, drain, reinstall, join.
+Node 2 follows the same migration path as Node 3: backup, drain, reinstall, join.
 Rather than repeating every step in detail, this lesson focuses on what changes: the impact on Cluster A's remaining capacity, the configuration values specific to Node 2, and the significance of reaching three control plane nodes for etcd quorum.
 Refer to [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) for full explanations of each stage.
 
@@ -59,7 +59,7 @@ This majority is called quorum.
 | 3     | 2             | 1        | HA        |
 | 5     | 3             | 2        | Better HA |
 
-With only two nodes, losing either one breaks quorum — the cluster becomes read-only and eventually stops serving requests entirely.
+With only two nodes, losing either one breaks quorum. The cluster becomes read-only and eventually stops serving requests entirely.
 With three nodes, one can fail while the remaining two still form a majority and continue operating normally.
 This is why reaching three control plane nodes is the critical milestone for production readiness.
 
@@ -106,7 +106,7 @@ Proceed with Node 2 installation promptly.
 
 ### Preparing the OS
 
-The OS preparation follows the same process used for Node 3 in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) — install Rocky Linux 10, configure dual-stack networking with `10.1.0.12` and `fd00::12`, and set up the Hetzner firewall.
+The OS preparation follows the same process used for Node 3 in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11): install Rocky Linux 10, configure dual-stack networking with `10.1.0.12` and `fd00::12`, and set up the Hetzner firewall.
 
 ### Installing and Configuring RKE2
 
@@ -169,7 +169,7 @@ tls-san:
   - cluster.yourdomain.com
 ```
 
-The `00-join.yaml`, `30-security.yaml`, `40-authentication.yaml`, and `auth-config.yaml` files are identical to Node 3 — see [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) for their contents.
+The `00-join.yaml`, `30-security.yaml`, `40-authentication.yaml`, and `auth-config.yaml` files are identical to Node 3. See [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) for their contents.
 
 ### Starting RKE2
 
@@ -180,7 +180,7 @@ $ sudo journalctl -u rke2-server -f
 
 When Node 2 starts, several things happen in sequence.
 The node contacts Node 4's supervisor API on port `9345` and retrieves cluster certificates.
-It then joins the etcd cluster as the third member — bringing the cluster to quorum tolerance for the first time.
+It then joins the etcd cluster as the third member, bringing the cluster to quorum tolerance for the first time.
 Canal deploys automatically and establishes WireGuard tunnels to both Node 3 and Node 4.
 
 Unlike the Node 3 join in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11), there should be no WireGuard/VXLAN backend mismatch because all existing nodes are already running the WireGuard backend.
@@ -211,7 +211,7 @@ yyyy, started, node3-xxxx, https://10.1.0.13:2380, https://10.1.0.13:2379, false
 zzzz, started, node4-xxxx, https://10.1.0.14:2380, https://10.1.0.14:2379, false
 ```
 
-The last column is the learner flag — `false` means the member is a full voting participant.
+The last column is the learner flag; `false` means the member is a full voting participant.
 We can also check cluster health to confirm all endpoints are responsive:
 
 ```bash
@@ -235,7 +235,7 @@ rke2-canal-ntzcl   2/2     Running   0          4d1h    10.1.0.13   node3   <non
 rke2-canal-sk6np   2/2     Running   0          2m19s   10.1.0.12   node2   <none>           <none>
 ```
 
-Three pods should appear — one per node, all in `Running` state.
+Three pods should appear, one per node, all in `Running` state.
 
 On Node 2, check the WireGuard interface to confirm tunnels to both peers.
 The `wg` tool was installed as part of the `wireguard-tools` package during OS setup in [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11):
@@ -260,13 +260,13 @@ peer: <node4-public-key>
   transfer: 206.08 KiB received, 116.21 KiB sent
 ```
 
-The output should list two peers — one for Node 3 and one for Node 4 — each with a recent handshake timestamp.
+The output should list two peers (one for Node 3 and one for Node 4), each with a recent handshake timestamp.
 With three nodes, the WireGuard mesh forms a full triangle where each node maintains a direct encrypted tunnel to every other node.
 See [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) for expected output format and troubleshooting.
 
 ## Preparing Longhorn Storage
 
-Longhorn is already running on the cluster, but each new node needs system-level dependencies — iSCSI for block storage and NFSv4 for RWX volumes — before Longhorn can schedule replicas on it.
+Longhorn is already running on the cluster, but each new node needs system-level dependencies (iSCSI for block storage and NFSv4 for RWX volumes) before Longhorn can schedule replicas on it.
 See [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7) for a detailed walkthrough of what each dependency does and how to troubleshoot failures.
 
 Install `longhornctl` and run the preflight installer on Node 2:
@@ -405,7 +405,7 @@ spec:
 ```
 
 RKE2's Helm controller detects the change and upgrades the release automatically.
-New volumes will now be created with two replicas — one on the node running the workload and one on a different node for redundancy.
+New volumes will now be created with two replicas: one on the node running the workload and one on a different node for redundancy.
 Existing single-replica volumes are not affected; increase their replica count individually through the Longhorn UI or API if needed.
 
 ## Resulting Cluster State

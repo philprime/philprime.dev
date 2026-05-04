@@ -15,7 +15,7 @@ repo_file_path: guides/migrating-k3s-to-rke2/lesson-13.md
 ---
 
 [Lesson 12](/guides/migrating-k3s-to-rke2/lesson-12) brought the cluster to three control plane nodes and verified that etcd, Canal, and WireGuard are healthy across all of them.
-That confirms the components are running — but running is not the same as highly available.
+That confirms the components are running, but running is not the same as highly available.
 This lesson tests the cluster's ability to survive individual node failures, which is the actual definition of HA.
 
 {% include guide-overview-link.liquid.html %}
@@ -49,13 +49,13 @@ kubernetes   10.1.0.12:6443,10.1.0.13:6443,10.1.0.14:6443       4h
 ```
 
 All three control plane IPs should appear.
-When a client — `kubectl`, a kubelet, or an in-cluster pod — connects to the API, it can reach any of these endpoints.
+When a client (such as `kubectl`, a kubelet, or an in-cluster pod) connects to the API, it can reach any of these endpoints.
 If one becomes unavailable, clients automatically retry against the remaining ones.
 
 ## Checking Leader Election
 
 The controller manager and scheduler each hold a lease in the `kube-system` namespace.
-Only the lease holder actively reconciles resources — the others watch and wait:
+Only the lease holder actively reconciles resources. The others watch and wait:
 
 ```bash
 $ kubectl get leases -n kube-system kube-controller-manager -o jsonpath='{.spec.holderIdentity}'
@@ -66,7 +66,7 @@ node_ddfe2115-9b91-4bf3-a293-522659cd0edc
 ```
 
 Each command prints the name of the node currently holding the lease.
-Note which node holds each lease before the failover tests — we will see these change when that node goes down.
+Note which node holds each lease before the failover tests. We will see these change when that node goes down.
 
 ## Testing Node Failure
 
@@ -99,7 +99,7 @@ $ ssh node3 "sudo systemctl stop rke2-server"
 ```
 
 Within about a minute, the watch terminal shows Node 3 as `NotReady`.
-We can verify that `kubectl` still works — the client connects through one of the two remaining API servers:
+We can verify that `kubectl` still works. The client connects through one of the two remaining API servers:
 
 ```bash
 $ kubectl get nodes
@@ -118,7 +118,7 @@ https://10.1.0.14:2379 is healthy: successfully committed proposal: took = 4.2ms
 https://10.1.0.13:2379 is unhealthy: context deadline exceeded
 ```
 
-Two of three endpoints remain healthy — etcd still has quorum.
+Two of three endpoints remain healthy, so etcd still has quorum.
 The unhealthy endpoint confirms that Node 3's etcd member is down, which is expected.
 
 Restore Node 3 before testing the next node:
@@ -131,7 +131,7 @@ Wait until Node 3 returns to `Ready` in the watch terminal before continuing.
 
 ### Stopping Node 4
 
-Node 4 was the bootstrap node — the first control plane node in the cluster.
+Node 4 was the bootstrap node, the first control plane node in the cluster.
 Stopping it confirms there is nothing special about the original node:
 
 ```bash
@@ -188,4 +188,4 @@ https://10.1.0.14:2379 is healthy: successfully committed proposal: took = 3.8ms
 ```
 
 All three nodes are `Ready` and all three etcd endpoints are healthy.
-The cluster survived each node going down individually — it is genuinely highly available and ready to receive production workloads.
+The cluster survived each node going down individually. It is genuinely highly available and ready to receive production workloads.

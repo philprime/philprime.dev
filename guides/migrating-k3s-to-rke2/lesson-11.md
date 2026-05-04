@@ -47,14 +47,14 @@ flowchart LR
 ## Understanding the Drain Process
 
 When we drain a node, Kubernetes evicts all pods and marks the node as unschedulable.
-Pods managed by controllers — Deployments, StatefulSets, DaemonSets — are recreated on other nodes automatically.
+Pods managed by controllers (Deployments, StatefulSets, DaemonSets) are recreated on other nodes automatically.
 Standalone pods without controllers are deleted permanently.
 
 The drain happens in three stages:
 
 1. Cordon marks the node as unschedulable so no new pods land on it
 2. Evict sends termination signals to all pods, respecting Pod Disruption Budgets
-3. Reschedule — controllers recreate evicted pods on remaining nodes
+3. Reschedule: controllers recreate evicted pods on remaining nodes
 
 ```mermaid!
 %%{init: {"theme": "base", "flowchart": {"nodeSpacing": 15, "rankSpacing": 25}, "themeVariables": {"fontSize": "12px", "background": "#181818", "textColor": "#c8c8d0", "lineColor": "#505060", "primaryColor": "#2a2a3a", "primaryTextColor": "#e6e6e6", "primaryBorderColor": "#404050", "clusterBkg": "#1e1e28", "clusterBorder": "#3a3a4a", "edgeLabelBackground": "#1e1e28", "titleColor": "#c8c8d0"}}}%%
@@ -126,7 +126,7 @@ monitoring   prometheus   1/1     15d
 If a StatefulSet pod runs on Node 3, Kubernetes recreates it on another node.
 For databases, verify replication is healthy before proceeding.
 
-Pods with local storage — hostPath or emptyDir volumes — will not carry their data to the new node:
+Pods with local storage (hostPath or emptyDir volumes) will not carry their data to the new node:
 
 ```bash
 $ kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}: {.spec.volumes[*].name}{"\n"}{end}' | grep -E "local|hostPath"
@@ -249,7 +249,7 @@ The `--ignore-daemonsets` flag tells the drain to skip them since they are meant
 
 ### Handling Blocked Drains
 
-If a PDB is blocking eviction, check which one is responsible and — if safe — temporarily reduce the minimum:
+If a PDB is blocking eviction, check which one is responsible and, if safe, temporarily reduce the minimum:
 
 ```bash
 # Check which PDB is blocking
@@ -308,7 +308,7 @@ Once the OS reinstallation below begins, this rollback path is no longer availab
 ## Preparing Node 3 for RKE2
 
 The setup follows the same process as Node 4.
-The full details for each step are covered in the referenced lessons — this section lists every command needed to get Node 3 ready.
+The full details for each step are covered in the referenced lessons. This section lists every command needed to get Node 3 ready.
 
 ### Installing Rocky Linux 10
 
@@ -524,7 +524,7 @@ $ curl -sfL https://get.rke2.io | sudo sh -
 $ sudo systemctl enable rke2-server.service
 ```
 
-This installs the `rke2-server` service (the default type) and places additional utilities — `kubectl`, `crictl`, and `ctr` — in `/var/lib/rancher/rke2/bin/`.
+This installs the `rke2-server` service (the default type) and places additional utilities (`kubectl`, `crictl`, and `ctr`) in `/var/lib/rancher/rke2/bin/`.
 
 ### Patch runc
 
@@ -694,7 +694,7 @@ rke2-canal-6qrrc   2/2     Running   0          7m45s   10.1.0.14   node4   <non
 rke2-canal-ntzcl   2/2     Running   0          7m41s   10.1.0.13   node3   <none>           <none>
 ```
 
-This is the first time we can verify that WireGuard tunnels actually work — until now, Node 4 had no peers.
+This is the first time we can verify that WireGuard tunnels actually work. Until now, Node 4 had no peers.
 Check that both nodes see each other as WireGuard peers with a recent handshake:
 
 ```bash
@@ -712,7 +712,7 @@ peer: <node4-public-key>
 ```
 
 The `endpoint` should show a vSwitch IP (`10.1.0.x`), confirming that WireGuard traffic stays on the private network.
-If the endpoint shows a public IP instead, the `flannel.regexIface` setting from [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6) is not applied — verify the Canal HelmChartConfig and restart the Canal DaemonSet.
+If the endpoint shows a public IP instead, the `flannel.regexIface` setting from [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6) is not applied. Verify the Canal HelmChartConfig and restart the Canal DaemonSet.
 The `allowed ips` entry shows Node 4's pod subnet, and the handshake confirms the encrypted tunnel is active.
 Test cross-node pod connectivity through the tunnel:
 
@@ -736,7 +736,7 @@ $ kubectl top nodes
 
 ## Preparing Longhorn Storage
 
-Longhorn is already running on the cluster — the `HelmChart` manifest deployed in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7) handles that automatically.
+Longhorn is already running on the cluster. The `HelmChart` manifest deployed in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7) handles that automatically.
 However, each new node needs system-level dependencies (iSCSI for block storage and NFSv4 for RWX volumes) before Longhorn can schedule replicas on it.
 
 Install `longhornctl` and run the preflight installer on Node 3:
@@ -807,7 +807,7 @@ Proceed with Node 2 migration to achieve HA.
 If cross-node pod traffic fails with "no route to host" or "Required key not available", the most likely cause is a Flannel backend mismatch between nodes.
 
 This happens when the existing node is still running the VXLAN backend while the new node picks up the WireGuard configuration from the HelmChartConfig applied in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6).
-The new node creates a `flannel-wg` interface, but the existing node still uses `flannel.1` (VXLAN) — so the two nodes cannot exchange pod traffic.
+The new node creates a `flannel-wg` interface, but the existing node still uses `flannel.1` (VXLAN), so the two nodes cannot exchange pod traffic.
 
 Check which interfaces each node is using:
 
@@ -828,4 +828,4 @@ $ kubectl rollout status ds rke2-canal -n kube-system --timeout=120s
 ```
 
 After the restart, both nodes should show `flannel-wg` and `flannel-wg-v6` interfaces.
-Verify the tunnel is established with `wg show flannel-wg` — look for a peer entry with a recent handshake.
+Verify the tunnel is established with `wg show flannel-wg` and look for a peer entry with a recent handshake.

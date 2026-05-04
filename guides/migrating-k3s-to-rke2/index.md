@@ -44,13 +44,13 @@ This enabled us to move additional development and proof-of-concept workloads fr
 However, as we continued to grow, we started to feel the limitations of k3s: it was not designed for larger, complex clusters with high availability requirements, but instead focused on simplicity and ease of use for edge and IoT environments.
 
 This made me look into alternatives, and RKE2 stood out as a robust and enterprise-grade Kubernetes distribution also maintained by SUSE/Rancher, the same company behind k3s.
-While k3s offers a lot of built-in features and convenience tools, I wanted to be closer to enterprise-level Kubernetes behavior and have greater control over the components as our environment grows — exactly what RKE2 provides.
+While k3s offers a lot of built-in features and convenience tools, I wanted to be closer to enterprise-level Kubernetes behavior and have greater control over the components as our environment grows. RKE2 provides exactly that.
 
 On top of that, the etcd component in k3s was showing stability issues, especially since I had not yet migrated to high availability (HA), spreading the control plane across multiple nodes.
 With the migration to RKE2, I can set up a proper HA control plane with multiple etcd nodes, significantly improving reliability.
 
 The final push to migrate came when we decided to add another bare-metal dedicated server.
-This allowed me to bootstrap RKE2 on the new node without touching the existing k3s nodes — enabling a zero-downtime migration.
+This allowed me to bootstrap RKE2 on the new node without touching the existing k3s nodes, enabling a zero-downtime migration.
 
 ## What This Guide Covers
 

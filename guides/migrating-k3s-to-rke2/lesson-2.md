@@ -122,7 +122,7 @@ $ ssh k8sadmin@<node4-public-ip>
 ### Set Up SSH Key Authentication
 
 Password authentication is vulnerable to brute-force attacks and requires typing credentials on every connection.
-SSH key authentication eliminates both problems — keys are far harder to crack and connect without password prompts.
+SSH key authentication eliminates both problems. Keys are far harder to crack and connect without password prompts.
 
 Generate an ED25519 key pair on the local machine, which offers better security and performance than RSA:
 
