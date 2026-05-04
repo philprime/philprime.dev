@@ -48,7 +48,6 @@ While k3s offers a lot of built-in features and convenience tools, I wanted to b
 
 On top of that, the etcd component in k3s was showing stability issues, especially since I had not yet migrated to high availability (HA), spreading the control plane across multiple nodes.
 With the migration to RKE2, I can set up a proper HA control plane with multiple etcd nodes, significantly improving reliability.
-RKE2's focus on security and compliance also gives me a stronger foundation — crucial as we continue adding production workloads.
 
 The final push to migrate came when we decided to add another bare-metal dedicated server.
 This allowed me to bootstrap RKE2 on the new node without touching the existing k3s nodes — enabling a zero-downtime migration.
