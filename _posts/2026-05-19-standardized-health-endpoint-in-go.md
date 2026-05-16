@@ -9,6 +9,7 @@ excerpt: "Introducing go-health, my first open-source Go package that implements
 keywords: "Go health endpoint, Kubernetes health checks, liveness probe, readiness probe, healthz, livez, readyz, IETF health check RFC, draft-inadarei-api-health-check, Go observability, Go open source"
 image: /assets/blog/2026-05-19-standardized-health-endpoint-in-go/hero.webp
 author: Philip Niedertscheider
+featured: true
 ---
 
 After years of developing backend services, one need has consistently shown up in every single project: a health endpoint to know if the service is up and running, or if it is experiencing issues.
