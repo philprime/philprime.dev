@@ -34,15 +34,14 @@ social_links:
 defaults:
   - scope:
       path: ""
+    values:
+      image: /assets/images/default-og-image.png
+  - scope:
+      path: ""
       type: "posts"
     values:
       layout: "post"
       author: "Philip Niedertscheider"
-      image: /assets/images/default-og-image.png
-  - scope:
-      path: ""
-    values:
-      image: /assets/images/default-og-image.png
   - scope:
       path: "assets/files/cv.pdf"
     values:
@@ -67,11 +66,6 @@ exclude:
   - package.json
   - pnpm-lock.yaml
   - .mermaid-cache/
-
-facebook:
-  app_id: # Add if you have a Facebook app
-  publisher: # Add if you have a Facebook page
-  admins: # Add if you have Facebook admins
 
 # Favicon Configuration
 favicon:
