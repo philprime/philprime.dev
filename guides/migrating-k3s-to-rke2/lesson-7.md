@@ -82,17 +82,12 @@ Download the CLI matching the Longhorn version we install:
 ```bash
 $ curl -fL -o /usr/local/bin/longhornctl \
     https://github.com/longhorn/cli/releases/download/v1.11.0/longhornctl-linux-amd64
-
-$ curl -fL -o /tmp/longhornctl-linux-amd64.sha256 \
-    https://github.com/longhorn/cli/releases/download/v1.11.0/longhornctl-linux-amd64.sha256
-
-$ echo "$(cat /tmp/longhornctl-linux-amd64.sha256 | awk '{print $1}')  /usr/local/bin/longhornctl" | sha256sum --check
-/usr/local/bin/longhornctl: OK
-
 $ chmod +x /usr/local/bin/longhornctl
 $ /usr/local/bin/longhornctl version
 v1.11.0
 ```
+
+Verify the SHA256 checksum of the downloaded binary against the official checksums published on the [Longhorn CLI releases page](https://github.com/longhorn/cli/releases) before continuing.
 
 ### Running the Preflight Check
 

@@ -25,18 +25,26 @@ For a comprehensive walkthrough of adding nodes to a Hetzner bare-metal cluster,
 This lesson covers the essential steps specific to our RKE2 migration.
 ' %}
 
-## Installing Rocky Linux via Hetzner Robot
+## Booting into the Hetzner Rescue System
 
-Before we can install the operating system, we need to configure the server identity in Hetzner's management interface.
-Log into the [Hetzner Robot](https://robot.hetzner.com/servers) web interface and set the server name (e.g., `node4`) along with a reverse DNS entry.
+Every node in this guide starts in the same state: booted into Hetzner's Rescue System with SSH access as root.
+The Rescue System is a minimal Linux environment that runs entirely from RAM and provides the `installimage` tool we use to deploy Rocky Linux.
+
+To activate it, log into [Hetzner Robot](https://robot.hetzner.com/servers), open the server, navigate to the **Rescue** tab, select **Linux** as the operating system, and click **Activate rescue system**.
+Robot displays a one-time root password.
+Trigger a hardware reset from Robot (or reboot the server if it is currently reachable) and the next boot will land in the rescue environment.
+
+While in Robot, also set the server name (e.g., `node4`) and a reverse DNS entry.
 A proper reverse DNS entry helps with server identification in logs and monitoring tools.
 
-After receiving the root credentials via email, access the server through SSH:
+Connect via SSH using the rescue password shown in Robot (or sent via email for a new server):
 
 ```bash
 $ ssh root@<node4-public-ip>
-# Enter password from email
+# Enter the rescue password from Robot
 ```
+
+## Installing Rocky Linux via Hetzner Robot
 
 Hetzner provides the `installimage` tool which makes OS installation straightforward on their dedicated servers.
 This tool handles disk partitioning, OS deployment, and basic configuration in one step:
