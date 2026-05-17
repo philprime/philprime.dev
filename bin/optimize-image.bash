@@ -2,62 +2,78 @@
 
 # Optimize images
 #
-#
-# Usage:
-# ./optimize-image.bash <image_path>
-#
-# Example:
-# ./optimize-image.bash assets/images/example.jpg
+# Walks raw_assets/ for source images (jpg, png, gif, webp), encodes them
+# to webp under assets/ at max width 800px, and tracks every output in a
+# JSONL manifest. An entry is skipped on subsequent runs when both the
+# source hash and the script hash are unchanged, so re-running this is a
+# no-op until something actually changes. Source files that disappear
+# from raw_assets/ also have their generated webp pruned.
 
 set -e
 
-# Store current working directory
-pushd "$(pwd)" >/dev/null
-# Change to script directory
-cd "${0%/*}"
+# Resolve paths and run from the repo root so manifest paths are repo-relative.
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+script_path="$script_dir/$(basename "$0")"
+cd "$script_dir/.."
 
-# -- Begin Script --
+manifest="assets/.optimize-manifest.jsonl"
+script_sha=$(shasum -a 256 "$script_path" | awk '{print $1}')
 
-FILES=$(find ../raw_assets -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.gif" -o -name "*.webp" \))
+tmp_manifest=$(mktemp)
+seen_file=$(mktemp)
+trap 'rm -f "$tmp_manifest" "$seen_file"' EXIT
 
-for file in $FILES; do
-  expanded_path=$(realpath "$file")
-  echo "Input path: $expanded_path"
-  outfile="${expanded_path/raw_assets\//assets/}"
-  renamed_outfile="${outfile%.*}.webp"
-  echo "Output path: $renamed_outfile"
+while IFS= read -r -d '' input_path; do
+  output_path="${input_path/raw_assets\//assets/}"
+  output_path="${output_path%.*}.webp"
+  echo "$output_path" >> "$seen_file"
 
-  # Create the output directory if it doesn't exist
-  output_dir=$(dirname "$outfile")
-  echo "Creating output directory: $output_dir"
-  mkdir -p "$output_dir"
+  input_sha=$(shasum -a 256 "$input_path" | awk '{print $1}')
 
-  # -verbose: Print verbose output
-  # -strip: Remove metadata like EXIF, comments, and color profiles
-  # -resize: Resize image to max width of 740px while maintaining aspect ratio
-  # -quality: Set JPEG quality to 85% for good balance of size/quality
-  # -format: Set output format to webp
-  # -define: Set webp compression options
-  # -define webp:method=6: Set webp compression method to 6 (default is 4)
-  # -define webp:lossless=true: Set webp compression to lossless
-  # -define webp:alpha-quality=85: Set webp alpha quality to 85
-  # -define webp:thread-level=0: Set webp thread level to 0
-  # -define webp:low-memory=false: Set webp low memory to false
-  magick -verbose \
-    "$expanded_path" \
-    -strip \
-    -resize "800x>" \
-    -quality 95 \
-    -format webp \
-    -define webp:method=6 \
-    -define webp:lossless=true \
-    -define webp:alpha-quality=95 \
-    -define webp:thread-level=0 \
-    -define webp:low-memory=false \
-    "$renamed_outfile"
-done
+  skip=false
+  if [[ -f "$manifest" && -f "$output_path" ]]; then
+    prev_line=$(jq -c --arg p "$output_path" 'select(.path == $p)' "$manifest" 2>/dev/null | head -1 || true)
+    if [[ -n "$prev_line" ]]; then
+      prev_in=$(jq -r '.input' <<<"$prev_line")
+      prev_sc=$(jq -r '.script' <<<"$prev_line")
+      if [[ "$prev_in" == "$input_sha" && "$prev_sc" == "$script_sha" ]]; then
+        skip=true
+      fi
+    fi
+  fi
 
-# -- End Script --
+  if [[ "$skip" == "true" ]]; then
+    echo "skip   $output_path"
+  else
+    echo "encode $input_path -> $output_path"
+    mkdir -p "$(dirname "$output_path")"
+    magick "$input_path" \
+      -strip \
+      -resize "800x>" \
+      -quality 95 \
+      -format webp \
+      -define webp:method=6 \
+      -define webp:lossless=true \
+      -define webp:alpha-quality=95 \
+      -define webp:thread-level=0 \
+      -define webp:low-memory=false \
+      "$output_path"
+  fi
 
-# Return to original working directory
-popd >/dev/null
+  jq -cn --arg p "$output_path" --arg i "$input_sha" --arg s "$script_sha" \
+    '{path: $p, input: $i, script: $s}' >> "$tmp_manifest"
+done < <(find raw_assets -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.gif" -o -name "*.webp" \) -print0)
+
+# Prune outputs whose source files were removed from raw_assets/.
+if [[ -f "$manifest" ]]; then
+  while IFS= read -r orphan; do
+    [[ -z "$orphan" ]] && continue
+    if [[ -f "$orphan" ]]; then
+      echo "prune  $orphan"
+      rm "$orphan"
+    fi
+  done < <(comm -23 <(jq -r '.path' "$manifest" | sort -u) <(sort -u "$seen_file"))
+fi
+
+mkdir -p "$(dirname "$manifest")"
+sort "$tmp_manifest" > "$manifest"
