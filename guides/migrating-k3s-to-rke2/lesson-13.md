@@ -62,7 +62,7 @@ $ kubectl get leases -n kube-system kube-controller-manager -o jsonpath='{.spec.
 node2_8c7a5cf9-52db-4a78-ace6-5187f4f93828%
 
 $ kubectl get leases -n kube-system kube-scheduler -o jsonpath='{.spec.holderIdentity}'
-node_ddfe2115-9b91-4bf3-a293-522659cd0edc
+node3_ddfe2115-9b91-4bf3-a293-522659cd0edc
 ```
 
 Each command prints the name of the node currently holding the lease.

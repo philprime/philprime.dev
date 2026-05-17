@@ -148,12 +148,14 @@ kubelet-arg:
   - "resolv-conf=/etc/rancher/rke2/resolv.conf"
 ```
 
-Create the clean resolv.conf as in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6#isolating-host-dns-from-pod-dns) and [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11):
+Create the clean resolv.conf as in [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5#create-configuration) and [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11):
 
 ```bash
 $ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
 nameserver 1.1.1.1
 nameserver 1.0.0.1
+nameserver 2606:4700:4700::1111
+nameserver 2606:4700:4700::1001
 EOF
 ```
 
@@ -169,7 +171,7 @@ tls-san:
   - cluster.yourdomain.com
 ```
 
-The `00-join.yaml`, `30-security.yaml`, `40-authentication.yaml`, and `auth-config.yaml` files are identical to Node 3. See [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) for their contents.
+The `00-join.yaml`, `30-security.yaml`, `40-authentication.yaml`, `auth-config.yaml`, and `rke2-pss.yaml` files are identical to Node 3. See [Lesson 11](/guides/migrating-k3s-to-rke2/lesson-11) for their contents.
 
 ### Starting RKE2
 

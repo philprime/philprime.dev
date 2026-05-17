@@ -396,7 +396,7 @@ $ sudo dnf install -y \
 ### Optional: Tailscale
 
 ```bash
-$ sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/fedora//tailscale.repo
+$ sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/10/tailscale.repo
 $ sudo dnf install -y tailscale
 $ sudo systemctl enable --now tailscaled
 $ sudo tailscale up
@@ -411,7 +411,7 @@ We cover the full networking walkthrough in [Lesson 3](/guides/migrating-k3s-to-
 # Replace enp35s0 with the actual interface name
 $ sudo nmcli connection add \
     type vlan \
-    con-name vswitch0 \
+    con-name vswitch \
     dev enp35s0 \
     id 4000 \
     ipv4.method manual \
@@ -420,20 +420,20 @@ $ sudo nmcli connection add \
     ipv6.method manual \
     ipv6.addresses fd00::13/64
 
-$ sudo nmcli connection up vswitch0
+$ sudo nmcli connection up vswitch
 ```
 
-If a `vswitch0` connection already exists, use `modify` instead of `add`:
+If a `vswitch` connection already exists, use `modify` instead of `add`:
 
 ```bash
-$ sudo nmcli connection modify vswitch0 \
+$ sudo nmcli connection modify vswitch \
     ipv4.method manual \
     ipv4.addresses 10.1.0.13/16 \
     ipv4.routes "10.0.0.0/24 10.1.0.1" \
     ipv6.method manual \
     ipv6.addresses fd00::13/64
 
-$ sudo nmcli connection up vswitch0
+$ sudo nmcli connection up vswitch
 ```
 
 Configure public IPv6 on the main interface:
@@ -580,12 +580,14 @@ kubelet-arg:
   - "resolv-conf=/etc/rancher/rke2/resolv.conf"
 ```
 
-Create the clean resolv.conf for kubelet to isolate pod DNS from Tailscale's MagicDNS on the host, as described in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6#isolating-host-dns-from-pod-dns):
+Create the clean resolv.conf for kubelet to isolate pod DNS from Tailscale's MagicDNS on the host, as described in [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5#create-configuration):
 
 ```bash
 $ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
 nameserver 1.1.1.1
 nameserver 1.0.0.1
+nameserver 2606:4700:4700::1111
+nameserver 2606:4700:4700::1001
 EOF
 ```
 
@@ -616,12 +618,13 @@ etcd-snapshot-schedule-cron: "0 */6 * * *"
 etcd-snapshot-retention: 5
 ```
 
-Each control plane node runs its own kube-apiserver, so the authentication configuration from [Lesson 9](/guides/migrating-k3s-to-rke2/lesson-9) must also be present.
-Copy `auth-config.yaml` from Node 4 and create the corresponding RKE2 config file:
+Each control plane node runs its own kube-apiserver, so the authentication configuration from [Lesson 9](/guides/migrating-k3s-to-rke2/lesson-9) and the Pod Security Admission configuration from [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5#configuring-pod-security-admission) must also be present.
+Copy both files from Node 4 and create the corresponding RKE2 config file:
 
 ```bash
-# Copy the AuthenticationConfiguration from Node 4
+# Copy the AuthenticationConfiguration and PSA config from Node 4
 $ sudo scp node4:/etc/rancher/rke2/auth-config.yaml /etc/rancher/rke2/auth-config.yaml
+$ sudo scp node4:/etc/rancher/rke2/rke2-pss.yaml /etc/rancher/rke2/rke2-pss.yaml
 ```
 
 ```yaml

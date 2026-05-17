@@ -110,12 +110,14 @@ kubelet-arg:
 
 The `server` address points to Node 4's supervisor API on port `9345`, the same endpoint used when joining the other nodes.
 
-Create the clean resolv.conf to isolate pod DNS from Tailscale on the host, as in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6#isolating-host-dns-from-pod-dns):
+Create the clean resolv.conf to isolate pod DNS from Tailscale on the host, as in [Lesson 5](/guides/migrating-k3s-to-rke2/lesson-5#create-configuration):
 
 ```bash
 $ cat <<'EOF' | sudo tee /etc/rancher/rke2/resolv.conf
 nameserver 1.1.1.1
 nameserver 1.0.0.1
+nameserver 2606:4700:4700::1111
+nameserver 2606:4700:4700::1001
 EOF
 ```
 
@@ -166,7 +168,7 @@ The `<none>` role for Node 1 indicates it is a pure worker.
 We can add a label for clarity:
 
 ```bash
-$ kubectl label node node1 node-role.kubernetes.io/worker=true
+$ kubectl label node node1 node-role.kubernetes.io/worker=""
 ```
 
 ### Canal and WireGuard

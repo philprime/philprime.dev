@@ -48,7 +48,8 @@ For a migration this is an advantage: rather than retrofitting hardening onto a 
 
 Secrets encryption at rest protects Kubernetes secrets stored in etcd, and RKE2 makes it available as a single config flag.
 Enabling it after secrets already exist requires re-encrypting every secret in etcd, so we enable it from the start before any workloads are deployed.
-Pod Security Admission follows the same principle: we enforce the `restricted` profile from the beginning rather than tightening policies later when workloads are already running and might break under stricter rules.
+Pod Security Admission gives us a single place to control which security profile pods must satisfy.
+We start permissive so system workloads (Longhorn, Traefik, and similar components that need elevated capabilities) run without exemptions, and tighten per namespace as workloads are validated.
 
 Canal, RKE2's default CNI, uses Calico's policy engine to provide L3-L4 network policies out of the box.
 We will configure Canal's network settings in [Lesson 6](/guides/migrating-k3s-to-rke2/lesson-6).
@@ -144,8 +145,13 @@ $ /etc/rancher/rke2/runc-v1.3.4 --version
 runc version 1.3.4
 commit: v1.3.4-0-g63757986
 ...
+```
 
-# Back up the original and replace with a hardlink
+Verify the SHA256 checksum of the downloaded binary against the official checksums published on the [runc releases page](https://github.com/opencontainers/runc/releases) before continuing.
+
+Back up the original and replace with a hardlink:
+
+```bash
 $ cp $RKE2_DATA_DIR/runc $RKE2_DATA_DIR/runc.v1.4.0.bak
 $ ln -f /etc/rancher/rke2/runc-v1.3.4 $RKE2_DATA_DIR/runc
 $ $RKE2_DATA_DIR/runc --version
@@ -181,16 +187,11 @@ At that point, clean up the leftover file:
 $ rm /etc/rancher/rke2/runc-v1.3.4
 ```
 
-Restart RKE2 to pick up the new binary:
-
-```bash
-$ systemctl restart rke2-server.service
-$ journalctl -u rke2-server -f
-# Wait for: "rke2 is up and running"
-```
+The patched binary will be used the next time RKE2 starts, which we configure in the [Start RKE2](#start-rke2) section below.
 
 {% include alert.liquid.html type='note' title='Apply on every node' content='
-This workaround must be applied on every node after installing RKE2 and before starting it for the first time, or before restarting it on existing nodes.
+This workaround must be applied on every node after installing RKE2 and before starting it for the first time.
+For nodes where RKE2 is already running (e.g., after re-applying the patch following an upgrade that resets the binary), restart with <code>systemctl restart rke2-server.service</code>.
 The same steps apply to Lessons 11, 12, and 15 when joining additional nodes.
 ' %}
 
@@ -279,6 +280,105 @@ disable:
 etcd-snapshot-schedule-cron: "0 */6 * * *"
 etcd-snapshot-retention: 5
 ```
+
+### Configuring Pod Security Admission
+
+RKE2 generates a default Pod Security Admission configuration at `/etc/rancher/rke2/rke2-pss.yaml` on every server start.
+Editing that file directly does not work, as RKE2 overwrites it on the next restart.
+To customize PSA we use a separate file and point RKE2 at it via the `pod-security-admission-config-file` setting, as documented in [RKE2's Pod Security Standards guide](https://docs.rke2.io/security/pod_security_standards).
+
+Create the custom config at `/etc/rancher/rke2/pss-config.yaml` with the `privileged` baseline as an explicit, visible starting point.
+This matches Kubernetes' default behavior (no restrictions) so system workloads run without exemptions, while making the configuration easy to find and tighten later:
+
+```yaml
+# /etc/rancher/rke2/pss-config.yaml
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+  - name: PodSecurity
+    configuration:
+      apiVersion: pod-security.admission.config.k8s.io/v1beta1
+      kind: PodSecurityConfiguration
+      defaults:
+        enforce: "privileged"
+        enforce-version: "latest"
+      exemptions:
+        usernames: []
+        runtimeClasses: []
+        namespaces: []
+```
+
+Tell RKE2 to use this file instead of its default by adding the setting to the security config from earlier in this lesson:
+
+```yaml
+# /etc/rancher/rke2/config.yaml.d/30-security.yaml (append)
+pod-security-admission-config-file: /etc/rancher/rke2/pss-config.yaml
+```
+
+When RKE2 starts, it regenerates the kube-apiserver static pod manifest with `--admission-control-config-file` pointing at the custom path.
+The new manifest hash causes the kubelet to recreate the apiserver pod automatically, so a `systemctl restart rke2-server` is enough.
+
+Tighten the cluster default by changing `enforce` to `baseline` or `restricted` once workloads have been audited.
+Alternatively, leave the cluster default permissive and apply tighter profiles to individual namespaces with the `pod-security.kubernetes.io/enforce` label.
+This per-namespace approach is the safer rollout path: validate one workload at a time without risking system components like Longhorn or Traefik that legitimately need elevated capabilities.
+
+#### Rollout Sequence
+
+PSA only runs at pod admission, so existing pods keep running even after enforcement tightens.
+Any restart, rescheduling, or new deployment will however be rejected if it violates the active profile, so a poorly sequenced cluster-wide change can brick the cluster the next time a control-plane static pod restarts.
+
+The safe rollout starts by labeling every existing namespace explicitly.
+Namespaces running CSI drivers, CNI plugins, or host-network workloads (`kube-system`, `longhorn-system`, and similar) get `pod-security.kubernetes.io/enforce=privileged`, and everything else gets the target profile.
+This ensures no namespace silently inherits the cluster default once that default changes.
+
+The cleanest pattern is a Namespace manifest in `/var/lib/rancher/rke2/server/manifests/` so RKE2's deploy controller applies it on every cluster start and the labels survive node rebuilds.
+`kubectl apply` semantics merge the labels into existing namespaces without conflict:
+
+```yaml
+# /var/lib/rancher/rke2/server/manifests/psa-namespace-labels.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-system
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: longhorn-system
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+# ...one entry per system namespace that needs privilege
+```
+
+For namespaces whose Namespace resource is already created by something else, set the PSA labels in that owner instead of duplicating it here.
+In this guide that means `local-path-storage` is created by the local-path-provisioner manifest in [Lesson 7](/guides/migrating-k3s-to-rke2/lesson-7), so label that manifest directly.
+The same rule applies to application namespaces owned by Pulumi modules, GitOps tooling, or Helm charts whose `createNamespace` produces an unlabeled namespace (such as `cert-manager` in [Lesson 10](/guides/migrating-k3s-to-rke2/lesson-10)), where the labels need to be applied through whatever owns the namespace.
+
+Once every namespace carries an explicit label, update `/etc/rancher/rke2/pss-config.yaml` to set `warn` and `audit` to the target profile without changing `enforce`.
+New pod creations matching disallowed patterns will then surface as warnings in `kubectl apply` output and as audit-log entries, but are still accepted:
+
+```yaml
+# /etc/rancher/rke2/pss-config.yaml
+defaults:
+  enforce: "privileged"
+  enforce-version: "latest"
+  audit: "restricted"
+  audit-version: "latest"
+  warn: "restricted"
+  warn-version: "latest"
+```
+
+As workloads are deployed to the cluster in later lessons, the `warn` and `audit` settings surface every violating pod through `kubectl apply` warnings and audit-log entries.
+These signals let us fix offenders incrementally: add `runAsNonRoot: true`, drop capabilities, set seccomp profiles, or relabel the namespace as `privileged` if the workload genuinely needs it.
+
+Once every workload in scope satisfies the target profile, the final step is to change `enforce` in `pss-config.yaml` to that profile.
+Every namespace labeled in the first step is insulated from the change, so only workloads in unlabeled namespaces are subject to the tightened default.
 
 ### Start RKE2
 
@@ -622,7 +722,6 @@ Also confirm the API server certificate includes the IPv6 SAN entries we configu
 
 ```bash
 $ openssl s_client -connect 127.0.0.1:6443 -showcerts </dev/null 2>/dev/null | \
-  openssl x509 -noout -text | grep -A1 "Subject Alternative Name"
   openssl x509 -noout -text | grep -A1 "Subject Alternative Name"
             X509v3 Subject Alternative Name:
                 DNS:kubernetes, DNS:kubernetes.default, DNS:kubernetes.default.svc, DNS:kubernetes.default.svc.cluster.local, DNS:node4, DNS:node4.k8s.local, DNS:node4.nodes.kula.app, DNS:localhost, DNS:node4, IP Address:10.1.0.14, IP Address:FD00:0:0:0:0:0:0:14, IP Address:127.0.0.1, IP Address:0:0:0:0:0:0:0:1, IP Address:10.1.0.14, IP Address:FD00:0:0:0:0:0:0:14, IP Address:10.1.0.14, IP Address:10.43.0.1
