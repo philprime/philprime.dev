@@ -334,6 +334,8 @@ On top of that I extracted all the health checks I am using in my services into 
 
 In case custom ones are needed, they are also very easy to create by just constructing a `Check` value and providing the logic in the `Run` function:
 
+{% raw %}
+
 ```go
 c := core.Check{
     Name:          "queue:depth",
@@ -360,6 +362,8 @@ c := core.Check{
     },
 }
 ```
+
+{% endraw %}
 
 ### Conclusion
 

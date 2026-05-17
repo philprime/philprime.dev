@@ -82,6 +82,10 @@ favicon:
 kramdown:
   input: GFM
 
+liquid:
+  error_mode: strict
+  strict_filters: true
+
 # SEO Configuration
 logo: /assets/images/logo.png
 lang: en_US
