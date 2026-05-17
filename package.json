@@ -1,7 +1,7 @@
 {
   "devDependencies": {
     "@mermaid-js/mermaid-cli": "11.15.0",
-    "puppeteer": "24.43.1"
+    "puppeteer": "25.0.2"
   },
   "pnpm": {
     "overrides": {
