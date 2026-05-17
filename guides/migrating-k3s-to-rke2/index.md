@@ -21,6 +21,7 @@ keywords:
   Hetzner, high availability, cluster migration, SUSE Rancher"
 tags: Kubernetes RKE2 k3s migration DevOps Rocky-Linux Canal Longhorn Traefik Hetzner high-availability
 author: Philip Niedertscheider
+image: /assets/guides/migrating-k3s-to-rke2/hero.webp
 ---
 
 Welcome to my guide on migrating from k3s to RKE2 while keeping downtime to a minimum.
