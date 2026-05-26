@@ -14,6 +14,21 @@
     {%- include footer.liquid.html -%}
 
     {%- if jekyll.environment == 'production' -%}
+    <script>
+      window.sentryOnLoad = function () {
+        Sentry.init({
+          environment: 'production',
+          tracesSampleRate: 0.2,
+          replaysSessionSampleRate: 0.1,
+          replaysOnErrorSampleRate: 1.0,
+        });
+      };
+    </script>
+    <script
+      data-lazy='no'
+      src='https://js.sentry-cdn.com/c5110cd45f171ad570cc55c85905f775.min.js'
+      crossorigin='anonymous'
+    ></script>
     <script
       defer
       src='https://analytics.lab.philprime.dev/umami'
