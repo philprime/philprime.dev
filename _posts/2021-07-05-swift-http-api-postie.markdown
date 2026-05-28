@@ -1,18 +1,18 @@
 ---
 layout: post.liquid
-title: 'Upgrading Swift HTTP APIs to the Next Level using Postie'
+title: "Upgrading Swift HTTP APIs to the Next Level using Postie"
 date: 2021-07-05 17:00:00 +0200
 categories: blog
 tags: [Swift, Networking, Postie, API]
 description:
-  'Learn how to elevate your Swift HTTP API development with Postie, a next-level networking framework that provides
-  type-safe, structured API definitions and automatic request/response handling.'
+  "Learn how to elevate your Swift HTTP API development with Postie, a next-level networking framework that provides
+  type-safe, structured API definitions and automatic request/response handling."
 excerpt:
-  'Discover Postie, a revolutionary Swift HTTP networking framework that brings type safety and structure to API
-  development. Learn how to define strongly-typed APIs with property wrappers and eliminate common networking errors.'
+  "Discover Postie, a revolutionary Swift HTTP networking framework that brings type safety and structure to API
+  development. Learn how to define strongly-typed APIs with property wrappers and eliminate common networking errors."
 keywords:
-  'Swift networking, HTTP API, Postie framework, iOS networking, URLSession, OpenAPI, Swift Package Manager, type-safe
-  networking, mobile development'
+  "Swift networking, HTTP API, Postie framework, iOS networking, URLSession, OpenAPI, Swift Package Manager, type-safe
+  networking, mobile development"
 image: /assets/blog/swift-http-api-postie/postie-header.jpg
 author: Philip Niedertscheider
 ---
@@ -70,7 +70,8 @@ paths:
         # this is added for the example
         schema:
           $ref: "#/definitions/Error"
-  /pet/{petId}: {} ...
+  /pet/{petId}: {}
+...
 definitions:
   Order:
     type: "object"
@@ -355,14 +356,14 @@ Before defining the response body, let us quickly recap the OpenAPI definition:
 
 ```yaml
 responses:
-  '200':
-    description: 'successful operation'
+  "200":
+    description: "successful operation"
     schema:
-      $ref: '#/definitions/Order'
-  '400':
-    description: 'Invalid Order'
+      $ref: "#/definitions/Order"
+  "400":
+    description: "Invalid Order"
     schema:
-      $ref: '#/definitions/Error'
+      $ref: "#/definitions/Error"
 ```
 
 Looks like we need to define **two** responses, which differ depending on the response code. This is also built-in in
@@ -517,7 +518,7 @@ Additional ideas include a [Swiftgen](https://github.com/SwiftGen/SwiftGen) temp
 OpenAPI specification directly into ready-to-use Postie request definitions.
 
 Even tough the package is still under active development, we are going to use it for production apps at
-[kula](https://www.kula.app/)[kula](https://www.kula.app/) and [techprimate](https://techprimate.com) to validate the
+[kula](https://www.kula.app/) [kula](https://www.kula.app/) and [techprimate](https://techprimate.com) to validate the
 usage, eventually bumping it to version 1.0.0
 
 ## Conclusion & Contribution

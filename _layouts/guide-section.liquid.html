@@ -5,20 +5,17 @@ layout: default.liquid
 
 <header>
   <h1>Section {{ page.guide_section_id }}: {{ page.title | escape }}</h1>
-  <p style='font-size: 0.8em;'>
+  <p style="font-size: 0.8em">
     <span>
-      <a href='{{ guide.url }}'>{{ guide.title }}</a>
+      <a href="{{ guide.url }}">{{ guide.title }}</a>
     </span>
   </p>
 </header>
 
 <div>
   {{ content }}
-
   {% include guide-overview-link.liquid.html %}
-
   {% include guide-navigation.liquid.html scope='section' %}
-
   {% assign lessons = site.pages
     | where: 'guide_component', 'lesson'
     | where: 'guide_id', page.guide_id
@@ -30,8 +27,7 @@ layout: default.liquid
 
   <p>
     To get started with the section, head over to the
-    <a href='{{ lessons.first.url | relative_url }}'>first lesson in this section</a> to
-    {{ page.guide_section_cta }}
+    <a href="{{ lessons.first.url | relative_url }}">first lesson in this section</a> to {{ page.guide_section_cta }}
   </p>
 </div>
 

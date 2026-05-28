@@ -1,6 +1,6 @@
 {% assign branch = 'main' %}
 {% assign repo = 'https://github.com/philprime/philprime.dev' %}
-<div class='contribute-cta'>
+<div class="contribute-cta">
   <small><strong>Help improve this content</strong></small>
   <br>
   <small>
@@ -9,9 +9,13 @@
     make this content even better for everyone.
   </small>
   <br>
-  <small class='contribute-cta-links'>
-    <a href='{{ repo }}/edit/{{ branch }}/{{ include.file_path }}' target='_blank'>Edit this page</a>
+  <small class="contribute-cta-links">
+    <a
+      href="{{ repo }}/edit/{{ branch }}/{{ include.file_path }}"
+      target="_blank"
+      >Edit this page</a
+    >
     &nbsp;&nbsp;|&nbsp;&nbsp;
-    <a href='{{ repo }}/issues/new' target='_blank'>Create an issue</a>
+    <a href="{{ repo }}/issues/new" target="_blank">Create an issue</a>
   </small>
 </div>

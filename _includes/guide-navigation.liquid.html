@@ -1,13 +1,9 @@
 {% comment %}
-  Guide Navigation Component
-  Displays navigation for guide sections and lessons,
-  styled to match the series-navigation component.
-
-  Parameters:
-    scope - 'guide' for guide overview (sections + lessons)
-            'section' for section page (lessons only)
+  Guide Navigation Component Displays navigation for guide sections
+  and lessons, styled to match the series-navigation component. Parameters: scope
+  - 'guide' for guide overview (sections + lessons) 'section' for section page
+  (lessons only)
 {% endcomment %}
-
 {% if include.scope == 'guide' %}
   {% assign nav_sections = site.pages
     | where: 'guide_component', 'section'
