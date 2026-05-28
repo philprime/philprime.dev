@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang='{{ page.lang | default: site.lang | default: 'en' }}'>
+<html lang="{{ page.lang | default: site.lang | default: 'en' }}">
   {%- include head.liquid.html -%}
 
   <body>
     {%- include header.liquid.html -%}
 
-    <main class='page-content' aria-label='Content'>
-      <div class='wrapper'>
+    <main class="page-content" aria-label="Content">
+      <div class="wrapper">
         {{ content }}
       </div>
     </main>
@@ -14,31 +14,31 @@
     {%- include footer.liquid.html -%}
 
     {%- if jekyll.environment == 'production' -%}
-    <script>
-      window.sentryOnLoad = function () {
-        Sentry.init({
-          environment: 'production',
-          tracesSampleRate: 0.2,
-          replaysSessionSampleRate: 0.1,
-          replaysOnErrorSampleRate: 1.0,
-        });
-      };
-    </script>
-    <script
-      data-lazy='no'
-      src='https://js.sentry-cdn.com/c5110cd45f171ad570cc55c85905f775.min.js'
-      crossorigin='anonymous'
-    ></script>
-    <script
-      defer
-      src='https://analytics.lab.philprime.dev/umami'
-      data-website-id='d76c9bd6-29a0-4443-8e8d-142faa39eb12'
-    ></script>
-    <script
-      defer
-      src="https://cloud.umami.is/script.js"
-      data-website-id="3505151c-36fd-4d04-ac37-af41fa16a849"
-    ></script>
+      <script>
+        window.sentryOnLoad = function () {
+          Sentry.init({
+            environment: 'production',
+            tracesSampleRate: 0.2,
+            replaysSessionSampleRate: 0.1,
+            replaysOnErrorSampleRate: 1.0,
+          });
+        };
+      </script>
+      <script
+        data-lazy="no"
+        src="https://js.sentry-cdn.com/c5110cd45f171ad570cc55c85905f775.min.js"
+        crossorigin="anonymous"
+      ></script>
+      <script
+        defer
+        src="https://analytics.lab.philprime.dev/umami"
+        data-website-id="d76c9bd6-29a0-4443-8e8d-142faa39eb12"
+      ></script>
+      <script
+        defer
+        src="https://cloud.umami.is/script.js"
+        data-website-id="3505151c-36fd-4d04-ac37-af41fa16a849"
+      ></script>
     {%- endif -%}
   </body>
 </html>

@@ -10,6 +10,7 @@ repos:
       - id: check-vcs-permalinks
       - id: check-shebang-scripts-are-executable
       - id: check-symlinks
+        exclude: ^\.claude/skills$
       - id: check-json
       - id: check-toml
       - id: check-xml
@@ -20,8 +21,6 @@ repos:
       - id: end-of-file-fixer
       - id: mixed-line-ending
         args: [--fix=auto]
-      - id: pretty-format-json
-        args: [--autofix, --indent=2]
       - id: trailing-whitespace
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.33.2
@@ -37,8 +36,8 @@ repos:
     hooks:
       - id: format-json
         name: Format JSON
-        description: "Format JSON"
-        files: ^.*\.json$
+        description: "Format JSON and JSONC files"
+        files: ^.*\.(json|jsonc)$
         types_or: [json]
         entry: dprint
         language: system
@@ -47,7 +46,7 @@ repos:
       - id: format-markdown
         name: Format Markdown
         description: "Format Markdown"
-        files: ^.*\.md$
+        files: ^.*\.(md|markdown)$
         types_or: [markdown]
         entry: dprint
         language: system
@@ -62,3 +61,28 @@ repos:
         language: system
         args:
           - "fmt"
+      - id: format-css
+        name: Format CSS
+        description: "Format CSS, SCSS, SASS and LESS"
+        files: ^.*\.(scss|css|sass|less)$
+        types_or: [scss, css, sass, less]
+        entry: dprint
+        language: system
+        args:
+          - "fmt"
+      - id: format-toml
+        name: Format TOML
+        description: "Format TOML files"
+        files: ^.*\.toml$
+        types_or: [toml]
+        entry: dprint
+        language: system
+        args:
+          - "fmt"
+      - id: format-liquid-html
+        name: Format Liquid HTML
+        description: "Format Jekyll Liquid HTML templates"
+        entry: ./node_modules/.bin/prettier
+        args: [--write, --ignore-unknown]
+        files: \.(html|liquid)$
+        language: system

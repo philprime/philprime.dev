@@ -779,7 +779,7 @@ table {
     3: #a855f7,
     4: #2ab8e2,
     5: #e22a6f,
-    6: #2ae27e,
+    6: #2ae27e
   );
 
   .post-tag {
@@ -884,10 +884,18 @@ table {
       &:hover {
         border-color: $border-color-02;
 
-        .fa-github { color: #f0f0f0; }
-        .fa-x-twitter { color: #f0f0f0; }
-        .fa-linkedin { color: #0a66c2; }
-        .fa-bluesky { color: #0085ff; }
+        .fa-github {
+          color: #f0f0f0;
+        }
+        .fa-x-twitter {
+          color: #f0f0f0;
+        }
+        .fa-linkedin {
+          color: #0a66c2;
+        }
+        .fa-bluesky {
+          color: #0085ff;
+        }
       }
     }
   }

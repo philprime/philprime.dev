@@ -47,6 +47,18 @@ optimize: optimize-images
 optimize-images:
 	./bin/optimize-image.bash
 
+## Format code and templates
+#
+# Automatically formats all code in the project:
+# - dprint: formats JSON, Markdown, TOML, YAML, and stylesheets
+# - Prettier: formats Jekyll Liquid HTML templates
+#
+# Run this before committing to ensure consistent code style.
+.PHONY: format
+format:
+	dprint fmt --incremental=false
+	./node_modules/.bin/prettier --write "**/*.html" "**/*.liquid" --ignore-unknown --no-error-on-unmatched-pattern
+
 # ============================================================================
 # HELP & DOCUMENTATION
 # ============================================================================
