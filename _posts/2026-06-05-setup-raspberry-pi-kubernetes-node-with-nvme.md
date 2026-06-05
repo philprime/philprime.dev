@@ -1,17 +1,20 @@
 ---
 layout: post.liquid
 title: "Replacing a Failed Kubernetes Node with NVMe Boot on Raspberry Pi 5"
-date: 2026-05-25 22:30:00 +0200
+date: 2026-06-05 22:30:00 +0200
 categories: blog
 tags: [Kubernetes, Raspberry Pi, DevOps, NVMe, Debian]
 description:
-  "Step-by-step rebuild of a failed Kubernetes control plane node on a Raspberry Pi 5, booted directly from NVMe, joined
-  back into the existing HA cluster, and migrated to Kubernetes 1.32.13 on Debian Trixie."
+  "Step-by-step rebuild of a failed Kubernetes control plane node on a Raspberry Pi 5: flashing Raspberry Pi OS directly
+  to NVMe via network install, rejoining the existing HA cluster, cleaning up stale etcd members, and migrating to
+  Kubernetes 1.32.13 on Debian Trixie."
 excerpt:
-  "When my SD card died after a power outage, I rebuilt the node booting straight from NVMe and took the opportunity to
-  migrate to Kubernetes 1.32.13 on Debian Trixie. Here are the steps that worked, and the Trixie gotchas that didn't."
+  "When my SD card died after a power outage, I rebuilt the node booting straight from NVMe and migrated to Kubernetes
+  1.32.13 on Debian Trixie. Here are the steps that worked, from the stale etcd member cleanup and control-plane join to
+  the Trixie gotchas around containerd's CNI bin_dir and zram-based swap."
 keywords:
-  "Kubernetes, Raspberry Pi 5, NVMe boot, Debian Trixie, kubeadm, control plane, HA cluster, containerd, flannel"
+  "Kubernetes, Raspberry Pi 5, NVMe boot, Debian Trixie, kubeadm, control plane, HA cluster, etcd member remove,
+  containerd CNI bin_dir, zram swap, Flannel, Longhorn, HAProxy, Keepalived"
 image: /assets/guides/building-a-production-ready-kubernetes-cluster-from-scratch/hardware-overview.webp
 author: Philip Niedertscheider
 ---
