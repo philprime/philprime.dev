@@ -1,8 +1,13 @@
-<ul class='social-media-list'>
+<ul class="social-media-list">
   {%- for entry in site.social_links -%}
     <li>
-      <a rel='me' href='{{ entry.url }}' target='_blank' title='{{ entry.title }}'>
-        <span class='grey fa-brands fa-{{ entry.icon }} fa-lg'></span>
+      <a
+        rel="me"
+        href="{{ entry.url }}"
+        target="_blank"
+        title="{{ entry.title }}"
+      >
+        <span class="grey fa-brands fa-{{ entry.icon }} fa-lg"></span>
       </a>
     </li>
   {%- endfor -%}

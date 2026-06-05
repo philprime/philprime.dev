@@ -2,8 +2,7 @@ version = 1
 agents = ["claude"]
 
 [trust]
-github_repos = [ "microsoft/playwright-mcp", "getsentry/dotagents" ]
-
+github_repos = ["microsoft/playwright-mcp", "getsentry/dotagents"]
 
 [[skills]]
 name = "dotagents"
@@ -12,4 +11,4 @@ source = "getsentry/dotagents"
 [[mcp]]
 name = "playwright"
 command = "npx"
-args = [ "-y", "@playwright/mcp@latest" ]
+args = ["-y", "@playwright/mcp@latest"]

@@ -6,13 +6,13 @@ layout: default.liquid
 
 <header>
   <h1>Lesson {{ page.guide_lesson_id }}: {{ page.title | escape }}</h1>
-  <p style='font-size: 0.8em;'>
+  <p style="font-size: 0.8em">
     <span>
-      <a href='{{ guide.url }}'>{{ guide.title }}</a>
+      <a href="{{ guide.url }}">{{ guide.title }}</a>
     </span>
     /
     <span>
-      <a href='{{ guide_section.url }}'>{{ guide_section.title }}</a>
+      <a href="{{ guide_section.url }}">{{ guide_section.title }}</a>
     </span>
   </p>
 </header>
@@ -24,7 +24,7 @@ layout: default.liquid
 
   <p>
     Congratulations! {{ page.guide_lesson_conclusion }} You have completed this lesson and you can now continue with
-    <a href='lesson-{{ page.guide_lesson_id | plus: 1 }}'>the next one</a>.
+    <a href="lesson-{{ page.guide_lesson_id | plus: 1 }}">the next one</a>.
   </p>
 </div>
 

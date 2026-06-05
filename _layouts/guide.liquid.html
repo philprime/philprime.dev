@@ -4,20 +4,18 @@ layout: default.liquid
 <h1>{{ page.title | escape }}</h1>
 
 {% if page.guide_abstract %}
-  <p style='font-size: 1.25rem; font-weight: bold;'>{{ page.guide_abstract }}</p>
+  <p style="font-size: 1.25rem; font-weight: bold">{{ page.guide_abstract }}</p>
 {% endif %}
-
 {{ content }}
-
 {%
-  include alert.liquid.html type='note' content='
-  As this series was written as an online course, the guide is structured as a curriculum with sections and lessons.
-  Each lesson is a separate post in this series, and the terms <code>guide</code>, <code>series</code> and <code>course</code>, as well as <code>lesson</code>, <code>article</code> and <code>posts</code>, are used interchangeably.
-  '
+  include alert.liquid.html type='note' content=' As
+  this series was written as an online course, the guide is structured as a
+  curriculum with sections and lessons. Each lesson is a separate post in this
+  series, and the terms <code>guide</code>, <code>series</code> and <code
+  >course</code>, as well as <code>lesson</code>, <code>article</code> and <code
+  >posts</code>, are used interchangeably. '
 %}
-
 {% include guide-navigation.liquid.html scope='guide' %}
-
 {% assign sections = site.pages
   | where: 'guide_component', 'section'
   | where: 'guide_id', page.guide_id
@@ -27,8 +25,12 @@ layout: default.liquid
 <h2>Getting Started</h2>
 
 <p>
-  To get started with the series, head over to the <a href='{{ sections.first.url }}'>first section</a> to
-  {{ sections.first.guide_section_cta }}.
+  To get started with the series, head over to the
+  <a
+    href="{{ sections.first.url }}"
+    >first section</a
+  >
+  to {{ sections.first.guide_section_cta }}.
 </p>
 
 <h2>History</h2>
@@ -36,7 +38,7 @@ layout: default.liquid
 <p>
   As guides evolve over time to incorporate new technologies, best practices, and community feedback, you can track the
   various revisions and updates that have been made to this guide
-  <a href='/guides/{{ page.guide_id }}/revisions'>here</a>.
+  <a href="/guides/{{ page.guide_id }}/revisions">here</a>.
 </p>
 
 {% include contribute-cta.liquid.html file_path=page.repo_file_path %}

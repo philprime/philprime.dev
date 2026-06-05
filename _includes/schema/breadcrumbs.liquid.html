@@ -1,5 +1,6 @@
-{% comment %} Breadcrumb Schema for Navigation Helps search engines understand site structure {% endcomment %} {% assign
-url_parts = page.url | split: '/' %} {% assign breadcrumb_url = '' %}
+{% comment %} Breadcrumb Schema for Navigation Helps search engines understand site structure {% endcomment %}
+{% assign url_parts = page.url | split: '/' %}
+{% assign breadcrumb_url = '' %}
 
 <script type="application/ld+json">
   {

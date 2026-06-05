@@ -24,7 +24,7 @@
 
 @charset "utf-8";
 
-@use 'sass:color';
+@use "sass:color";
 
 // Default color scheme settings
 // These are overridden in classic.css and dark.scss
@@ -46,7 +46,8 @@ $lm-background-color: #fdfdfd !default;
 $lm-code-background-color: #eeeeff !default;
 
 $lm-link-base-color: #2a7ae2 !default;
-$lm-link-visited-color: color.adjust($lm-link-base-color, $lightness: -15%) !default;
+$lm-link-visited-color: color.adjust($lm-link-base-color, $lightness: -15%)
+  !default;
 $lm-link-hover-color: $lm-text-color !default;
 
 $lm-border-color-01: $lm-brand-color-light !default;
@@ -55,8 +56,10 @@ $lm-border-color-03: $lm-brand-color-dark !default;
 
 $lm-table-text-color: color.adjust($lm-text-color, $lightness: 18%) !default;
 $lm-table-zebra-color: color.adjust($lm-brand-color, $lightness: 46%) !default;
-$lm-table-header-bg-color: color.adjust($lm-brand-color, $lightness: 43%) !default;
-$lm-table-header-border: color.adjust($lm-brand-color, $lightness: 37%) !default;
+$lm-table-header-bg-color: color.adjust($lm-brand-color, $lightness: 43%)
+  !default;
+$lm-table-header-border: color.adjust($lm-brand-color, $lightness: 37%)
+  !default;
 $lm-table-border-color: $lm-border-color-01 !default;
 
 // Syntax highlighting styles should be adjusted appropriately for every "skin"
@@ -281,9 +284,12 @@ $dm-border-color-02: $dm-brand-color-light !default;
 $dm-border-color-03: $dm-brand-color !default;
 
 $dm-table-text-color: $dm-text-color !default;
-$dm-table-zebra-color: color.adjust($dm-background-color, $lightness: 4%) !default;
-$dm-table-header-bg-color: color.adjust($dm-background-color, $lightness: 10%) !default;
-$dm-table-header-border: color.adjust($dm-background-color, $lightness: 21%) !default;
+$dm-table-zebra-color: color.adjust($dm-background-color, $lightness: 4%)
+  !default;
+$dm-table-header-bg-color: color.adjust($dm-background-color, $lightness: 10%)
+  !default;
+$dm-table-header-border: color.adjust($dm-background-color, $lightness: 21%)
+  !default;
 $dm-table-border-color: $dm-border-color-01 !default;
 
 // Syntax highlighting styles should be adjusted appropriately for every "skin"
