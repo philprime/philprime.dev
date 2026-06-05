@@ -30,11 +30,11 @@ From there I picked _Raspberry Pi OS Lite (64-bit)_ and selected the NVMe disk a
 
 After first boot I ran `raspi-config` and applied three settings:
 
-1. **Advanced Options → Boot Order → b2) NVMe-USB-Boot from NVME before trying USB**, so the system always picks NVMe over any SD card.
+1. **Advanced Options → Boot Order → NVMe-USB-Boot from NVME before trying USB**, so the system always picks NVMe over any SD card.
 2. **Localisation Options → Locale**, set to my region.
 3. **Interface Options → SSH**, enabled so the keyboard and monitor could go away.
 
-Because the OS is installed straight to the NVMe partition, we can skip the storage prep from [lesson 6](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-6).
+Because the OS is installed straight to the NVMe partition, we can skip the storage preparations from [lesson 6](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-6).
 `lsblk -f` already shows `nvme0n1p2` mounted at `/` as ext4:
 
 ```bash
@@ -183,7 +183,7 @@ $ cat /boot/firmware/cmdline.txt
 console=serial0,115200 console=tty1 root=PARTUUID=1e13ba14-02 rootfstype=ext4 fsck.repair=yes rootwait cgroup_memory=1 cgroup_enable=memory
 ```
 
-and `chronyc sources` confirms the clock is syncing against the configured peers:
+... and `chronyc sources` confirms the clock is syncing against the configured peers:
 
 ```text
 $ chronyc sources
@@ -337,7 +337,7 @@ The cluster-wide DaemonSet then schedules a `kube-flannel` pod on the new node a
 ## HAProxy and Keepalived
 
 [Lesson 15](/guides/building-a-production-ready-kubernetes-cluster-from-scratch/lesson-15) walks through Keepalived and HAProxy in detail, so I won't repeat the configs.
-One thing worth verifying on the new node before you trust the VIP: HAProxy actually listening on all four ports.
+One thing worth doing on the new node before you trust the VIP is verifying that HAProxy actually listening on all four ports.
 `systemctl status haproxy` happily reports `active (running)` even when individual binds silently failed, so always cross-check with `ss`:
 
 ```bash
@@ -392,12 +392,13 @@ $ kubectl logs sched-check
 $ kubectl delete pod sched-check
 ```
 
-## What I'd add to the guide
+## Learnings
 
 The Trixie-specific findings (containerd's `bin_dir` default, and zram replacing `dphys-swapfile`) only really matter when bringing up a node on Debian 13.
 The Longhorn `open-iscsi` step applies to any new node, but the existing nodes already have it from their original install, so it's only a surprise when you add a fresh one.
-I'll fold all of these into the guide as warnings on the relevant lessons (9, 10, 17).
+
+I might consider updating the guide to use trixie-based images at some point and merge all of these findings into the guide as warnings on the relevant lessons (9, 10, 17).
 Until then, if you're following the guide on Trixie or on a Pi 5 with NVMe boot, the steps above are what you'll want to layer on top.
 
 If you found this helpful, the full guide is free at [Building a production-ready Kubernetes cluster from scratch](/guides/building-a-production-ready-kubernetes-cluster-from-scratch).
-You can support its continued maintenance via [GitHub Sponsors](https://github.com/sponsors/philprime). 🙏
+Feel free to reach out to me on [X](https://github.com/philprimes) for any follow-up questions or concerns. And if you want to support my content, checkout the options on my [GitHub Sponsors page](https://github.com/sponsors/philprime). 🙏
