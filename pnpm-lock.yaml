@@ -23,7 +23,7 @@ importers:
         version: 11.16.0(puppeteer@25.3.0)
       '@shopify/prettier-plugin-liquid':
         specifier: ^1.10.2
-        version: 1.10.3(prettier@3.9.5)
+        version: 1.11.0(prettier@3.9.5)
       prettier:
         specifier: ^3.8.3
         version: 3.9.5
@@ -260,11 +260,11 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
 
-  '@shopify/liquid-html-parser@2.9.2':
-    resolution: {integrity: sha512-2XJYqHaZxEBwuufGhzIZ0M6m9YA4HS7YlVOiZtYanFgkmoQeJm1c0JhKcuCXU5C1pc2M0rt1XzBX8SgWv7l8Ww==}
+  '@shopify/liquid-html-parser@2.10.0':
+    resolution: {integrity: sha512-fdfKqVOoGCvLWgXUiqPjw99wM64wZV/3RpSQZb59P1K8pT7l1cyJZV+QAyHgvVV1jcglUCtFmr+8ioY7rGVdKg==}
 
-  '@shopify/prettier-plugin-liquid@1.10.3':
-    resolution: {integrity: sha512-MSI3e3+EksyrkeP4Mk7WnZkySterxukyi7U1pPLUIVaE2zhxLIMEDLA2Ew7fFFNNQ0P2FXF0nzqk+aN/Hi2/IA==}
+  '@shopify/prettier-plugin-liquid@1.11.0':
+    resolution: {integrity: sha512-3ujL22Whf8iqh5/8emhmc6K3/k9YnmHR1GBpsinjBH/vylugm3OUl1nmCb95uNoDD+dlgZXfIrAKJe2jOdQmJQ==}
     peerDependencies:
       prettier: ^2.0.0 || ^3.0.0
 
@@ -914,10 +914,6 @@ packages:
     resolution: {integrity: sha512-RSn9F68PjH9HqtltsSnqYC1XXoWe9Bju5+213R98cNGttag9q9yAOTzdbsqvIa7aNm5WffBZFpWYr2aWrklWAw==}
     engines: {node: '>= 6'}
 
-  ohm-js@17.5.0:
-    resolution: {integrity: sha512-l4Sa7026+6jsvYbt0PXKmL+f+ML32fD++IznLgxDhx2t9Cx6NC7zwRqblCujPHGGmkQerHoeBzRutdxaw/S72g==}
-    engines: {node: '>=0.12.1'}
-
   on-exit-leak-free@2.1.2:
     resolution: {integrity: sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==}
     engines: {node: '>=14.0.0'}
@@ -1472,14 +1468,13 @@ snapshots:
     dependencies:
       react: 19.2.6
 
-  '@shopify/liquid-html-parser@2.9.2':
+  '@shopify/liquid-html-parser@2.10.0':
     dependencies:
       line-column: 1.0.2
-      ohm-js: 17.5.0
 
-  '@shopify/prettier-plugin-liquid@1.10.3(prettier@3.9.5)':
+  '@shopify/prettier-plugin-liquid@1.11.0(prettier@3.9.5)':
     dependencies:
-      '@shopify/liquid-html-parser': 2.9.2
+      '@shopify/liquid-html-parser': 2.10.0
       html-styles: 1.0.0
       prettier: 3.9.5
 
@@ -2131,8 +2126,6 @@ snapshots:
   object-assign@4.1.1: {}
 
   object-hash@3.0.0: {}
-
-  ohm-js@17.5.0: {}
 
   on-exit-leak-free@2.1.2: {}
 
