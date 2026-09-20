@@ -181,10 +181,10 @@ importers:
         version: 11.17.0(puppeteer@25.11.0)
       '@shopify/prettier-plugin-liquid':
         specifier: ^1.10.2
-        version: 1.11.0(prettier@3.9.6)
+        version: 1.11.0(prettier@3.9.8)
       prettier:
         specifier: ^3.8.3
-        version: 3.9.6
+        version: 3.9.8
       puppeteer:
         specifier: 25.11.0
         version: 25.11.0
@@ -1170,8 +1170,8 @@ packages:
     resolution: {integrity: sha512-SoSL4+OSEtR99LHFZQiJLkT59C5B1amGO1NzTwj7TT1qCUgUO6hxOvzkOYxD+vMrXBM3XJIKzokoERdqQq/Zmg==}
     engines: {node: ^10 || ^12 || >=14}
 
-  prettier@3.9.6:
-    resolution: {integrity: sha512-OpN0zzVdiaiAhxpuuj5efpIS4sY9j7bY6uR5mnj5yPzGkdkjNKSJeUThPb60Jw29QuAZgA4o+/iB49kFiaBX6g==}
+  prettier@3.9.8:
+    resolution: {integrity: sha512-WRFq3Wn3WId7LLROfMLdH7xaFr2jR62wU8nLO6rQUOLOxNZUviyJQs1M0iIhLexSFy+L+w0ch66wtoO2jRjG0A==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -1630,11 +1630,11 @@ snapshots:
     dependencies:
       line-column: 1.0.2
 
-  '@shopify/prettier-plugin-liquid@1.11.0(prettier@3.9.6)':
+  '@shopify/prettier-plugin-liquid@1.11.0(prettier@3.9.8)':
     dependencies:
       '@shopify/liquid-html-parser': 2.10.0
       html-styles: 1.0.0
-      prettier: 3.9.6
+      prettier: 3.9.8
 
   '@swc/helpers@0.5.21':
     dependencies:
@@ -2372,7 +2372,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  prettier@3.9.6: {}
+  prettier@3.9.8: {}
 
   process-warning@3.0.0: {}
 
