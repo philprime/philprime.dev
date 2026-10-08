@@ -3,7 +3,7 @@
     "@mermaid-js/mermaid-cli": "12.0.0",
     "@shopify/prettier-plugin-liquid": "^1.10.2",
     "prettier": "^3.8.3",
-    "puppeteer": "25.12.0"
+    "puppeteer": "25.13.0"
   },
   "private": true,
   "packageManager": "pnpm@12.10.1+sha512.ba40a37eb1a370d60fea8c4cf1d364c13bcccef518e98ad2bcee954f539d38da37458e58261a3fa55e06523450ea0ffff9f497b135be41f2c15c1642bacace6c"
