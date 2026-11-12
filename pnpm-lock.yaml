@@ -181,7 +181,7 @@ importers:
         version: 12.2.0(puppeteer@25.17.0)
       '@shopify/prettier-plugin-liquid':
         specifier: ^1.10.2
-        version: 1.11.3(prettier@3.9.10)
+        version: 1.11.4(prettier@3.9.10)
       prettier:
         specifier: ^3.8.3
         version: 3.9.10
@@ -434,11 +434,11 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
 
-  '@shopify/liquid-html-parser@2.11.0':
-    resolution: {integrity: sha512-vgrCl9dxPXflxjbEshNXAi/n09pJpyh7RTvHHHQb5AlUw3p7Jz565v+8jNvsaGv8s85MiWkrSW8r9Ojzpx9yMw==}
+  '@shopify/liquid-html-parser@2.12.0':
+    resolution: {integrity: sha512-F0yV3rY5KmGt9J8cD5xc845JjX6H/W05hA5khBpZO3fuUDqZ4HHGkf4sWsu/uWvUBar/K6af1OAH5obJnyC8tw==}
 
-  '@shopify/prettier-plugin-liquid@1.11.3':
-    resolution: {integrity: sha512-95I7LRTsSIT7RJ6SNjGNgb38y16EQokHFmZ/T3THpSOWTWOvOJ9EWTTjXEuTfQs2GjR5DHumMQwBqhr3SrNZsQ==}
+  '@shopify/prettier-plugin-liquid@1.11.4':
+    resolution: {integrity: sha512-2X9CQFPur99coUB17HGaEM1LqJbmEq7wcMx/yKHFmo8/1UDsj5GDAJHP9sjQej1LwrCevBKzarEbfHyjLZf5KA==}
     peerDependencies:
       prettier: ^2.0.0 || ^3.0.0
 
@@ -1655,13 +1655,13 @@ snapshots:
     dependencies:
       react: 19.2.6
 
-  '@shopify/liquid-html-parser@2.11.0':
+  '@shopify/liquid-html-parser@2.12.0':
     dependencies:
       line-column: 1.0.2
 
-  '@shopify/prettier-plugin-liquid@1.11.3(prettier@3.9.10)':
+  '@shopify/prettier-plugin-liquid@1.11.4(prettier@3.9.10)':
     dependencies:
-      '@shopify/liquid-html-parser': 2.11.0
+      '@shopify/liquid-html-parser': 2.12.0
       html-styles: 1.0.0
       prettier: 3.9.10
 
