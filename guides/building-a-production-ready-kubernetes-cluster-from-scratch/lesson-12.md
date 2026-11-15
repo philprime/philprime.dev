@@ -134,12 +134,26 @@ The output should confirm the correct CIDR range we configured for Flannel.
    $ sudo ufw allow out to 10.244.0.0/16
    ```
 
-4. Allow routed traffic for Flannel overlay network
+4. Add explicit forwarding rules for cluster DNS. `ufw allow in` and `ufw allow out` apply to the host, not traffic
+   forwarded between `flannel.1` and `cni0`. Keep the routed default policy set to deny and use `ufw route allow`
+   for the protocols and services required by the workloads.
+
+   Set `LOCAL_POD_CIDR` to this node's assigned pod CIDR. These rules cover remote pods entering this node, local pods
+   contacting remote nodes, and same-node bridged pod traffic:
 
    ```bash
-   $ sudo ufw allow in on flannel.1
-   $ sudo ufw allow out on flannel.1
+   $ LOCAL_POD_CIDR=10.244.0.0/24
+   $ sudo ufw route allow in on flannel.1 out on cni0 proto udp from 10.244.0.0/16 to "$LOCAL_POD_CIDR" port 53
+   $ sudo ufw route allow in on flannel.1 out on cni0 proto tcp from 10.244.0.0/16 to "$LOCAL_POD_CIDR" port 53
+   $ sudo ufw route allow in on cni0 out on flannel.1 proto udp from "$LOCAL_POD_CIDR" to 10.244.0.0/16 port 53
+   $ sudo ufw route allow in on cni0 out on flannel.1 proto tcp from "$LOCAL_POD_CIDR" to 10.244.0.0/16 port 53
+   $ sudo ufw route allow in on cni0 out on cni0 proto udp from "$LOCAL_POD_CIDR" to "$LOCAL_POD_CIDR" port 53
+   $ sudo ufw route allow in on cni0 out on cni0 proto tcp from "$LOCAL_POD_CIDR" to "$LOCAL_POD_CIDR" port 53
    ```
+
+   Add similarly scoped forwarding rules when installing ingress or storage components. Review both UFW and CNI chain
+   ordering when debugging: a `UFW BLOCK` log can precede a later Flannel accept rule, so correlate logs with rule
+   counters and an actual connectivity test rather than treating every log as a dropped packet.
 
 5. Enable packet forwarding in the kernel. Open the `sysctl.conf` file for and uncomment the following lines to route
    packets between interfaces:
@@ -168,7 +182,8 @@ The output should confirm the correct CIDR range we configured for Flannel.
    $ sudo ufw reload
    ```
 
-7. Afterwards you firewall table should include these rules:
+7. Check the firewall on every node. Host rules appear as `ALLOW IN`/`ALLOW OUT`, while the DNS forwarding rules above
+   must appear as `ALLOW FWD`. The following excerpt shows the host rules, not the complete forwarding policy:
 
    ```bash
    $ sudo ufw status verbose
@@ -183,8 +198,6 @@ The output should confirm the correct CIDR range we configured for Flannel.
    6443/tcp                   ALLOW IN    10.1.1.0/24
    2379:2380/tcp              ALLOW IN    10.1.1.0/24
    10250/tcp                  ALLOW IN    10.1.1.0/24
-   10251/tcp                  ALLOW IN    127.0.0.1
-   10252/tcp                  ALLOW IN    127.0.0.1
    8285/udp                   ALLOW IN    Anywhere
    8472/udp                   ALLOW IN    Anywhere
    6443                       ALLOW IN    10.244.0.0/16
@@ -200,8 +213,6 @@ The output should confirm the correct CIDR range we configured for Flannel.
    10.1.1.0/24 6443/tcp       ALLOW OUT   Anywhere
    10.1.1.0/24 2379:2380/tcp  ALLOW OUT   Anywhere
    10.1.1.0/24 10250/tcp      ALLOW OUT   Anywhere
-   127.0.0.1 10251/tcp        ALLOW OUT   Anywhere
-   127.0.0.1 10252/tcp        ALLOW OUT   Anywhere
    8285/udp                   ALLOW OUT   Anywhere
    8472/udp                   ALLOW OUT   Anywhere
    10.244.0.0/16 6443         ALLOW OUT   Anywhere

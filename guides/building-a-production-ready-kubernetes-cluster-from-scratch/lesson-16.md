@@ -125,10 +125,42 @@ sample-app-6bcd6fdf5b-tltkt   1/1     Running   0          66s   10.244.2.21   k
 
 As you can see the three pods are scheduled on different nodes.
 
+## Check Availability Before Failure Testing
+
+Control-plane HA, DNS availability, and ingress availability are separate properties. Before any disruptive test,
+verify that the two `kube-system` CoreDNS replicas and the two Traefik replicas are spread across nodes. Use required
+hostname anti-affinity and disruption budgets with `minAvailable: 1` for these services.
+A preferred anti-affinity rule alone does not guarantee placement, and a disruption budget does not protect against
+an involuntary node failure.
+
+```bash
+$ kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide
+$ kubectl get pods -n traefik -o wide
+$ kubectl get pdb -A
+$ kubectl top nodes
+$ kubectl get --raw '/readyz?verbose'
+```
+
+Test the application hostname both normally and directly against the VIP. Replace the example hostname with a real
+Ingress hostname whose certificate is valid:
+
+```bash
+$ curl --fail --show-error https://analytics.lab.philprime.dev/
+$ curl --fail --show-error --resolve analytics.lab.philprime.dev:443:10.1.233.1 https://analytics.lab.philprime.dev/
+```
+
+A normal lookup pointing at one node is not HA even if a forced VIP request succeeds. Keep internal DNS and router
+forwarding pointed at the VIP.
+
 ## Simulate a Control Plane Node Failure
 
-To test the high-availability configuration, we will simulate a failure by shutting down or disconnecting one of the
-control plane nodes:
+Run disruptive tests only in an approved maintenance window with console access, a recovery procedure, a current etcd
+snapshot, and confirmed healthy quorum. Fail only one of the three nodes at a time. Observe API requests, application
+requests, DNS lookups, and Longhorn health from another machine throughout the test.
+
+Stopping kubelet, as in the limited heartbeat test below, is **not a complete node failure test**: existing containers,
+including static control-plane pods, may continue running. It also does not stop the host's HAProxy or Keepalived.
+Use a separately approved power or network isolation test when measuring actual node-failure recovery.
 
 SSH into one of the control plane nodes and simulate a failure by stopping the `kubelet` service:
 
@@ -234,8 +266,8 @@ kubernetes-node-3   Ready      control-plane   29m   v1.31.5
 ...
 ````
 
-As you can see all nodes are listed with a status of "Ready". Now to test the high-availability setup, we will simulate
-a failure by stopping the `kubelet` service on the current HAProxy `MASTER` node, which should be `kubernetes-node-1`:
+The following kubelet stop tests lost node heartbeats only. It does not establish HAProxy failover or loss of an etcd
+member. Identify the actual MASTER by checking which node owns the VIP rather than assuming it is Node 1:
 
 ```bash
 $ sudo systemctl stop kubelet
@@ -256,11 +288,21 @@ kubernetes-node-3   Ready      control-plane   30m   v1.31.5
 ```
 
 The failed node is now marked as "NotReady" and the other nodes are still operational. This demonstrates that the
-control plane is resilient to node failures and can continue to operate with the remaining nodes.
+API endpoint remains reachable during this heartbeat test. It does not prove full node-failure resilience.
 
-Counter-Theory: If the high-availability would not work, it would not be possible to access the Kubernetes API server on
-the other nodes. This would result in an error message like `The connection to the server could not be established` when
-running the `kubectl get nodes` command.
+To test the Keepalived health tracking from lesson 15, separately approve a brief HAProxy outage on the VIP owner.
+Keep a second node's SSH session open, stop HAProxy on the owner, verify the VIP moves to a healthy BACKUP, and confirm
+API and application requests recover. Then start HAProxy again and verify readiness. This test is separate from the
+kubelet heartbeat test and interrupts existing connections.
+
+```bash
+$ sudo systemctl stop haproxy
+# Verify VIP ownership and requests from another node, then restore the original owner:
+$ sudo systemctl start haproxy
+```
+
+Do not change firewall defaults or stop a second node to make a failed test pass. Restore the original service and
+investigate the failed path first.
 
 {% include alert.liquid.html type='warning' title='Warning:' content='
 Do not forget to restart the `kubelet` service on the failed node to restore the high-availability setup.

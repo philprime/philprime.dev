@@ -64,6 +64,15 @@ apiServer:
 ---
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: UploadCertsConfiguration
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+systemReserved:
+  cpu: 250m
+  memory: 512Mi
+kubeReserved:
+  cpu: 250m
+  memory: 512Mi
 ```
 
 Now run the following command to initialize the control plane:
@@ -133,6 +142,34 @@ kubernetes-node-1   NotReady   control-plane   2m44s   v1.31.5
 
 As you can see the node is currently in the `NotReady` state. This is because the control plane has no CNI plugin
 installed yet. We will install the Flannel CNI plugin in the next lesson, so it is safe to ignore for now
+
+## Reserve Capacity for Node Services
+
+The `KubeletConfiguration` above reserves a total of 500m CPU and 1 GiB memory per node for the OS and Kubernetes
+node services. These are starting values for a four-core, 8 GiB node, not universal sizing guidance. Measure daemon
+usage and leave capacity for control-plane pods and application bursts. The scheduler uses resource requests, not
+observed usage, so workloads without requests can still overload a node.
+
+For an existing cluster, do not run `kubeadm init` again. Back up and update the `KubeletConfiguration` stored in the
+`kube-system/kubelet-config` ConfigMap and the effective `/var/lib/kubelet/config.yaml` on each node. Merge the
+`systemReserved` and `kubeReserved` mappings into the existing configuration instead of replacing other settings.
+Updating the ConfigMap alone does not reconfigure running kubelets.
+
+Restart kubelet on only one node at a time, then verify both readiness and allocatable capacity before continuing:
+
+```bash
+$ sudo systemctl restart kubelet
+$ kubectl wait node/kubernetes-node-1 --for=condition=Ready --timeout=90s
+$ kubectl get nodes -o custom-columns=NAME:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory
+```
+
+A four-core node with these reservations advertises `3500m` allocatable CPU. This reduces pod scheduling capacity
+without imposing new hard limits on the system or kubelet cgroups. Keep the kubeadm ConfigMap and node files aligned
+so later node joins and upgrades retain the reservations.
+
+For CI on shared control-plane nodes, bound concurrency as well as individual job sizes. Per-pool ceilings are not a
+cluster-wide resource guarantee. Workload requests, memory limits, and remaining headroom determine safe concurrency.
+Include the resources used by runner processes, job containers, sidecars, and build services when sizing each pool.
 
 ## Allow Scheduling on the Control Plane Node
 

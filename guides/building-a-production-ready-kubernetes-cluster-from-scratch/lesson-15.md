@@ -191,23 +191,37 @@ The section vrrp_instance` defines the VRRP instance configuration, including:
   node. Adjust the priority value for each node, with the primary node having the highest priority. Make sure the
   priority values are unique and consistent across all nodes.
 - **advert_int**: The interval in seconds between sending VRRP advertisement packets. The default value is `1`.
-- **auth_pass**: The password used for authentication between the nodes. Make sure to use a strong password.
+- **auth_pass**: Use the same site-specific eight-character value on all nodes. VRRP PASS authentication truncates
+  longer values to eight characters and is not encryption or a replacement for network access controls.
 - **virtual_ipaddress**: The virtual IP address that will be used to access the Kubernetes API server. Our network is
   configured with the IP range `10.1.1.0/16`, so we can use an IP address from this range. Let's use `10.1.233.1` as the
   virtual IP address. This IP address should be unique and not used by any other device on the network. It must be the
   same across all control plane nodes.
 
-Furthermore we have to define a `static_ipaddress` block to ensure the virtual IP address is assigned to the network
-interface on system boot.
+Keep the VIP only in `virtual_ipaddress`, not in a `static_ipaddress` block or a permanent host address assignment.
+Keepalived must be able to remove it from a failed MASTER and assign it to a healthy BACKUP. Track HAProxy service
+health as well as the node's availability, so a stopped HAProxy service also triggers failover.
 
 Here is an example configuration for the primary node (node `1`):
 
 ```conf
-static_ipaddress {
-    10.1.233.1 dev eth0 scope global
+global_defs {
+    enable_script_security
+    script_user root
+}
+
+vrrp_script chk_haproxy {
+    script "/usr/bin/systemctl is-active --quiet haproxy"
+    interval 2
+    timeout 1
+    fall 2
+    rise 2
 }
 
 vrrp_instance VI_1 {
+    track_script {
+        chk_haproxy
+    }
     state MASTER
     interface eth0
     virtual_router_id 51
@@ -215,7 +229,7 @@ vrrp_instance VI_1 {
     advert_int 1
     authentication {
         auth_type PASS
-        auth_pass password123
+        auth_pass CHANGEME
     }
     virtual_ipaddress {
         10.1.233.1
@@ -223,14 +237,14 @@ vrrp_instance VI_1 {
 }
 ```
 
-For the secondary nodes (nodes `2` and `3`), set the `state` to `BACKUP` and adjust the `priority` accordingly:
+For the secondary nodes (nodes `2` and `3`), keep the same `global_defs` and `vrrp_script` blocks above, set the
+`state` to `BACKUP`, and adjust the `priority` accordingly. Replace `CHANGEME` on every node before enabling VRRP:
 
 ```conf
-static_ipaddress {
-    10.1.233.1 dev eth0 scope global
-}
-
 vrrp_instance VI_1 {
+    track_script {
+        chk_haproxy
+    }
     state BACKUP
     interface eth0
     virtual_router_id 51
@@ -238,7 +252,7 @@ vrrp_instance VI_1 {
     advert_int 1
     authentication {
         auth_type PASS
-        auth_pass password123
+        auth_pass CHANGEME
     }
     virtual_ipaddress {
       10.1.233.1
@@ -409,11 +423,12 @@ frontend kubernetes-api
 backend kube-apiservers
     mode tcp
     balance roundrobin
-    option tcp-check
+    option httpchk GET /readyz
+    http-check expect status 200
     default-server inter 3s fall 3 rise 2
-    server master-1 10.1.1.1:6443 check
-    server master-2 10.1.1.2:6443 check
-    server master-3 10.1.1.3:6443 check
+    server master-1 10.1.1.1:6443 check check-ssl verify none
+    server master-2 10.1.1.2:6443 check check-ssl verify none
+    server master-3 10.1.1.3:6443 check check-ssl verify none
 ```
 
 Save the file and exit the editor.
@@ -439,6 +454,90 @@ HAProxy configuration file with the new node information.
 If you decide to add additional nodes later on, which are <strong>not</strong> part of the control plane, make sure to
 <strong>not</strong> include them in the HAProxy configuration file.
 ' %}
+
+## Route Application Traffic Through Traefik
+
+Control-plane redundancy does not replicate application ingress. Configure Traefik with two replicas on different
+nodes, required hostname anti-affinity, a disruption budget with `minAvailable: 1`, and NodePorts `30080` for HTTP
+and `30443` for HTTPS. Keep the settings in your Helm values or infrastructure configuration rather than editing a
+generated Deployment or Service. The [Traefik Helm chart](https://github.com/traefik/traefik-helm-chart) provides the
+installation and values reference.
+
+Route the VIP's HTTP and HTTPS listeners to separate backends. Sending TLS traffic to the HTTP NodePort causes a TLS
+protocol error. Add the following to HAProxy on each node, replacing the optional node-address binds with that node's
+own address:
+
+```conf
+frontend ingress-http
+    mode tcp
+    bind 10.1.233.1:80
+    bind 10.1.1.1:80
+    default_backend ingress-http-backend
+
+backend ingress-http-backend
+    mode tcp
+    balance roundrobin
+    option tcp-check
+    server node-1 10.1.1.1:30080 check
+    server node-2 10.1.1.2:30080 check
+    server node-3 10.1.1.3:30080 check
+
+frontend ingress-https
+    mode tcp
+    bind 10.1.233.1:443
+    bind 10.1.1.1:443
+    default_backend ingress-https-backend
+
+backend ingress-https-backend
+    mode tcp
+    balance roundrobin
+    option tcp-check
+    server node-1 10.1.1.1:30443 check
+    server node-2 10.1.1.2:30443 check
+    server node-3 10.1.1.3:30443 check
+```
+
+The node-address binds preserve direct-node traffic and existing split-DNS configurations. They do not make a DNS
+record pinned to one node highly available. Configure internal application DNS and router forwarding to use the VIP,
+then verify both internal and external paths. Test the hostname normally as well as with `curl --resolve` against the
+VIP, since testing only the VIP can hide a broken public or split-DNS route.
+
+Allow NodePort access from the load-balancer nodes on every host:
+
+```bash
+$ sudo ufw allow in proto tcp from 10.1.1.0/24 to "$NODE_IP" port 30080,30443
+$ sudo ufw allow out proto tcp to 10.1.1.0/24 port 30080,30443
+$ sudo ufw allow in proto tcp to 10.1.233.1 port 80,443
+$ sudo ufw allow in proto tcp to "$NODE_IP" port 80,443
+```
+
+With Flannel, add scoped forwarding for Traefik's pod entrypoints TCP `8000` and `8443`, and its HTTP backend services.
+The following example includes an application listening on TCP `3000`. Replace that port with your backend's actual
+container port, and use each node's actual pod CIDR as `LOCAL_POD_CIDR`:
+
+```bash
+$ sudo ufw route allow in on flannel.1 out on cni0 proto tcp from 10.244.0.0/16 to "$LOCAL_POD_CIDR" port 8000,8443,3000
+$ sudo ufw route allow in on cni0 out on flannel.1 proto tcp from "$LOCAL_POD_CIDR" to 10.244.0.0/16 port 8000,8443,3000
+$ sudo ufw route allow in on cni0 out on cni0 proto tcp from "$LOCAL_POD_CIDR" to "$LOCAL_POD_CIDR" port 8000,8443,3000
+```
+
+For an ingress migration, first deploy Traefik on spare NodePorts and test a temporary Ingress against the existing
+Service and TLS Secret. Then update application `ingressClassName` and cert-manager HTTP-01 solver classes to
+`traefik`. Preserve the original public NodePorts during the final handover, and verify the public hostname before
+removing the old controller. Two controllers can coexist only when their ingress classes and NodePorts do not conflict.
+
+Validate configuration before reloading each load-balancer node, processing BACKUP nodes before the MASTER:
+
+```bash
+$ sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+$ sudo keepalived --config-test
+$ sudo systemctl reload haproxy
+$ sudo systemctl reload keepalived
+```
+
+The API backend uses HTTPS `/readyz` checks, not merely a TCP handshake. The example's `check-ssl verify none` applies
+only to the health probe, not client TLS traffic. On networks requiring authenticated backend probes, configure
+HAProxy to verify the API server certificate with the cluster CA.
 
 ## Verify the Load Balancer Setup
 

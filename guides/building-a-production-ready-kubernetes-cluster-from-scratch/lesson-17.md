@@ -37,6 +37,28 @@ the cluster and provide data redundancy to prevent data loss in case of node fai
 Longhorn acts as a storage provisioner in Kubernetes, managing the creation, replication, and scaling of persistent
 volumes. It abstracts the underlying storage infrastructure and provides a unified interface for managing storage.
 
+## Allow Longhorn Pod Traffic Through the Firewall
+
+Longhorn needs pod-to-pod communication in addition to the host firewall rules from earlier lessons. With UFW routed
+traffic denied by default, add interface- and CIDR-scoped rules for the services enabled in your Longhorn version.
+The v1 data engine uses dynamically allocated instance ports, so allowing only the manager's port is insufficient.
+For this setup, the TCP ranges are `8500:8504`, `9500:9504`, and `10000:30000`:
+
+```bash
+$ sudo ufw route allow in on flannel.1 out on cni0 proto tcp from 10.244.0.0/16 to "$LOCAL_POD_CIDR" port 8500:8504,9500:9504,10000:30000
+$ sudo ufw route allow in on cni0 out on flannel.1 proto tcp from "$LOCAL_POD_CIDR" to 10.244.0.0/16 port 8500:8504,9500:9504,10000:30000
+$ sudo ufw route allow in on cni0 out on cni0 proto tcp from "$LOCAL_POD_CIDR" to "$LOCAL_POD_CIDR" port 8500:8504,9500:9504,10000:30000
+```
+
+Set `LOCAL_POD_CIDR` for each node as in lesson 12. These rules do not expose the port ranges on the node's external
+interface. Review the component requirements for your installed release before enabling additional data engines,
+backing-image services, or RWX volumes. Keep existing host-to-pod management traffic working as well.
+
+Validate Longhorn node conditions, replica health, and actual connectivity. A bound PVC alone does not prove that
+replicas can communicate. Check the disk paths in the Longhorn node configuration: `/var/lib/longhorn` may be on the
+root filesystem even when the configured replica disk is a different NVMe mount. Do not infer the data location from
+the default directory or migrate data solely because of that mount result.
+
 ## Preparing the System for Longhorn Installation
 
 Before starting off with the Longhorn installation, we are preparing the system to have all the necessary requirements
