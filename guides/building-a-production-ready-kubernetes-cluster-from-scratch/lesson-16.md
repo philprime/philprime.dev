@@ -131,7 +131,8 @@ Before introducing a failure, let's distinguish the services we want to keep ava
 of the picture, but applications may also depend on cluster DNS. A working API endpoint does not by itself tell us
 whether DNS can survive the same failure.
 
-We can check the API server's readiness and see where the cluster DNS pods are running:
+We can check the API server's readiness and see where the cluster DNS pods are running. These are readiness and
+placement checks, not a DNS failover test:
 
 ```bash
 $ kubectl get --raw '/readyz?verbose'
@@ -142,7 +143,7 @@ If both DNS replicas are on one node, losing that node can interrupt DNS even wh
 Required hostname anti-affinity can keep replicas on different nodes. A PodDisruptionBudget with `minAvailable: 1`
 also helps during voluntary disruptions, but it cannot prevent the loss of a pod when its node fails.
 
-## Simulate a Control Plane Node Failure
+## Interrupt Control Plane Node Heartbeats
 
 Before we interrupt anything, make sure all three control-plane nodes and their etcd members are healthy. Keep an
 SSH session or console connection available for recovery, take a current etcd snapshot, and choose a maintenance
@@ -154,17 +155,14 @@ containers can continue running. That includes the static control-plane pods. HA
 and also remain running. Treat this as a heartbeat test, not proof that the cluster survives a complete node failure.
 A power or network isolation test requires its own recovery procedure and maintenance window.
 
-SSH into one of the control plane nodes and simulate a failure by stopping the `kubelet` service:
+SSH into one of the control plane nodes and interrupt its heartbeats by stopping the `kubelet` service:
 
 ```bash
 $ sudo systemctl stop kubelet
 ```
 
-Alternatively, you can simulate a network failure by disconnecting the network cable or using a firewall rule to block
-traffic.
-
-After simulating the failure, check the status of the nodes. The failed node should eventually be marked as "NotReady",
-but the cluster should continue to operate normally with the remaining control plane nodes:
+After stopping kubelet, check the status of the nodes from another node. The affected node should eventually be marked
+as "NotReady", even though its existing containers may still be running:
 
 ```bash
 $ kubectl get nodes
@@ -189,15 +187,13 @@ sample-app-789ff789c4-qjkkp   1/1     Running       0          3m43s   10.244.2.
 
 As you can see now, multiple nodes have been scheduled on the remaining nodes, to match the desired number of replicas.
 
-## Restore the Failed Control Plane Node
+## Restore Control Plane Node Heartbeats
 
-Restart the stopped control plane node by starting the `kubelet` service:
+Restore the node's heartbeats by starting the `kubelet` service:
 
 ```bash
 $ sudo systemctl start kubelet
 ```
-
-Alternatively, if you disconnected the network cable or blocked traffic, reconnect or unblock the node.
 
 Check the status of the nodes again to ensure that the restored node rejoins the cluster and becomes "Ready":
 
@@ -238,8 +234,8 @@ sample-app-789ff789c4-rh7nk   1/1     Running   0          5s      10.244.1.14  
 
 # (Optional) Test Availability of the Kubernetes API Server
 
-To test the availability of the Kubernetes API server during a control plane node failure, you can run the following
-command on every node at the same time:
+To observe the Kubernetes API server during the heartbeat and load-balancer tests, run the following command on
+another healthy node. Make sure its kubeconfig uses the virtual IP `10.1.233.1`, so requests go through the load balancer:
 
 ````bash
 ## Cleaning up
@@ -279,8 +275,8 @@ kubernetes-node-3   Ready      control-plane   30m   v1.31.5
 ...
 ```
 
-The failed node is now marked as "NotReady" and the other nodes are still operational. This demonstrates that the
-API endpoint remains reachable during this heartbeat test. It does not prove full node-failure resilience.
+The node with kubelet stopped is now marked as "NotReady" and the other nodes are still operational. This demonstrates
+that the API endpoint remains reachable during this heartbeat test. It does not prove full node-failure resilience.
 
 ### Check Load-Balancer Failover Separately
 

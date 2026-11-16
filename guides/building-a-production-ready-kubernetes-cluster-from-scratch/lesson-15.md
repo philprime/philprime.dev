@@ -460,8 +460,7 @@ If you decide to add additional nodes later on, which are <strong>not</strong> p
 <strong>not</strong> include them in the HAProxy configuration file.
 ' %}
 
-Before applying the load-balancer changes, let's validate both configuration files. Work through the BACKUP nodes
-first, then the current MASTER, checking that the services are healthy after each reload:
+Before reloading the services, let's validate both configuration files:
 
 ```bash
 $ sudo haproxy -c -f /etc/haproxy/haproxy.cfg
