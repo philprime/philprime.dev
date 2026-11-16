@@ -37,6 +37,35 @@ the cluster and provide data redundancy to prevent data loss in case of node fai
 Longhorn acts as a storage provisioner in Kubernetes, managing the creation, replication, and scaling of persistent
 volumes. It abstracts the underlying storage infrastructure and provides a unified interface for managing storage.
 
+## Prepare the Network for Longhorn
+
+Before installing Longhorn, let's make sure its components will be able to communicate. In lesson 12, we allowed
+forwarded DNS traffic between pods. Longhorn needs additional connections between its managers and the instances that
+serve and replicate volume data, so the DNS rules alone are not enough.
+
+For the pod-to-pod paths used here, we will allow TCP `8500:8504`, `9500:9504`, and `10000:30000`. The larger range is
+needed because the v1 data engine allocates instance ports dynamically. As before, we will limit these forwarding
+rules to the pod interfaces and CIDRs rather than opening the ranges on the host's external interface.
+
+Repeat the following on each node, using its assigned pod CIDR from lesson 12. This example uses Node 1's CIDR:
+
+```bash
+$ LOCAL_POD_CIDR=10.244.0.0/24
+$ sudo ufw route allow in on flannel.1 out on cni0 proto tcp from 10.244.0.0/16 to "$LOCAL_POD_CIDR" port 8500:8504,9500:9504,10000:30000
+$ sudo ufw route allow in on cni0 out on flannel.1 proto tcp from "$LOCAL_POD_CIDR" to 10.244.0.0/16 port 8500:8504,9500:9504,10000:30000
+$ sudo ufw route allow in on cni0 out on cni0 proto tcp from "$LOCAL_POD_CIDR" to "$LOCAL_POD_CIDR" port 8500:8504,9500:9504,10000:30000
+```
+
+These examples cover pod forwarding, not every connection Longhorn can make. Node-to-volume connections and optional
+features such as backing images or RWX volumes have their own requirements. Review the networking requirements for
+your installed release alongside the host rules from earlier lessons. After installation, we will check node and
+replica health as well as PVC status, since a bound claim alone does not tell us whether replicas can communicate.
+
+When choosing a disk for volume replicas, check the path configured on the Longhorn node. The default directory
+`/var/lib/longhorn` and the configured replica disk need not be on the same filesystem. For example, a node can have
+its root filesystem on an SD card while storing replicas on an NVMe mount. Knowing the configured path helps us check
+the storage that Longhorn is actually using.
+
 ## Preparing the System for Longhorn Installation
 
 Before starting off with the Longhorn installation, we are preparing the system to have all the necessary requirements

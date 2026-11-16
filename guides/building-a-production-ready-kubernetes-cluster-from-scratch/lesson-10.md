@@ -297,24 +297,23 @@ $ ufw allow from 10.1.1.0/24 to any port 2379:2380 proto tcp comment 'Allow inco
 $ ufw allow out to 10.1.1.0/24 port 2379:2380 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the etcd server'
 ```
 
-Next we want to allow the Kubelet API Server (port `10250`), the Scheduler (port `10251`), and the Controller Manager
-(port `10252`) to communicate with each other. The Kubelet API Server is used for intra-node communication, while the
-Scheduler and Controller Manager are used for local communication, therefore we need to the Kubelet API Server ports
-open for intra-node communication and the Scheduler and Controller Manager ports open only for local communication:
+Next, we want to allow the Kubernetes components to communicate with the kubelet on each node. The kubelet exposes
+an authenticated API on TCP port `10250`, which is used for operations such as retrieving container logs and running
+commands inside containers. As these requests can come from another node, we need to allow access from our node
+subnet in both directions:
 
 ```bash
 # Allow Kubelet (10250) for Intra-Node Communication:
 $ ufw allow from 10.1.1.0/24 to any port 10250 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Kubelet API Server'
 $ ufw allow out to 10.1.1.0/24 port 10250 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Kubelet API Server'
-
-# Restrict Scheduler (10251) to local communication:
-$ ufw allow from 127.0.0.1 to any port 10251 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Scheduler'
-$ ufw allow out to 127.0.0.1 port 10251 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Scheduler'
-
-# Restrict Controller Manager (10252) to local communication:
-$ ufw allow from 127.0.0.1 to any port 10252 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Controller Manager'
-$ ufw allow out to 127.0.0.1 port 10252 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Controller Manager'
 ```
+
+The scheduler and controller manager also expose health endpoints, on TCP ports `10259` and `10257` respectively.
+In our kubeadm setup, these endpoints are bound to the loopback interface, so we do not need to open them to other
+nodes or pods.
+
+Later, when we configure Flannel in lesson 12, we will also allow pods to reach the kubelet. We handle that rule there
+because it uses the pod CIDR assigned to each node after the cluster has been initialized.
 
 Apply the changes:
 
@@ -393,8 +392,6 @@ To                         Action      From
 6443/tcp                   ALLOW IN    10.1.1.0/24                # Allow incoming and outgoing intra-node traffic to the Kubernetes API server
 2379:2380/tcp              ALLOW IN    10.1.1.0/24                # Allow incoming and outgoing intra-node traffic to the etcd server
 10250/tcp                  ALLOW IN    10.1.1.0/24                # Allow incoming and outgoing intra-node traffic to the Kubelet API Server
-10251/tcp                  ALLOW IN    127.0.0.1                  # Allow incoming and outgoing intra-node traffic to the Scheduler
-10252/tcp                  ALLOW IN    127.0.0.1                  # Allow incoming and outgoing intra-node traffic to the Controller Manager
 22/tcp (v6)                ALLOW IN    Anywhere (v6)              # Allow SSH access
 
 53                         ALLOW OUT   Anywhere                   # Allow outgoing DNS traffic
@@ -404,8 +401,6 @@ To                         Action      From
 10.1.1.0/24 6443/tcp       ALLOW OUT   Anywhere                   # Allow incoming and outgoing intra-node traffic to the Kubernetes API server
 10.1.1.0/24 2379:2380/tcp  ALLOW OUT   Anywhere                   # Allow incoming and outgoing intra-node traffic to the etcd server
 10.1.1.0/24 10250/tcp      ALLOW OUT   Anywhere                   # Allow incoming and outgoing intra-node traffic to the Kubelet API Server
-127.0.0.1 10251/tcp        ALLOW OUT   Anywhere                   # Allow incoming and outgoing intra-node traffic to the Scheduler
-127.0.0.1 10252/tcp        ALLOW OUT   Anywhere                   # Allow incoming and outgoing intra-node traffic to the Controller Manager
 53 (v6)                    ALLOW OUT   Anywhere (v6)              # Allow outgoing DNS traffic
 123/udp (v6)               ALLOW OUT   Anywhere (v6)              # Allow outgoing NTP traffic
 80/tcp (v6)                ALLOW OUT   Anywhere (v6)              # Allow outgoing HTTP traffic

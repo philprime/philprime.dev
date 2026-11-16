@@ -134,11 +134,46 @@ The output should confirm the correct CIDR range we configured for Flannel.
    $ sudo ufw allow out to 10.244.0.0/16
    ```
 
-4. Allow routed traffic for Flannel overlay network
+4. Next, we need to allow DNS requests between pods. There is an important distinction here: the `ufw allow in` and
+   `ufw allow out` rules above control traffic to and from the host itself. A request travelling between pods can
+   instead be forwarded between `cni0`, the local pod bridge, and `flannel.1`, the overlay interface. For this traffic,
+   we use `ufw route allow` while keeping the default policy for other forwarded traffic set to deny.
+
+   Let's first check which pod CIDR Kubernetes has assigned to our node:
 
    ```bash
-   $ sudo ufw allow in on flannel.1
-   $ sudo ufw allow out on flannel.1
+   $ kubectl get nodes -o custom-columns=NAME:.metadata.name,PODCIDR:.spec.podCIDR
+   ```
+
+   At this point in the guide, only our first node has joined the cluster. Use its reported CIDR for
+   `LOCAL_POD_CIDR`, rather than deriving the subnet from the node number. When we join the remaining nodes in
+   lesson 13, repeat these rules on each node with its own assigned CIDR.
+
+   The first pair of rules allows DNS requests arriving from another node, the second allows requests leaving for
+   another node, and the final pair covers pods on the same node. We allow both UDP and TCP because DNS uses both:
+
+   ```bash
+   $ LOCAL_POD_CIDR=10.244.0.0/24
+   $ sudo ufw route allow in on flannel.1 out on cni0 proto udp from 10.244.0.0/16 to "$LOCAL_POD_CIDR" port 53
+   $ sudo ufw route allow in on flannel.1 out on cni0 proto tcp from 10.244.0.0/16 to "$LOCAL_POD_CIDR" port 53
+   $ sudo ufw route allow in on cni0 out on flannel.1 proto udp from "$LOCAL_POD_CIDR" to 10.244.0.0/16 port 53
+   $ sudo ufw route allow in on cni0 out on flannel.1 proto tcp from "$LOCAL_POD_CIDR" to 10.244.0.0/16 port 53
+   $ sudo ufw route allow in on cni0 out on cni0 proto udp from "$LOCAL_POD_CIDR" to "$LOCAL_POD_CIDR" port 53
+   $ sudo ufw route allow in on cni0 out on cni0 proto tcp from "$LOCAL_POD_CIDR" to "$LOCAL_POD_CIDR" port 53
+   ```
+
+   We will add rules for other services, such as storage, when we configure those components. Keeping
+   each rule tied to a service helps us understand which traffic we are allowing.
+
+   There is one more path to account for now: a pod contacting the kubelet on its own node. Services such as
+   metrics-server use this path to collect node metrics. The kubelet rule from lesson 10 only allows source
+   addresses from the node subnet, so it does not cover a local pod's address. We can allow this traffic through
+   `cni0` using the pod CIDR we just looked up and the node's own IP address:
+
+   ```bash
+   # Example for Node 1:
+   $ NODE_IP=10.1.1.1
+   $ sudo ufw allow in on cni0 proto tcp from "$LOCAL_POD_CIDR" to "$NODE_IP" port 10250 comment 'Cluster pods to local kubelet'
    ```
 
 5. Enable packet forwarding in the kernel. Open the `sysctl.conf` file for and uncomment the following lines to route
@@ -168,7 +203,8 @@ The output should confirm the correct CIDR range we configured for Flannel.
    $ sudo ufw reload
    ```
 
-7. Afterwards you firewall table should include these rules:
+7. Afterwards your firewall table should include these rules. The excerpt below shows the host rules. Your output
+   should also include the new DNS forwarding rules marked as `ALLOW FWD`:
 
    ```bash
    $ sudo ufw status verbose
@@ -183,8 +219,6 @@ The output should confirm the correct CIDR range we configured for Flannel.
    6443/tcp                   ALLOW IN    10.1.1.0/24
    2379:2380/tcp              ALLOW IN    10.1.1.0/24
    10250/tcp                  ALLOW IN    10.1.1.0/24
-   10251/tcp                  ALLOW IN    127.0.0.1
-   10252/tcp                  ALLOW IN    127.0.0.1
    8285/udp                   ALLOW IN    Anywhere
    8472/udp                   ALLOW IN    Anywhere
    6443                       ALLOW IN    10.244.0.0/16
@@ -200,8 +234,6 @@ The output should confirm the correct CIDR range we configured for Flannel.
    10.1.1.0/24 6443/tcp       ALLOW OUT   Anywhere
    10.1.1.0/24 2379:2380/tcp  ALLOW OUT   Anywhere
    10.1.1.0/24 10250/tcp      ALLOW OUT   Anywhere
-   127.0.0.1 10251/tcp        ALLOW OUT   Anywhere
-   127.0.0.1 10252/tcp        ALLOW OUT   Anywhere
    8285/udp                   ALLOW OUT   Anywhere
    8472/udp                   ALLOW OUT   Anywhere
    10.244.0.0/16 6443         ALLOW OUT   Anywhere

@@ -191,23 +191,42 @@ The section vrrp_instance` defines the VRRP instance configuration, including:
   node. Adjust the priority value for each node, with the primary node having the highest priority. Make sure the
   priority values are unique and consistent across all nodes.
 - **advert_int**: The interval in seconds between sending VRRP advertisement packets. The default value is `1`.
-- **auth_pass**: The password used for authentication between the nodes. Make sure to use a strong password.
+- **auth_pass**: The password used for authentication between the nodes. Make sure to use a strong eight-character
+  password, shared by all nodes. Longer values are truncated. This is not encryption or a replacement for network
+  access controls.
 - **virtual_ipaddress**: The virtual IP address that will be used to access the Kubernetes API server. Our network is
   configured with the IP range `10.1.1.0/16`, so we can use an IP address from this range. Let's use `10.1.233.1` as the
   virtual IP address. This IP address should be unique and not used by any other device on the network. It must be the
   same across all control plane nodes.
 
-Furthermore we have to define a `static_ipaddress` block to ensure the virtual IP address is assigned to the network
-interface on system boot.
+We will put the virtual IP in the `virtual_ipaddress` block so that Keepalived can assign it to the MASTER and remove
+it when another node needs to take over. We do not also assign it as a permanent address on the host, since that would
+prevent Keepalived from managing its ownership.
 
-Here is an example configuration for the primary node (node `1`):
+A node can still be running even when its HAProxy service has stopped. To account for this, we will add a
+`vrrp_script` that checks whether HAProxy is active and reference it from `track_script`. This lets a BACKUP take over
+when the load-balancer service fails, not just when the node disappears.
+
+Here is an example configuration for the primary node (node `1`). The password `password123` is fictitious:
 
 ```conf
-static_ipaddress {
-    10.1.233.1 dev eth0 scope global
+global_defs {
+    enable_script_security
+    script_user root
+}
+
+vrrp_script chk_haproxy {
+    script "/usr/bin/systemctl is-active --quiet haproxy"
+    interval 2
+    timeout 1
+    fall 2
+    rise 2
 }
 
 vrrp_instance VI_1 {
+    track_script {
+        chk_haproxy
+    }
     state MASTER
     interface eth0
     virtual_router_id 51
@@ -223,14 +242,14 @@ vrrp_instance VI_1 {
 }
 ```
 
-For the secondary nodes (nodes `2` and `3`), set the `state` to `BACKUP` and adjust the `priority` accordingly:
+For the secondary nodes (nodes `2` and `3`), keep the same `global_defs` and `vrrp_script` blocks above, set the
+`state` to `BACKUP`, and adjust the `priority` accordingly. Use the same password on all nodes:
 
 ```conf
-static_ipaddress {
-    10.1.233.1 dev eth0 scope global
-}
-
 vrrp_instance VI_1 {
+    track_script {
+        chk_haproxy
+    }
     state BACKUP
     interface eth0
     virtual_router_id 51
@@ -409,11 +428,12 @@ frontend kubernetes-api
 backend kube-apiservers
     mode tcp
     balance roundrobin
-    option tcp-check
+    option httpchk GET /readyz
+    http-check expect status 200
     default-server inter 3s fall 3 rise 2
-    server master-1 10.1.1.1:6443 check
-    server master-2 10.1.1.2:6443 check
-    server master-3 10.1.1.3:6443 check
+    server master-1 10.1.1.1:6443 check check-ssl verify none
+    server master-2 10.1.1.2:6443 check check-ssl verify none
+    server master-3 10.1.1.3:6443 check check-ssl verify none
 ```
 
 Save the file and exit the editor.
@@ -439,6 +459,20 @@ HAProxy configuration file with the new node information.
 If you decide to add additional nodes later on, which are <strong>not</strong> part of the control plane, make sure to
 <strong>not</strong> include them in the HAProxy configuration file.
 ' %}
+
+Before reloading the services, let's validate both configuration files:
+
+```bash
+$ sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+$ sudo keepalived --config-test
+$ sudo systemctl reload haproxy
+$ sudo systemctl reload keepalived
+```
+
+For the API backend configured earlier, the HTTPS `/readyz` check tells HAProxy whether an API server is ready to
+handle requests, rather than just whether its port accepts connections. The example uses `check-ssl verify none`
+for that probe only. Client traffic still passes through with its TLS connection intact. To authenticate the probe's
+backend as well, configure HAProxy to verify its certificate using the cluster CA.
 
 ## Verify the Load Balancer Setup
 
