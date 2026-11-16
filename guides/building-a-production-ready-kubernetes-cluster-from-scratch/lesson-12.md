@@ -138,8 +138,15 @@ The output should confirm the correct CIDR range we configured for Flannel.
    forwarded between `flannel.1` and `cni0`. Keep the routed default policy set to deny and use `ufw route allow`
    for the protocols and services required by the workloads.
 
-   Set `LOCAL_POD_CIDR` to this node's assigned pod CIDR. These rules cover remote pods entering this node, local pods
-   contacting remote nodes, and same-node bridged pod traffic:
+   Before adding these rules, let's check which pod CIDR has been assigned to each node:
+
+   ```bash
+   $ kubectl get nodes -o custom-columns=NAME:.metadata.name,PODCIDR:.spec.podCIDR
+   ```
+
+   Set `LOCAL_POD_CIDR` to the value reported for the node you are configuring. The CIDR is assigned by Kubernetes,
+   so its subnet number does not necessarily match the node number. The following example uses Node 1's pod CIDR.
+   The rules allow DNS requests between pods on different nodes and between pods on the same node:
 
    ```bash
    $ LOCAL_POD_CIDR=10.244.0.0/24
@@ -154,6 +161,17 @@ The output should confirm the correct CIDR range we configured for Flannel.
    Add similarly scoped forwarding rules when installing ingress or storage components. Review both UFW and CNI chain
    ordering when debugging: a `UFW BLOCK` log can precede a later Flannel accept rule, so correlate logs with rule
    counters and an actual connectivity test rather than treating every log as a dropped packet.
+
+   We also need to allow pods such as metrics-server to contact the kubelet on their own node. The node-subnet rule
+   from lesson 10 does not cover these requests because pods have addresses from the pod CIDR. With Flannel, this
+   local traffic enters the host through `cni0`. On each node, set `NODE_IP` to its own address and use the
+   `LOCAL_POD_CIDR` we looked up above:
+
+   ```bash
+   # Example for Node 1:
+   $ NODE_IP=10.1.1.1
+   $ sudo ufw allow in on cni0 proto tcp from "$LOCAL_POD_CIDR" to "$NODE_IP" port 10250 comment 'Cluster pods to local kubelet'
+   ```
 
 5. Enable packet forwarding in the kernel. Open the `sysctl.conf` file for and uncomment the following lines to route
    packets between interfaces:

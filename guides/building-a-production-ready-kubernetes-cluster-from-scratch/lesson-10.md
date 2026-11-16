@@ -297,27 +297,23 @@ $ ufw allow from 10.1.1.0/24 to any port 2379:2380 proto tcp comment 'Allow inco
 $ ufw allow out to 10.1.1.0/24 port 2379:2380 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the etcd server'
 ```
 
-The authenticated kubelet API uses TCP `10250`. Allow node-to-node access and access from local pods, including
-metrics-server. With Flannel, a pod contacting its own node enters through `cni0`, not `flannel.1`. A node-subnet rule
-does not match that pod's source address.
-
-Set `NODE_IP` and `LOCAL_POD_CIDR` for the node being configured. Obtain the pod CIDR from
-`kubectl get nodes -o custom-columns=NAME:.metadata.name,PODCIDR:.spec.podCIDR` after joining the cluster. Do not infer
-the CIDR from the node number.
-
-Scheduler and controller-manager health endpoints use loopback TCP `10259` and `10257` in current kubeadm clusters.
-They do not need to be exposed to other nodes or pods.
+Next, we want to allow the Kubernetes components to communicate with the kubelet on each node. The kubelet exposes
+an authenticated API on TCP port `10250`, which is used for operations such as retrieving container logs and running
+commands inside containers. As these requests can come from another node, we need to allow access from our node
+subnet in both directions:
 
 ```bash
 # Allow Kubelet (10250) for Intra-Node Communication:
 $ ufw allow from 10.1.1.0/24 to any port 10250 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Kubelet API Server'
 $ ufw allow out to 10.1.1.0/24 port 10250 proto tcp comment 'Allow incoming and outgoing intra-node traffic to the Kubelet API Server'
-
-# Example for Node 1, after its pod CIDR has been assigned:
-$ NODE_IP=10.1.1.1
-$ LOCAL_POD_CIDR=10.244.0.0/24
-$ ufw allow in on cni0 proto tcp from "$LOCAL_POD_CIDR" to "$NODE_IP" port 10250 comment 'Cluster pods to local kubelet'
 ```
+
+The scheduler and controller manager also expose health endpoints, on TCP ports `10259` and `10257` respectively.
+In our kubeadm setup, these endpoints are bound to the loopback interface, so we do not need to open them to other
+nodes or pods.
+
+Later, when we configure Flannel in lesson 12, we will also allow pods to reach the kubelet. We handle that rule there
+because it uses the pod CIDR assigned to each node after the cluster has been initialized.
 
 Apply the changes:
 
