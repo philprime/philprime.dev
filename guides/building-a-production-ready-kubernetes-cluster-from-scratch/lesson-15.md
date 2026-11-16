@@ -207,7 +207,7 @@ A node can still be running even when its HAProxy service has stopped. To accoun
 `vrrp_script` that checks whether HAProxy is active and reference it from `track_script`. This lets a BACKUP take over
 when the load-balancer service fails, not just when the node disappears.
 
-Here is an example configuration for the primary node (node `1`):
+Here is an example configuration for the primary node (node `1`). The password `password123` is fictitious:
 
 ```conf
 global_defs {
@@ -234,7 +234,7 @@ vrrp_instance VI_1 {
     advert_int 1
     authentication {
         auth_type PASS
-        auth_pass CHANGEME
+        auth_pass password123
     }
     virtual_ipaddress {
         10.1.233.1
@@ -243,7 +243,7 @@ vrrp_instance VI_1 {
 ```
 
 For the secondary nodes (nodes `2` and `3`), keep the same `global_defs` and `vrrp_script` blocks above, set the
-`state` to `BACKUP`, and adjust the `priority` accordingly. Replace `CHANGEME` on every node before enabling VRRP:
+`state` to `BACKUP`, and adjust the `priority` accordingly. Use the same password on all nodes:
 
 ```conf
 vrrp_instance VI_1 {
@@ -257,7 +257,7 @@ vrrp_instance VI_1 {
     advert_int 1
     authentication {
         auth_type PASS
-        auth_pass CHANGEME
+        auth_pass password123
     }
     virtual_ipaddress {
       10.1.233.1

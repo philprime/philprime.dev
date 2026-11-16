@@ -117,14 +117,14 @@ Once the initialization is complete, you will see a message displaying a `kubead
 for joining additional nodes to the cluster. Copy and save it somewhere safe, as you will need it in lesson 13.
 The token and certificate key are credentials, so do not publish them.
 
-**Example:** Replace the placeholders with the values from your own initialization output:
+**Example:** The values below are fictitious. Use the command from your own initialization output:
 
 ```bash
 $ sudo kubeadm join 10.1.1.1:6443 \
-  --token <bootstrap-token> \
-  --discovery-token-ca-cert-hash sha256:<ca-certificate-hash> \
+  --token wjuudc.jqqqqrfx6vau3vyw \
+  --discovery-token-ca-cert-hash sha256:ba65057d5290647aa8fcceb33a9624d3e9eb3640d13d11265fe48a611c5b8f3f \
   --control-plane \
-  --certificate-key <certificate-key>
+  --certificate-key a1a135bf8be403583d2b1e6f7de7b14357e5e96c23deb8718bf2d1a807b08612
 ```
 
 By default, the bootstrap token expires after 24 hours, while the uploaded certificates are available for two hours.
