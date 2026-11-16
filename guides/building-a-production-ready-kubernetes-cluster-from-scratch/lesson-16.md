@@ -125,42 +125,53 @@ sample-app-6bcd6fdf5b-tltkt   1/1     Running   0          66s   10.244.2.21   k
 
 As you can see the three pods are scheduled on different nodes.
 
-## Check Availability Before Failure Testing
+## Check What We Are Testing
 
-Control-plane HA, DNS availability, and ingress availability are separate properties. Before any disruptive test,
-verify that the two `kube-system` CoreDNS replicas and the two Traefik replicas are spread across nodes. Use required
-hostname anti-affinity and disruption budgets with `minAvailable: 1` for these services.
-A preferred anti-affinity rule alone does not guarantee placement, and a disruption budget does not protect against
-an involuntary node failure.
+Before introducing a failure, let's distinguish the services we want to keep available. The API server is one part
+of the picture, but applications may also depend on cluster DNS and an ingress controller. A working API endpoint does
+not by itself tell us whether those other services can survive the same failure.
+
+We can check the API server's readiness and see where the cluster DNS pods are running:
 
 ```bash
-$ kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide
-$ kubectl get pods -n traefik -o wide
-$ kubectl get pdb -A
-$ kubectl top nodes
 $ kubectl get --raw '/readyz?verbose'
+$ kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide
 ```
 
-Test the application hostname both normally and directly against the VIP. Replace the example hostname with a real
-Ingress hostname whose certificate is valid:
+If both DNS replicas are on one node, losing that node can interrupt DNS even while the API remains reachable.
+Required hostname anti-affinity can keep replicas on different nodes. A PodDisruptionBudget with `minAvailable: 1`
+also helps during voluntary disruptions, but it cannot prevent the loss of a pod when its node fails.
+
+If you followed the optional Traefik section in lesson 15, check its replica placement as well:
+
+```bash
+$ kubectl get pods -n traefik -o wide
+$ kubectl get pdb -n traefik
+```
+
+For an application you have exposed through Traefik, try its hostname both normally and directly against the VIP.
+Substitute your own hostname with a valid TLS certificate for the example below:
 
 ```bash
 $ curl --fail --show-error https://analytics.lab.philprime.dev/
 $ curl --fail --show-error --resolve analytics.lab.philprime.dev:443:10.1.233.1 https://analytics.lab.philprime.dev/
 ```
 
-A normal lookup pointing at one node is not HA even if a forced VIP request succeeds. Keep internal DNS and router
-forwarding pointed at the VIP.
+The second command keeps the hostname for TLS validation but sends the request to the VIP. Comparing the two helps
+us distinguish an ingress problem from a DNS or forwarding problem. If the normal lookup points to one node, that
+path still depends on that node. Use the VIP for internal application DNS and router forwarding when testing failover.
 
 ## Simulate a Control Plane Node Failure
 
-Run disruptive tests only in an approved maintenance window with console access, a recovery procedure, a current etcd
-snapshot, and confirmed healthy quorum. Fail only one of the three nodes at a time. Observe API requests, application
-requests, DNS lookups, and Longhorn health from another machine throughout the test.
+Before we interrupt anything, make sure all three control-plane nodes and their etcd members are healthy. Keep an
+SSH session or console connection available for recovery, take a current etcd snapshot, and choose a maintenance
+window in which a brief interruption is acceptable. We will test only one node at a time and observe requests from
+another machine.
 
-Stopping kubelet, as in the limited heartbeat test below, is **not a complete node failure test**: existing containers,
-including static control-plane pods, may continue running. It also does not stop the host's HAProxy or Keepalived.
-Use a separately approved power or network isolation test when measuring actual node-failure recovery.
+There is an important limit to the kubelet example below: stopping kubelet interrupts node heartbeats, but existing
+containers can continue running. That includes the static control-plane pods. HAProxy and Keepalived are host services
+and also remain running. Treat this as a heartbeat test, not proof that the cluster survives a complete node failure.
+A power or network isolation test requires its own recovery procedure and maintenance window.
 
 SSH into one of the control plane nodes and simulate a failure by stopping the `kubelet` service:
 
@@ -266,8 +277,8 @@ kubernetes-node-3   Ready      control-plane   29m   v1.31.5
 ...
 ````
 
-The following kubelet stop tests lost node heartbeats only. It does not establish HAProxy failover or loss of an etcd
-member. Identify the actual MASTER by checking which node owns the VIP rather than assuming it is Node 1:
+We can use this request loop to observe the API while testing node heartbeats. As before, stopping kubelet does not
+stop HAProxy or remove an etcd member, so this checks API reachability during the heartbeat interruption only:
 
 ```bash
 $ sudo systemctl stop kubelet
@@ -290,19 +301,30 @@ kubernetes-node-3   Ready      control-plane   30m   v1.31.5
 The failed node is now marked as "NotReady" and the other nodes are still operational. This demonstrates that the
 API endpoint remains reachable during this heartbeat test. It does not prove full node-failure resilience.
 
-To test the Keepalived health tracking from lesson 15, separately approve a brief HAProxy outage on the VIP owner.
-Keep a second node's SSH session open, stop HAProxy on the owner, verify the VIP moves to a healthy BACKUP, and confirm
-API and application requests recover. Then start HAProxy again and verify readiness. This test is separate from the
-kubelet heartbeat test and interrupts existing connections.
+### Check Load-Balancer Failover Separately
+
+Now consider a different failure: the node stays up, but its HAProxy service stops. This is the situation the
+Keepalived tracking script from lesson 15 is intended to handle. Test it separately from the kubelet interruption,
+after restoring the node and confirming the cluster is healthy again.
+
+This test interrupts existing connections, so use the same maintenance precautions. First, check which node currently
+owns `10.1.233.1` using `ip addr show eth0` on the nodes. Do not assume that Node 1 is still the MASTER. Keep an SSH
+session open on another node and run the API request loop there. Then, on the VIP owner, stop HAProxy:
 
 ```bash
 $ sudo systemctl stop haproxy
-# Verify VIP ownership and requests from another node, then restore the original owner:
+```
+
+From the other node, check that a healthy BACKUP acquires the VIP and API requests recover. If you configured
+application ingress, check its hostname as well. Once you have observed the result, start HAProxy again on the
+original owner:
+
+```bash
 $ sudo systemctl start haproxy
 ```
 
-Do not change firewall defaults or stop a second node to make a failed test pass. Restore the original service and
-investigate the failed path first.
+Check service health and VIP ownership again before ending the test. If requests did not recover, restore HAProxy
+first and investigate the failed path. Do not stop a second node or relax the firewall to force a successful result.
 
 {% include alert.liquid.html type='warning' title='Warning:' content='
 Do not forget to restart the `kubelet` service on the failed node to restore the high-availability setup.

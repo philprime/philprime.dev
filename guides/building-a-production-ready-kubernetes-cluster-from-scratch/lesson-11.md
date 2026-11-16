@@ -28,15 +28,20 @@ continuing here. The full list of lessons in the series can be found
 SSH into the Raspberry Pi that you want to designate as the first control plane node. In this lesson, we will use
 `kubernetes-node-1` with the IP `10.1.1.1`.
 
-Run the following `kubeadm` command to initialize the control plane. This command sets up the Kubernetes control plane
-components, such as the API server, controller manager, and scheduler.
+We will use `kubeadm` to initialize the control plane. This sets up the API server, controller manager, scheduler,
+and the local etcd member. Before running the command, let's create a configuration file so we can explain and
+keep track of the settings we are using.
 
-In preparation for the next lesson, we will also specify the IP address of the control plane node, additional IP
-addresses for the API server certificate, and upload the certificates to the Kubernetes cluster for secure
-communication.
+For now, the cluster will use Node 1's address to reach the API server. The virtual IP `10.1.233.1` is not available
+yet, so we will configure the load balancer and switch to that endpoint in lesson 15. We include the virtual IP in
+the API server certificate now so that clients can validate it when we make that change.
 
-Additionally, we will specify the local root directory to be on the NVMe drive mounted at the path `/mnt/nvme/kubelet`.
-Therefore create a file named `kubeadm-config.yaml` with the following content:
+We will also store kubelet's working data on the NVMe drive at `/mnt/nvme/kubelet`. Make sure that the NVMe filesystem
+is mounted before continuing. This setting changes kubelet's root directory, not the storage location of etcd or
+containerd, which have their own configuration.
+
+Create a file named `kubeadm-config.yaml` with the following content. This example uses the kubeadm `v1beta3`
+configuration API supported by the Kubernetes 1.31 version used in this guide:
 
 ```yaml
 apiVersion: kubeadm.k8s.io/v1beta3
@@ -60,10 +65,6 @@ apiServer:
     - "kubernetes-node-1"
     - "kubernetes-node-2"
     - "kubernetes-node-3"
-    - "10.0.0.10"
----
-apiVersion: kubeadm.k8s.io/v1beta3
-kind: UploadCertsConfiguration
 ---
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
@@ -75,46 +76,65 @@ kubeReserved:
   memory: 512Mi
 ```
 
+Let's take a closer look at the settings before we initialize the node:
+
+- `InitConfiguration.nodeRegistration.kubeletExtraArgs` sets kubelet's `root-dir` to the NVMe-backed directory.
+- `ClusterConfiguration.controlPlaneEndpoint` defines the address that clients and joining nodes use to reach the
+  API server. We start with `10.1.1.1` and change it to the load-balancer endpoint later.
+- `networking.podSubnet` reserves `10.244.0.0/16` for pod addresses. We will use the same range when installing
+  Flannel in the next lesson.
+- `apiServer.certSANs` lists the additional addresses and hostnames that clients can use to validate the API server's
+  certificate. If you need another address, add it here before initializing the cluster.
+
+The final YAML document configures kubelet's resource reservations. Because we will also run application workloads
+on these small control-plane nodes, we want to leave some capacity for the OS and Kubernetes node services.
+`systemReserved` and `kubeReserved` each reserve 250m CPU and 512 MiB memory, for a total of half a CPU core and
+1 GiB memory per node. These are starting values for our four-core, 8 GiB Raspberry Pis. Measure usage and adjust
+these values for your hardware and workloads.
+
+The reservations reduce the capacity that the scheduler can allocate to pods. They do not reserve capacity for
+control-plane pods themselves or add hard limits to the system and kubelet cgroups. Applications still need sensible
+resource requests and limits, since the scheduler uses requests rather than observed usage when placing pods.
+
 Now run the following command to initialize the control plane:
 
 ```bash
-$ sudo kubeadm init --config=kubeadm-config.yaml
+$ sudo kubeadm init --config=kubeadm-config.yaml --upload-certs
 ```
 
-- The flags `--control-plane-endpoint` is used to define the IP address of the control plane node.
-- The `--upload-certs` flag uploads the certificates to the Kubernetes cluster for secure communication.
-- To support a virtual network, we specify the `--pod-network-cidr` flag with a compatible CIDR range, in this case
-  `10.244.0.0/16` for compatibility with the Flannel CNI plugin (which we will install later).
-- The `--apiserver-cert-extra-sans` flag is used to add additional IP addresses to the API server certificate. This is
-  useful when you have multiple IP addresses on the control plane node, such as the virtual IP `10.1.233.1` used by a
-  load balancer (which we will set up later) or `127.0.0.1` when the kube-api-server is bound to the local host. If you
-  are planning on port-forwarding the API server, you should also add the external IP address of the control plane node
-  to the certificate by repeating the argument `--apiserver-cert-extra-sans=EXTERNAL_IP_ADDRESS`, i.e.
-  `--apiserver-cert-extra-sans=10.0.0.10`
+The `--config` flag loads the YAML file above. We also pass `--upload-certs` so kubeadm uploads the shared
+control-plane certificates in encrypted form. When we join the additional control-plane nodes in lesson 13, they
+will use the certificate key printed by this command to retrieve those certificates.
 
 At the beginning of the output, you might see a warning about the remote version being newer than the local version.
-This is because we are using an older version of `kubeadm` to update it later, but it could also show up in the future
-if newer versions are released:
+This means kubeadm found a newer Kubernetes release than its own minor version and selected a release from its
+compatible minor series instead:
 
 ```
 [..] remote version is much newer: v1.32.0; falling back to: stable-1.31
 ```
 
-Once the initialization is complete, you will see a message displaying a `kubeadm join` command. This command is crucial
-for joining additional nodes to the cluster. Copy and save it somewhere safe, as you will need it in the next lesson.
-
-**Example:**
+Once initialization is complete, kubeadm prints instructions for joining other nodes. Save the control-plane join
+command and certificate key somewhere secure, as we will need them in lesson 13. The command has the following shape.
+Replace the placeholders with the values from your own initialization output, and do not publish the token or
+certificate key:
 
 ```bash
-$ kubeadm join 10.1.1.1:6443 \
-  --token wjuudc.jqqqqrfx6vau3vyw \
-  --discovery-token-ca-cert-hash sha256:ba65057d5290647aa8fcceb33a9624d3e9eb3640d13d11265fe48a611c5b8f3f \
+$ sudo kubeadm join 10.1.1.1:6443 \
+  --token <bootstrap-token> \
+  --discovery-token-ca-cert-hash sha256:<ca-certificate-hash> \
   --control-plane \
-  --certificate-key a1a135bf8be403583d2b1e6f7de7b14357e5e96c23deb8718bf2d1a807b08612
+  --certificate-key <certificate-key>
 ```
 
-{% include alert.liquid.html type='tip' title='TIP:' content='
-If anything goes wrong, you can always reset your Kubernetes server using <code>kubeadm reset</code>.
+By default, the bootstrap token expires after 24 hours, while the uploaded certificates are available for two hours.
+If you continue with lesson 13 after these have expired, follow its instructions to create a new token and upload the
+certificates again.
+
+{% include alert.liquid.html type='warning' title='Warning:' content='
+Do not rerun <code>kubeadm init</code> or use <code>kubeadm reset</code> as a general troubleshooting step.
+Reset removes node-local cluster configuration and, on a control-plane node, local etcd member data.
+Inspect the error first and use a deliberate recovery procedure before resetting an initialized node.
 ' %}
 
 ## Set Up kubectl for the Local User
@@ -122,13 +142,16 @@ If anything goes wrong, you can always reset your Kubernetes server using <code>
 To manage the cluster from your control plane node, you need to set up `kubectl` for the local user:
 
 ```bash
-$ mkdir -p $HOME/.kube
-$ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-$ sudo chown $(id -u):$(id -g) $HOME/.kube/config
+$ mkdir -p "$HOME/.kube"
+$ chmod 700 "$HOME/.kube"
+$ sudo cp -i /etc/kubernetes/admin.conf "$HOME/.kube/config"
+$ sudo chown "$(id -u):$(id -g)" "$HOME/.kube/config"
+$ chmod 600 "$HOME/.kube/config"
 ```
 
-This command copies the Kubernetes configuration file to the local user's home directory, allowing you to use `kubectl`
-commands to interact with the cluster.
+These commands copy the administrator kubeconfig to the local user's home directory and restrict access to that
+user. This file contains credentials with administrative access to the cluster, so keep it private. You can now use
+`kubectl` to interact with the cluster without running it as root.
 
 ## Verify the Control Plane Setup
 
@@ -140,36 +163,24 @@ NAME                STATUS     ROLES           AGE     VERSION
 kubernetes-node-1   NotReady   control-plane   2m44s   v1.31.5
 ```
 
-As you can see the node is currently in the `NotReady` state. This is because the control plane has no CNI plugin
-installed yet. We will install the Flannel CNI plugin in the next lesson, so it is safe to ignore for now
-
-## Reserve Capacity for Node Services
-
-The `KubeletConfiguration` above reserves a total of 500m CPU and 1 GiB memory per node for the OS and Kubernetes
-node services. These are starting values for a four-core, 8 GiB node, not universal sizing guidance. Measure daemon
-usage and leave capacity for control-plane pods and application bursts. The scheduler uses resource requests, not
-observed usage, so workloads without requests can still overload a node.
-
-For an existing cluster, do not run `kubeadm init` again. Back up and update the `KubeletConfiguration` stored in the
-`kube-system/kubelet-config` ConfigMap and the effective `/var/lib/kubelet/config.yaml` on each node. Merge the
-`systemReserved` and `kubeReserved` mappings into the existing configuration instead of replacing other settings.
-Updating the ConfigMap alone does not reconfigure running kubelets.
-
-Restart kubelet on only one node at a time, then verify both readiness and allocatable capacity before continuing:
+At this stage, we expect the node to be `NotReady` because we have not installed a CNI plugin yet. Let's check the
+reason rather than assuming that every `NotReady` condition is harmless:
 
 ```bash
-$ sudo systemctl restart kubelet
-$ kubectl wait node/kubernetes-node-1 --for=condition=Ready --timeout=90s
-$ kubectl get nodes -o custom-columns=NAME:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory
+$ kubectl describe node kubernetes-node-1
 ```
 
-A four-core node with these reservations advertises `3500m` allocatable CPU. This reduces pod scheduling capacity
-without imposing new hard limits on the system or kubelet cgroups. Keep the kubeadm ConfigMap and node files aligned
-so later node joins and upgrades retain the reservations.
+Look for the `Ready` condition reporting that the container runtime network is not ready because the CNI plugin has
+not been initialized. We will address that by installing Flannel in the next lesson. If the output instead reports
+another problem, investigate it before continuing.
 
-For CI on shared control-plane nodes, bound concurrency as well as individual job sizes. Per-pool ceilings are not a
-cluster-wide resource guarantee. Workload requests, memory limits, and remaining headroom determine safe concurrency.
-Include the resources used by runner processes, job containers, sidecars, and build services when sizing each pool.
+We can also check that kubelet has applied the resource reservations from our configuration:
+
+```bash
+$ kubectl get node kubernetes-node-1 -o custom-columns=NAME:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory
+```
+
+On our four-core node, the allocatable CPU should be `3500m` after reserving `500m` for node services.
 
 ## Allow Scheduling on the Control Plane Node
 
@@ -185,9 +196,12 @@ Taints:             node-role.kubernetes.io/control-plane:NoSchedule
 [...]
 ```
 
-As our cluster is quite small, we want to allow scheduling on the control plane node (but not recommended for production
-environments), you can remove the taint with:
+As our cluster is quite small, we will also use the control-plane nodes for application workloads. This trades
+isolation for capacity: a resource-heavy application can compete with the services that keep the cluster running.
+For production systems with dedicated worker nodes, keep the control-plane taint instead.
+
+For this setup, remove the control-plane taint from the node we just initialized:
 
 ```bash
-$ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+$ kubectl taint node kubernetes-node-1 node-role.kubernetes.io/control-plane-
 ```

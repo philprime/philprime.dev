@@ -191,16 +191,21 @@ The section vrrp_instance` defines the VRRP instance configuration, including:
   node. Adjust the priority value for each node, with the primary node having the highest priority. Make sure the
   priority values are unique and consistent across all nodes.
 - **advert_int**: The interval in seconds between sending VRRP advertisement packets. The default value is `1`.
-- **auth_pass**: Use the same site-specific eight-character value on all nodes. VRRP PASS authentication truncates
-  longer values to eight characters and is not encryption or a replacement for network access controls.
+- **auth_pass**: An eight-character value shared by all nodes in the VRRP group. Longer values are truncated, so we
+  will replace the example value with the same eight-character value on each node. This is a basic check between
+  peers, not encryption, and we still need to restrict access to the network.
 - **virtual_ipaddress**: The virtual IP address that will be used to access the Kubernetes API server. Our network is
   configured with the IP range `10.1.1.0/16`, so we can use an IP address from this range. Let's use `10.1.233.1` as the
   virtual IP address. This IP address should be unique and not used by any other device on the network. It must be the
   same across all control plane nodes.
 
-Keep the VIP only in `virtual_ipaddress`, not in a `static_ipaddress` block or a permanent host address assignment.
-Keepalived must be able to remove it from a failed MASTER and assign it to a healthy BACKUP. Track HAProxy service
-health as well as the node's availability, so a stopped HAProxy service also triggers failover.
+We will put the virtual IP in the `virtual_ipaddress` block so that Keepalived can assign it to the MASTER and remove
+it when another node needs to take over. We do not also assign it as a permanent address on the host, since that would
+prevent Keepalived from managing its ownership.
+
+A node can still be running even when its HAProxy service has stopped. To account for this, we will add a
+`vrrp_script` that checks whether HAProxy is active and reference it from `track_script`. This lets a BACKUP take over
+when the load-balancer service fails, not just when the node disappears.
 
 Here is an example configuration for the primary node (node `1`):
 
@@ -455,17 +460,22 @@ If you decide to add additional nodes later on, which are <strong>not</strong> p
 <strong>not</strong> include them in the HAProxy configuration file.
 ' %}
 
-## Route Application Traffic Through Traefik
+## Optional: Forward Application Traffic Through Traefik
 
-Control-plane redundancy does not replicate application ingress. Configure Traefik with two replicas on different
-nodes, required hostname anti-affinity, a disruption budget with `minAvailable: 1`, and NodePorts `30080` for HTTP
-and `30443` for HTTPS. Keep the settings in your Helm values or infrastructure configuration rather than editing a
-generated Deployment or Service. The [Traefik Helm chart](https://github.com/traefik/traefik-helm-chart) provides the
-installation and values reference.
+Our load balancer gives clients a stable endpoint for the Kubernetes API. If we also want to expose web applications,
+we can use the same virtual IP for an ingress controller. This is a separate layer of availability: having three
+control-plane nodes does not automatically give an application multiple ingress replicas.
 
-Route the VIP's HTTP and HTTPS listeners to separate backends. Sending TLS traffic to the HTTP NodePort causes a TLS
-protocol error. Add the following to HAProxy on each node, replacing the optional node-address binds with that node's
-own address:
+The following example assumes that you have installed Traefik using its
+[Helm chart](https://github.com/traefik/traefik-helm-chart). Keep its settings in your Helm values or infrastructure
+configuration. For this example, use two replicas, required pod anti-affinity on `kubernetes.io/hostname`, and a
+PodDisruptionBudget with `minAvailable: 1`. This places the replicas on different nodes and keeps one available during
+voluntary disruptions. Expose HTTP through NodePort `30080` and HTTPS through NodePort `30443`.
+
+We can then add separate HTTP and HTTPS frontends to HAProxy on each node. It is important to keep their backends
+separate as well: the HTTPS listener must forward to the HTTPS NodePort so that Traefik can terminate TLS.
+The optional `10.1.1.1` binds below also accept traffic addressed directly to Node 1. If you include them, substitute
+the node's own address when configuring Nodes 2 and 3:
 
 ```conf
 frontend ingress-http
@@ -497,12 +507,14 @@ backend ingress-https-backend
     server node-3 10.1.1.3:30443 check
 ```
 
-The node-address binds preserve direct-node traffic and existing split-DNS configurations. They do not make a DNS
-record pinned to one node highly available. Configure internal application DNS and router forwarding to use the VIP,
-then verify both internal and external paths. Test the hostname normally as well as with `curl --resolve` against the
-VIP, since testing only the VIP can hide a broken public or split-DNS route.
+The node-address binds are useful if an existing router or internal DNS record still sends requests directly to a
+node. However, clients using that address cannot benefit from VIP failover. For high availability, point internal
+application DNS and router forwarding at the VIP instead. We will check both the normal hostname and the VIP in the
+next lesson so that a working load balancer does not hide a problem with the route clients actually use.
 
-Allow NodePort access from the load-balancer nodes on every host:
+As with the API server, we need to allow the load-balancer nodes to reach these NodePorts. On each node, set `NODE_IP`
+to its own address and add the following rules. The last rule is only needed if you included the optional node-address
+binds:
 
 ```bash
 $ sudo ufw allow in proto tcp from 10.1.1.0/24 to "$NODE_IP" port 30080,30443
@@ -511,9 +523,9 @@ $ sudo ufw allow in proto tcp to 10.1.233.1 port 80,443
 $ sudo ufw allow in proto tcp to "$NODE_IP" port 80,443
 ```
 
-With Flannel, add scoped forwarding for Traefik's pod entrypoints TCP `8000` and `8443`, and its HTTP backend services.
-The following example includes an application listening on TCP `3000`. Replace that port with your backend's actual
-container port, and use each node's actual pod CIDR as `LOCAL_POD_CIDR`:
+Next, we need to allow the pod traffic behind those NodePorts. Traefik's HTTP and HTTPS entrypoints use TCP `8000`
+and `8443` in this example. Traefik also needs to reach the application's container port, which we will assume is
+TCP `3000` here. Replace it with your application's actual port, and set `LOCAL_POD_CIDR` as we did in lesson 12:
 
 ```bash
 $ sudo ufw route allow in on flannel.1 out on cni0 proto tcp from 10.244.0.0/16 to "$LOCAL_POD_CIDR" port 8000,8443,3000
@@ -521,12 +533,14 @@ $ sudo ufw route allow in on cni0 out on flannel.1 proto tcp from "$LOCAL_POD_CI
 $ sudo ufw route allow in on cni0 out on cni0 proto tcp from "$LOCAL_POD_CIDR" to "$LOCAL_POD_CIDR" port 8000,8443,3000
 ```
 
-For an ingress migration, first deploy Traefik on spare NodePorts and test a temporary Ingress against the existing
-Service and TLS Secret. Then update application `ingressClassName` and cert-manager HTTP-01 solver classes to
-`traefik`. Preserve the original public NodePorts during the final handover, and verify the public hostname before
-removing the old controller. Two controllers can coexist only when their ingress classes and NodePorts do not conflict.
+If you are replacing an existing ingress controller rather than setting up a new one, use different NodePorts while
+testing Traefik. A temporary Ingress can use the application's existing Service and TLS Secret. Once that route works,
+update the application's `ingressClassName` and any cert-manager HTTP-01 solver settings to `traefik`. Keep router
+forwarding in mind when handing over the original NodePorts, and test the public hostname before removing the old
+controller.
 
-Validate configuration before reloading each load-balancer node, processing BACKUP nodes before the MASTER:
+Before applying the load-balancer changes, let's validate both configuration files. Work through the BACKUP nodes
+first, then the current MASTER, checking that the services are healthy after each reload:
 
 ```bash
 $ sudo haproxy -c -f /etc/haproxy/haproxy.cfg
@@ -535,9 +549,10 @@ $ sudo systemctl reload haproxy
 $ sudo systemctl reload keepalived
 ```
 
-The API backend uses HTTPS `/readyz` checks, not merely a TCP handshake. The example's `check-ssl verify none` applies
-only to the health probe, not client TLS traffic. On networks requiring authenticated backend probes, configure
-HAProxy to verify the API server certificate with the cluster CA.
+For the API backend configured earlier, the HTTPS `/readyz` check tells HAProxy whether an API server is ready to
+handle requests, rather than just whether its port accepts connections. The example uses `check-ssl verify none`
+for that probe only. Client traffic still passes through with its TLS connection intact. To authenticate the probe's
+backend as well, configure HAProxy to verify its certificate using the cluster CA.
 
 ## Verify the Load Balancer Setup
 

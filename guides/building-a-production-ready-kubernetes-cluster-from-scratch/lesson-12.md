@@ -134,19 +134,23 @@ The output should confirm the correct CIDR range we configured for Flannel.
    $ sudo ufw allow out to 10.244.0.0/16
    ```
 
-4. Add explicit forwarding rules for cluster DNS. `ufw allow in` and `ufw allow out` apply to the host, not traffic
-   forwarded between `flannel.1` and `cni0`. Keep the routed default policy set to deny and use `ufw route allow`
-   for the protocols and services required by the workloads.
+4. Next, we need to allow DNS requests between pods. There is an important distinction here: the `ufw allow in` and
+   `ufw allow out` rules above control traffic to and from the host itself. A request travelling between pods can
+   instead be forwarded between `cni0`, the local pod bridge, and `flannel.1`, the overlay interface. For this traffic,
+   we use `ufw route allow` while keeping the default policy for other forwarded traffic set to deny.
 
-   Before adding these rules, let's check which pod CIDR has been assigned to each node:
+   Let's first check which pod CIDR Kubernetes has assigned to our node:
 
    ```bash
    $ kubectl get nodes -o custom-columns=NAME:.metadata.name,PODCIDR:.spec.podCIDR
    ```
 
-   Set `LOCAL_POD_CIDR` to the value reported for the node you are configuring. The CIDR is assigned by Kubernetes,
-   so its subnet number does not necessarily match the node number. The following example uses Node 1's pod CIDR.
-   The rules allow DNS requests between pods on different nodes and between pods on the same node:
+   At this point in the guide, only our first node has joined the cluster. Use its reported CIDR for
+   `LOCAL_POD_CIDR`, rather than deriving the subnet from the node number. When we join the remaining nodes in
+   lesson 13, repeat these rules on each node with its own assigned CIDR.
+
+   The first pair of rules allows DNS requests arriving from another node, the second allows requests leaving for
+   another node, and the final pair covers pods on the same node. We allow both UDP and TCP because DNS uses both:
 
    ```bash
    $ LOCAL_POD_CIDR=10.244.0.0/24
@@ -158,14 +162,13 @@ The output should confirm the correct CIDR range we configured for Flannel.
    $ sudo ufw route allow in on cni0 out on cni0 proto tcp from "$LOCAL_POD_CIDR" to "$LOCAL_POD_CIDR" port 53
    ```
 
-   Add similarly scoped forwarding rules when installing ingress or storage components. Review both UFW and CNI chain
-   ordering when debugging: a `UFW BLOCK` log can precede a later Flannel accept rule, so correlate logs with rule
-   counters and an actual connectivity test rather than treating every log as a dropped packet.
+   We will add rules for other services, such as ingress and storage, when we configure those components. Keeping
+   each rule tied to a service helps us understand which traffic we are allowing.
 
-   We also need to allow pods such as metrics-server to contact the kubelet on their own node. The node-subnet rule
-   from lesson 10 does not cover these requests because pods have addresses from the pod CIDR. With Flannel, this
-   local traffic enters the host through `cni0`. On each node, set `NODE_IP` to its own address and use the
-   `LOCAL_POD_CIDR` we looked up above:
+   There is one more path to account for now: a pod contacting the kubelet on its own node. Services such as
+   metrics-server use this path to collect node metrics. The kubelet rule from lesson 10 only allows source
+   addresses from the node subnet, so it does not cover a local pod's address. We can allow this traffic through
+   `cni0` using the pod CIDR we just looked up and the node's own IP address:
 
    ```bash
    # Example for Node 1:
@@ -200,8 +203,9 @@ The output should confirm the correct CIDR range we configured for Flannel.
    $ sudo ufw reload
    ```
 
-7. Check the firewall on every node. Host rules appear as `ALLOW IN`/`ALLOW OUT`, while the DNS forwarding rules above
-   must appear as `ALLOW FWD`. The following excerpt shows the host rules, not the complete forwarding policy:
+7. Finally, let's check the resulting firewall rules. Alongside the host rules shown in this excerpt, you should
+   see the DNS rules marked as `ALLOW FWD`. This distinction lets us confirm that we have allowed both host and
+   forwarded traffic:
 
    ```bash
    $ sudo ufw status verbose
