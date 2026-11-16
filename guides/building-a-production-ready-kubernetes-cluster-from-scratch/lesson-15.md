@@ -191,9 +191,9 @@ The section vrrp_instance` defines the VRRP instance configuration, including:
   node. Adjust the priority value for each node, with the primary node having the highest priority. Make sure the
   priority values are unique and consistent across all nodes.
 - **advert_int**: The interval in seconds between sending VRRP advertisement packets. The default value is `1`.
-- **auth_pass**: An eight-character value shared by all nodes in the VRRP group. Longer values are truncated, so we
-  will replace the example value with the same eight-character value on each node. This is a basic check between
-  peers, not encryption, and we still need to restrict access to the network.
+- **auth_pass**: The password used for authentication between the nodes. Make sure to use a strong eight-character
+  password, shared by all nodes. Longer values are truncated. This is not encryption or a replacement for network
+  access controls.
 - **virtual_ipaddress**: The virtual IP address that will be used to access the Kubernetes API server. Our network is
   configured with the IP range `10.1.1.0/16`, so we can use an IP address from this range. Let's use `10.1.233.1` as the
   virtual IP address. This IP address should be unique and not used by any other device on the network. It must be the

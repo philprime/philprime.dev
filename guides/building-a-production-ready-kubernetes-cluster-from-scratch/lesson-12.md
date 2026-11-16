@@ -203,9 +203,8 @@ The output should confirm the correct CIDR range we configured for Flannel.
    $ sudo ufw reload
    ```
 
-7. Finally, let's check the resulting firewall rules. Alongside the host rules shown in this excerpt, you should
-   see the DNS rules marked as `ALLOW FWD`. This distinction lets us confirm that we have allowed both host and
-   forwarded traffic:
+7. Afterwards your firewall table should include these rules. The excerpt below shows the host rules. Your output
+   should also include the new DNS forwarding rules marked as `ALLOW FWD`:
 
    ```bash
    $ sudo ufw status verbose

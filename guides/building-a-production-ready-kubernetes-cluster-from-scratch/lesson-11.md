@@ -28,19 +28,18 @@ continuing here. The full list of lessons in the series can be found
 SSH into the Raspberry Pi that you want to designate as the first control plane node. In this lesson, we will use
 `kubernetes-node-1` with the IP `10.1.1.1`.
 
-We will use `kubeadm` to initialize the control plane. This sets up the API server, controller manager, scheduler,
-and the local etcd member. Before running the command, let's create a configuration file so we can explain and
-keep track of the settings we are using.
+We will use `kubeadm` to initialize the control plane. This command sets up the Kubernetes control plane
+components, such as the API server, controller manager, and scheduler.
 
 For now, the cluster will use Node 1's address to reach the API server. The virtual IP `10.1.233.1` is not available
 yet, so we will configure the load balancer and switch to that endpoint in lesson 15. We include the virtual IP in
 the API server certificate now so that clients can validate it when we make that change.
 
-We will also store kubelet's working data on the NVMe drive at `/mnt/nvme/kubelet`. Make sure that the NVMe filesystem
-is mounted before continuing. This setting changes kubelet's root directory, not the storage location of etcd or
-containerd, which have their own configuration.
+Additionally, we will specify kubelet's local root directory to be on the NVMe drive mounted at the path `/mnt/nvme/kubelet`.
+Make sure that the NVMe filesystem is mounted before continuing. This setting does not change the storage location of
+etcd or containerd, which have their own configuration.
 
-Create a file named `kubeadm-config.yaml` with the following content. This example uses the kubeadm `v1beta3`
+Therefore, create a file named `kubeadm-config.yaml` with the following content. This example uses the kubeadm `v1beta3`
 configuration API supported by the Kubernetes 1.31 version used in this guide:
 
 ```yaml
@@ -114,10 +113,11 @@ compatible minor series instead:
 [..] remote version is much newer: v1.32.0; falling back to: stable-1.31
 ```
 
-Once initialization is complete, kubeadm prints instructions for joining other nodes. Save the control-plane join
-command and certificate key somewhere secure, as we will need them in lesson 13. The command has the following shape.
-Replace the placeholders with the values from your own initialization output, and do not publish the token or
-certificate key:
+Once the initialization is complete, you will see a message displaying a `kubeadm join` command. This command is crucial
+for joining additional nodes to the cluster. Copy and save it somewhere safe, as you will need it in lesson 13.
+The token and certificate key are credentials, so do not publish them.
+
+**Example:** Replace the placeholders with the values from your own initialization output:
 
 ```bash
 $ sudo kubeadm join 10.1.1.1:6443 \
@@ -149,9 +149,9 @@ $ sudo chown "$(id -u):$(id -g)" "$HOME/.kube/config"
 $ chmod 600 "$HOME/.kube/config"
 ```
 
-These commands copy the administrator kubeconfig to the local user's home directory and restrict access to that
-user. This file contains credentials with administrative access to the cluster, so keep it private. You can now use
-`kubectl` to interact with the cluster without running it as root.
+These commands copy the Kubernetes configuration file to the local user's home directory, allowing you to use `kubectl`
+commands to interact with the cluster. The file contains administrator credentials, so the permissions restrict access
+to your user.
 
 ## Verify the Control Plane Setup
 
@@ -196,11 +196,8 @@ Taints:             node-role.kubernetes.io/control-plane:NoSchedule
 [...]
 ```
 
-As our cluster is quite small, we will also use the control-plane nodes for application workloads. This trades
-isolation for capacity: a resource-heavy application can compete with the services that keep the cluster running.
-For production systems with dedicated worker nodes, keep the control-plane taint instead.
-
-For this setup, remove the control-plane taint from the node we just initialized:
+As our cluster is quite small, we want to allow scheduling on the control plane node (but not recommended for production
+environments). You can remove the taint with:
 
 ```bash
 $ kubectl taint node kubernetes-node-1 node-role.kubernetes.io/control-plane-
