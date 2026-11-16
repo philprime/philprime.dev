@@ -12,7 +12,7 @@ This page tracks all changes and updates to this guide.
 ## Changes
 
 - 2026-11-15 - Corrected host versus forwarded UFW rules, pod-to-kubelet access, and Longhorn networking guidance
-- 2026-11-15 - Added kubelet resource reservations, Traefik ingress routing, and internal/public DNS validation
+- 2026-11-15 - Added kubelet resource reservations and cluster DNS availability checks
 - 2026-11-15 - Added HAProxy readiness checks and Keepalived service tracking, and clarified HA failure-test limits
 - 2025-02-25 - Initial release of the guide
 - 2025-03-16 - Added warning about microSD cards and updated hardware recommendations

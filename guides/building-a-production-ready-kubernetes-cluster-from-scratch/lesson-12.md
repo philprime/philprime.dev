@@ -162,7 +162,7 @@ The output should confirm the correct CIDR range we configured for Flannel.
    $ sudo ufw route allow in on cni0 out on cni0 proto tcp from "$LOCAL_POD_CIDR" to "$LOCAL_POD_CIDR" port 53
    ```
 
-   We will add rules for other services, such as ingress and storage, when we configure those components. Keeping
+   We will add rules for other services, such as storage, when we configure those components. Keeping
    each rule tied to a service helps us understand which traffic we are allowing.
 
    There is one more path to account for now: a pod contacting the kubelet on its own node. Services such as

@@ -128,8 +128,8 @@ As you can see the three pods are scheduled on different nodes.
 ## Check What We Are Testing
 
 Before introducing a failure, let's distinguish the services we want to keep available. The API server is one part
-of the picture, but applications may also depend on cluster DNS and an ingress controller. A working API endpoint does
-not by itself tell us whether those other services can survive the same failure.
+of the picture, but applications may also depend on cluster DNS. A working API endpoint does not by itself tell us
+whether DNS can survive the same failure.
 
 We can check the API server's readiness and see where the cluster DNS pods are running:
 
@@ -141,25 +141,6 @@ $ kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide
 If both DNS replicas are on one node, losing that node can interrupt DNS even while the API remains reachable.
 Required hostname anti-affinity can keep replicas on different nodes. A PodDisruptionBudget with `minAvailable: 1`
 also helps during voluntary disruptions, but it cannot prevent the loss of a pod when its node fails.
-
-If you followed the optional Traefik section in lesson 15, check its replica placement as well:
-
-```bash
-$ kubectl get pods -n traefik -o wide
-$ kubectl get pdb -n traefik
-```
-
-For an application you have exposed through Traefik, try its hostname both normally and directly against the VIP.
-Substitute your own hostname with a valid TLS certificate for the example below:
-
-```bash
-$ curl --fail --show-error https://analytics.lab.philprime.dev/
-$ curl --fail --show-error --resolve analytics.lab.philprime.dev:443:10.1.233.1 https://analytics.lab.philprime.dev/
-```
-
-The second command keeps the hostname for TLS validation but sends the request to the VIP. Comparing the two helps
-us distinguish an ingress problem from a DNS or forwarding problem. If the normal lookup points to one node, that
-path still depends on that node. Use the VIP for internal application DNS and router forwarding when testing failover.
 
 ## Simulate a Control Plane Node Failure
 
@@ -315,9 +296,8 @@ session open on another node and run the API request loop there. Then, on the VI
 $ sudo systemctl stop haproxy
 ```
 
-From the other node, check that a healthy BACKUP acquires the VIP and API requests recover. If you configured
-application ingress, check its hostname as well. Once you have observed the result, start HAProxy again on the
-original owner:
+From the other node, check that a healthy BACKUP acquires the VIP and API requests recover. Once you have observed
+the result, start HAProxy again on the original owner:
 
 ```bash
 $ sudo systemctl start haproxy
