@@ -41,6 +41,7 @@ As a senior software engineer at Sentry, I contribute to the tools developers us
 ### Developer tools
 
 - **[diagnostics-action](https://github.com/philprime/diagnostics-action)** – Container-free CI diagnostics for macOS and Linux.
+- **[renovate-validator-action](https://github.com/philprime/renovate-validator-action)** – A GitHub Action that validates `renovate.json` and skips repositories without it.
 - **[wait-for-services-action](https://github.com/kula-app/wait-for-services-action)** – A GitHub Action that waits for services to be ready.
 - **[clean-cache-action](https://github.com/kula-app/clean-cache-action)** – A GitHub Action for clearing stale Actions caches.
 - **[has-changed-path](https://github.com/kula-app/has-changed-path)** – A GitHub Action for detecting changed paths in pull requests.
