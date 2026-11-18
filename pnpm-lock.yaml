@@ -187,7 +187,7 @@ importers:
     devDependencies:
       '@mermaid-js/mermaid-cli':
         specifier: 12.2.0
-        version: 12.2.0(puppeteer@25.17.0)
+        version: 12.2.0(puppeteer@25.18.1)
       '@shopify/prettier-plugin-liquid':
         specifier: ^1.10.2
         version: 1.11.6(prettier@3.10.1)
@@ -195,8 +195,8 @@ importers:
         specifier: ^3.8.3
         version: 3.10.1
       puppeteer:
-        specifier: 25.17.0
-        version: 25.17.0
+        specifier: 25.18.1
+        version: 25.18.1
 
 packages:
 
@@ -1212,12 +1212,12 @@ packages:
     resolution: {integrity: sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A==}
     engines: {node: '>= 0.6.0'}
 
-  puppeteer-core@25.17.0:
-    resolution: {integrity: sha512-YAgBitkd+K9gxRt+wzBAFTTkGjkC8aC2o4OxofsU8JUy2nnK/RflTCJ9bRCvCMNbq9TPhqFk4Phz98otN9FrGg==}
+  puppeteer-core@25.18.1:
+    resolution: {integrity: sha512-C0wHOJHDfAggGBtN5uUfsJGpeSKtPL5jzhgQYDuz4XKeOG1FUkxeZI2M5yK7AUyrdHO+RgDuiCfjmOpcw3PYTA==}
     engines: {node: '>=22.12.0'}
 
-  puppeteer@25.17.0:
-    resolution: {integrity: sha512-J+OQNlI7I6ZjHhF6Q8M+LgiUGldF7meer5EqMJBZMHgnFN3zcehOhpz/x0bYDEEvbEiXzKzmqSRP3QT+5accjQ==}
+  puppeteer@25.18.1:
+    resolution: {integrity: sha512-fCsfwERKluvC84jsVyhDoBZMNuI8t5FFnWXcTdH1vn3NhMk6clZcrF0Da2se6/Hj6CBJ+2PRPpqeV0qPIETeJA==}
     engines: {node: '>=22.12.0'}
     hasBin: true
 
@@ -1541,7 +1541,7 @@ snapshots:
       mermaid: 12.3.0
     optional: true
 
-  '@mermaid-js/mermaid-cli@12.2.0(puppeteer@25.17.0)':
+  '@mermaid-js/mermaid-cli@12.2.0(puppeteer@25.18.1)':
     dependencies:
       '@fontsource-variable/recursive': 5.3.0
       '@fontsource/open-sans': 5.3.0
@@ -1553,7 +1553,7 @@ snapshots:
       katex: 0.18.10
       mermaid: 12.3.0
       p-limit: 7.3.3
-      puppeteer: 25.17.0
+      puppeteer: 25.18.1
     optionalDependencies:
       '@mermaid-js/layout-tidy-tree': 1.0.1(mermaid@12.3.0)
     transitivePeerDependencies:
@@ -2425,7 +2425,7 @@ snapshots:
 
   process@0.11.10: {}
 
-  puppeteer-core@25.17.0:
+  puppeteer-core@25.18.1:
     dependencies:
       '@puppeteer/browsers': 3.2.7
       chromium-bidi: 157.0.8090-0(devtools-protocol@0.0.1717327)
@@ -2439,13 +2439,13 @@ snapshots:
       - utf-8-validate
       - yauzl
 
-  puppeteer@25.17.0:
+  puppeteer@25.18.1:
     dependencies:
       '@puppeteer/browsers': 3.2.7
       chromium-bidi: 157.0.8090-0(devtools-protocol@0.0.1717327)
       devtools-protocol: 0.0.1717327
       lilconfig: 3.1.5
-      puppeteer-core: 25.17.0
+      puppeteer-core: 25.18.1
       typed-query-selector: 2.12.3
     transitivePeerDependencies:
       - bufferutil
