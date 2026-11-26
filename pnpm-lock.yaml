@@ -197,7 +197,7 @@ importers:
     devDependencies:
       '@mermaid-js/mermaid-cli':
         specifier: 12.2.0
-        version: 12.2.0(puppeteer@25.18.1)
+        version: 12.2.0(puppeteer@25.19.0)
       '@shopify/prettier-plugin-liquid':
         specifier: ^1.10.2
         version: 1.11.6(prettier@3.10.1)
@@ -205,8 +205,8 @@ importers:
         specifier: ^3.8.3
         version: 3.10.1
       puppeteer:
-        specifier: 25.18.1
-        version: 25.18.1
+        specifier: 25.19.0
+        version: 25.19.0
 
 packages:
 
@@ -423,8 +423,8 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@puppeteer/browsers@3.2.7':
-    resolution: {integrity: sha512-B3C/v8OEEaJYcN1IzzgbPmt+GbFANr4Mf/NrqNuGk/dIchrv6quNqxgT+A6qE0Ge0MN95NjKUddcR1JMpYRMWA==}
+  '@puppeteer/browsers@3.3.0':
+    resolution: {integrity: sha512-ZiOVHQ5KmsinwZJMwRc/a3xsGHbi9dRuAyf2gq4i9J5vRaI4r7SSIaJUniF1JVClG+qNoVdtBBWfL08N9Oib6g==}
     engines: {node: '>=22.12.0'}
     hasBin: true
     peerDependencies:
@@ -859,8 +859,8 @@ packages:
   delaunator@5.1.0:
     resolution: {integrity: sha512-AGrQ4QSgssa1NGmWmLPqN5NY2KajF5MqxetNEO+o0n3ZwZZeTmt7bBnvzHWrmkZFxGgr4HdyFgelzgi06otLuQ==}
 
-  devtools-protocol@0.0.1717327:
-    resolution: {integrity: sha512-3RDLDzyvv8XAYf1L+TL1og0EEk0eOW1Jn0yi88uG6Bj8fUKO1ZKfgNtwbJkqf5SWdPDS4VGEPxwdUWz78V6Xcg==}
+  devtools-protocol@0.0.1724436:
+    resolution: {integrity: sha512-GcO1782pvzpmY4pQO1zjr8WZ95Wv8GodOs0v5J9QWwLGulTzfYIYECEd9iUsnqJmcehu+VMKxZquvjY8T2jhAA==}
 
   didyoumean@1.2.2:
     resolution: {integrity: sha512-gxtyfqMg7GKyhQmb056K7M3xszy/myH8w+B4RT+QXBQsvAOdc3XymqDDPHx1BgPgsdAA5SIifona89YtRATDzw==}
@@ -1222,12 +1222,12 @@ packages:
     resolution: {integrity: sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A==}
     engines: {node: '>= 0.6.0'}
 
-  puppeteer-core@25.18.1:
-    resolution: {integrity: sha512-C0wHOJHDfAggGBtN5uUfsJGpeSKtPL5jzhgQYDuz4XKeOG1FUkxeZI2M5yK7AUyrdHO+RgDuiCfjmOpcw3PYTA==}
+  puppeteer-core@25.19.0:
+    resolution: {integrity: sha512-F4pw8kpSczJS3TCHBw7/qskDxv4cMj09oOv7BwhHGYOerxLF1Sk2t4tpWlLvy6Vx/mM6TuqkDj4j0j3PRN1FiA==}
     engines: {node: '>=22.12.0'}
 
-  puppeteer@25.18.1:
-    resolution: {integrity: sha512-fCsfwERKluvC84jsVyhDoBZMNuI8t5FFnWXcTdH1vn3NhMk6clZcrF0Da2se6/Hj6CBJ+2PRPpqeV0qPIETeJA==}
+  puppeteer@25.19.0:
+    resolution: {integrity: sha512-38yJg6bAi6TOfQr/UTKllIVfm5zMWxBzURETCF3mzSylKQr9yUMyLz7YMl2yJCgfkJfhRl+j0qeKtm++X4J68w==}
     engines: {node: '>=22.12.0'}
     hasBin: true
 
@@ -1401,8 +1401,8 @@ packages:
     resolution: {integrity: sha512-42AtmgqjV+X1VpdOfyTGOYRi0/zsoLqtXQckTmqTeybT+BDIbM/Guxo7x3pE2vtpr1ok6xRqM9OpBe+Jyoqyww==}
     engines: {node: '>=18'}
 
-  ws@8.22.2:
-    resolution: {integrity: sha512-/rEZ2ejown2N5gxVTHUu9bVVC7ttu0/Tgzf5hbTOixR3Fs7mbbXgn2DbdbcKgJOmpQMtrIUWivtYuVMnp/W/yA==}
+  ws@8.23.0:
+    resolution: {integrity: sha512-wCkmX8QMOrKjgO8HW2WyDbTSGeqkocxgDzS9iR79rEAexty6/2qzilx3Ag8Tqf9ykop3irLKle0MtVn5qjVnoQ==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -1551,7 +1551,7 @@ snapshots:
       mermaid: 12.3.0
     optional: true
 
-  '@mermaid-js/mermaid-cli@12.2.0(puppeteer@25.18.1)':
+  '@mermaid-js/mermaid-cli@12.2.0(puppeteer@25.19.0)':
     dependencies:
       '@fontsource-variable/recursive': 5.3.0
       '@fontsource/open-sans': 5.3.0
@@ -1563,7 +1563,7 @@ snapshots:
       katex: 0.18.10
       mermaid: 12.3.0
       p-limit: 7.3.3
-      puppeteer: 25.18.1
+      puppeteer: 25.19.0
     optionalDependencies:
       '@mermaid-js/layout-tidy-tree': 1.0.1(mermaid@12.3.0)
     transitivePeerDependencies:
@@ -1650,7 +1650,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@puppeteer/browsers@3.2.7':
+  '@puppeteer/browsers@3.3.0':
     dependencies:
       modern-tar: 0.8.6
       yargs: 18.0.0
@@ -1916,9 +1916,9 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
-  chromium-bidi@157.0.8090-0(devtools-protocol@0.0.1717327):
+  chromium-bidi@157.0.8090-0(devtools-protocol@0.0.1724436):
     dependencies:
-      devtools-protocol: 0.0.1717327
+      devtools-protocol: 0.0.1724436
       mitt: 3.0.1
       zod: 4.6.5
 
@@ -2146,7 +2146,7 @@ snapshots:
     dependencies:
       robust-predicates: 3.0.3
 
-  devtools-protocol@0.0.1717327: {}
+  devtools-protocol@0.0.1724436: {}
 
   didyoumean@1.2.2: {}
 
@@ -2435,27 +2435,27 @@ snapshots:
 
   process@0.11.10: {}
 
-  puppeteer-core@25.18.1:
+  puppeteer-core@25.19.0:
     dependencies:
-      '@puppeteer/browsers': 3.2.7
-      chromium-bidi: 157.0.8090-0(devtools-protocol@0.0.1717327)
-      devtools-protocol: 0.0.1717327
+      '@puppeteer/browsers': 3.3.0
+      chromium-bidi: 157.0.8090-0(devtools-protocol@0.0.1724436)
+      devtools-protocol: 0.0.1724436
       typed-query-selector: 2.12.3
       webdriver-bidi-protocol: 1.0.2
-      ws: 8.22.2
+      ws: 8.23.0
     transitivePeerDependencies:
       - bufferutil
       - proxy-agent
       - utf-8-validate
       - yauzl
 
-  puppeteer@25.18.1:
+  puppeteer@25.19.0:
     dependencies:
-      '@puppeteer/browsers': 3.2.7
-      chromium-bidi: 157.0.8090-0(devtools-protocol@0.0.1717327)
-      devtools-protocol: 0.0.1717327
+      '@puppeteer/browsers': 3.3.0
+      chromium-bidi: 157.0.8090-0(devtools-protocol@0.0.1724436)
+      devtools-protocol: 0.0.1724436
       lilconfig: 3.1.5
-      puppeteer-core: 25.18.1
+      puppeteer-core: 25.19.0
       typed-query-selector: 2.12.3
     transitivePeerDependencies:
       - bufferutil
@@ -2661,7 +2661,7 @@ snapshots:
       string-width: 7.2.0
       strip-ansi: 7.2.0
 
-  ws@8.22.2: {}
+  ws@8.23.0: {}
 
   y18n@5.0.8: {}
 
